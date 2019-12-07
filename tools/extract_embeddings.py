@@ -2,13 +2,13 @@ import argparse
 
 import torch
 
-import onmt
-import onmt.model_builder
-import onmt.inputters as inputters
-import onmt.opts
+import bioseq2seq
+import bioseq2seq.model_builder
+import bioseq2seq.inputters as inputters
+import bioseq2seq.opts
 
-from onmt.utils.misc import use_gpu
-from onmt.utils.logging import init_logger, logger
+from bioseq2seq.utils.misc import use_gpu
+from bioseq2seq.utils.logging import init_logger, logger
 
 parser = argparse.ArgumentParser(description='translate.py')
 
@@ -31,7 +31,7 @@ def write_embeddings(filename, dict, embeddings):
 
 def main():
     dummy_parser = argparse.ArgumentParser(description='train.py')
-    onmt.opts.model_opts(dummy_parser)
+    bioseq2seq.opts.model_opts(dummy_parser)
     dummy_opt = dummy_parser.parse_known_args([])[0]
     opt = parser.parse_args()
     opt.cuda = opt.gpu > -1
@@ -45,7 +45,7 @@ def main():
 
     vocab = checkpoint['vocab']
     if inputters.old_style_vocab(vocab):
-        fields = onmt.inputters.load_old_vocab(vocab)
+        fields = bioseq2seq.inputters.load_old_vocab(vocab)
     else:
         fields = vocab
     src_dict = fields['src'].base_field.vocab  # assumes src is text
@@ -56,7 +56,7 @@ def main():
         if arg not in model_opt:
             model_opt.__dict__[arg] = dummy_opt.__dict__[arg]
 
-    model = onmt.model_builder.build_base_model(
+    model = bioseq2seq.model_builder.build_base_model(
         model_opt, fields, use_gpu(opt), checkpoint)
     encoder = model.encoder
     decoder = model.decoder

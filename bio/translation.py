@@ -1,5 +1,5 @@
-import onmt
-from onmt.translate import Translation
+import bioseq2seq
+from bioseq2seq.translate import Translation
 from utils import emboss_getorf
 
 

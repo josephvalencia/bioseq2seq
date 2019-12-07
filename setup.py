@@ -32,11 +32,11 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "onmt_server=onmt.bin.server:main",
-            "onmt_train=onmt.bin.train:main",
-            "onmt_translate=onmt.bin.translate:main",
-            "onmt_preprocess=onmt.bin.preprocess:main",
-            "onmt_average_models=onmt.bin.average_models:main"
+            "onmt_server=bioseq2seq.bin.server:main",
+            "onmt_train=bioseq2seq.bin.train:main",
+            "onmt_translate=bioseq2seq.bin.translate:main",
+            "onmt_preprocess=bioseq2seq.bin.preprocess:main",
+            "onmt_average_models=bioseq2seq.bin.average_models:main"
         ],
     }
 )

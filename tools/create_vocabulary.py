@@ -78,10 +78,10 @@ def main():
                              "'src' or 'tgt' argument for -side.")
         import torch
         try:
-            from onmt.inputters.inputter import _old_style_vocab
+            from bioseq2seq.inputters.inputter import _old_style_vocab
         except ImportError:
             sys.path.insert(1, os.path.join(sys.path[0], '..'))
-            from onmt.inputters.inputter import _old_style_vocab
+            from bioseq2seq.inputters.inputter import _old_style_vocab
 
         print("Reading input file...")
         if not len(opt.file) == 1:

@@ -3,15 +3,15 @@ import argparse
 import os
 import pandas as pd
 import torch
-import onmt
+import bioseq2seq
 
-from onmt.inputters import TextDataReader
-from onmt.inputters.text_dataset import TextMultiField
-from onmt.translate import Translator, GNMTGlobalScorer
+from bioseq2seq.inputters import TextDataReader
+from bioseq2seq.inputters.text_dataset import TextMultiField
+from bioseq2seq.translate import Translator, GNMTGlobalScorer
 from models import EncoderDecoder, make_transformer_model, make_loss_function
 
 from torch.optim import Adam
-from onmt.utils.optimizers import Optimizer
+from bioseq2seq.utils.optimizers import Optimizer
 
 def start_message():
 
@@ -94,7 +94,7 @@ def translate(args):
 
     google_scorer = GNMTGlobalScorer(alpha = 1.0, beta = 0.0, length_penalty = "wu" , coverage_penalty = "none")
 
-    text_fields = onmt.inputters.get_fields(src_data_type = 'text', n_src_feats = 0, n_tgt_feats = 0, pad = "<pad>", eos = "<eos>", bos ="<sos>")
+    text_fields = bioseq2seq.inputters.get_fields(src_data_type ='text', n_src_feats = 0, n_tgt_feats = 0, pad ="<pad>", eos ="<eos>", bos ="<sos>")
     text_fields['src'] = src
     text_fields['tgt'] = tgt
 

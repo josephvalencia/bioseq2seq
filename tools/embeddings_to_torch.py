@@ -4,8 +4,8 @@ from __future__ import division
 import six
 import argparse
 import torch
-from onmt.utils.logging import init_logger, logger
-from onmt.inputters.inputter import _old_style_vocab
+from bioseq2seq.utils.logging import init_logger, logger
+from bioseq2seq.inputters.inputter import _old_style_vocab
 
 
 def get_vocabs(dict_path):

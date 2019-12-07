@@ -11,10 +11,10 @@ create our datasets. For instance
 import torch
 import torch.nn as nn
 
-import onmt
-import onmt.inputters
-import onmt.modules
-import onmt.utils
+import bioseq2seq
+import bioseq2seq.inputters
+import bioseq2seq.modules
+import bioseq2seq.utils
 ```
 
 We begin by loading in the vocabulary for the model of interest. This will let us check vocab size and to get the special ids for padding.
@@ -145,22 +145,22 @@ To use the model, we need to load up the translation functions. A Translator obj
 
 
 ```python
-import onmt.translate
+import bioseq2seq.translate
 
-src_reader = onmt.inputters.str2reader["text"]
-tgt_reader = onmt.inputters.str2reader["text"]
-scorer = onmt.translate.GNMTGlobalScorer(alpha=0.7, 
+src_reader = bioseq2seq.inputters.str2reader["text"]
+tgt_reader = bioseq2seq.inputters.str2reader["text"]
+scorer = bioseq2seq.translate.GNMTGlobalScorer(alpha=0.7, 
                                          beta=0., 
                                          length_penalty="avg", 
                                          coverage_penalty="none")
 gpu = 0 if torch.cuda.is_available() else -1
-translator = onmt.translate.Translator(model=model, 
+translator = bioseq2seq.translate.Translator(model=model, 
                                        fields=vocab_fields, 
                                        src_reader=src_reader, 
                                        tgt_reader=tgt_reader, 
                                        global_scorer=scorer,
                                        gpu=gpu)
-builder = onmt.translate.TranslationBuilder(data=torch.load(valid_data_file), 
+builder = bioseq2seq.translate.TranslationBuilder(data=torch.load(valid_data_file), 
                                             fields=vocab_fields)
 
 

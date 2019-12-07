@@ -9,13 +9,13 @@ import torch
 from batcher import iterator_from_csv
 from models import make_transformer_model, make_loss_function
 
-from onmt.utils.optimizers import Optimizer
-from onmt import Trainer
-from onmt.utils.report_manager import build_report_manager, ReportMgr
-from onmt.utils.earlystopping import EarlyStopping
+from bioseq2seq.utils.optimizers import Optimizer
+from bioseq2seq import Trainer
+from bioseq2seq.utils.report_manager import build_report_manager, ReportMgr
+from bioseq2seq.utils.earlystopping import EarlyStopping
 from torch.utils.tensorboard import SummaryWriter
-from onmt.models import ModelSaver
-from onmt.translate import Translator
+from bioseq2seq.models import ModelSaver
+from bioseq2seq.translate import Translator
 
 def parse_args():
 

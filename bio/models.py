@@ -13,14 +13,14 @@ from torch.optim import Adam
 from tqdm import tqdm
 from batcher import iterator_from_dataset, dataset_from_csv 
 
-from onmt.models import NMTModel
-from onmt.encoders import TransformerEncoder
-from onmt.decoders import TransformerDecoder
-from onmt.modules import Embeddings
-from onmt.utils.loss import NMTLossCompute, build_loss_compute
-from onmt.utils.optimizers import Optimizer
-from onmt import Trainer
-from onmt.utils.report_manager import build_report_manager, ReportMgr
+from bioseq2seq.models import NMTModel
+from bioseq2seq.encoders import TransformerEncoder
+from bioseq2seq.decoders import TransformerDecoder
+from bioseq2seq.modules import Embeddings
+from bioseq2seq.utils.loss import NMTLossCompute, build_loss_compute
+from bioseq2seq.utils.optimizers import Optimizer
+from bioseq2seq import Trainer
+from bioseq2seq.utils.report_manager import build_report_manager, ReportMgr
 
 from torch.utils.tensorboard import SummaryWriter
 
