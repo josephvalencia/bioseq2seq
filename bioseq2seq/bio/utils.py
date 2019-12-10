@@ -50,23 +50,41 @@ def kmer_overlap_scores(query,reference,k):
         f1 = 2*(precision*recall)/(precision+recall)
 
         return recall,precision,f1
-    except ZeroDivisionError:
 
-        print("Division by Zero")
+    except ZeroDivisionError:
         return 0.0,0.0,0.0
 
-def emboss_needle(seqa, seqb,out):
+def emboss_needle(seqa, seqb):
 
     '''Calculate Needleman-Wunsch global alignment percentage identity using needle from EMBOSS package. See http://www.bioinformatics.nl/cgi-bin/emboss/help/needle
     '''
 
-    cmd = NeedleCommandline(asequence = seqa, bsequence=seqb,gapopen = 10, gapextend = 0.5,outfile = out)
-    stdout,stderr = cmd()
+    pred_tmp = "pred.tmp"
+    gold_tmp = "gold.tmp"
+    out = "alignment.tmp"
+
+    with open(pred_tmp,'w') as tempFile:
+        tempFile.write(seqa)
+
+    with open(gold_tmp,'w') as tempFile:
+        tempFile.write(seqb)
+
+        cmd = NeedleCommandline(asequence = "plain::"+pred_tmp, bsequence = "plain::"+gold_tmp,gapopen = 10, gapextend = 0.5,outfile = out,sprotein=True)
+    try:
+        stdout,stderrf = cmd()
+    except Exception:
+        pass
 
     response = open(out,'r').read()
 
     identity_pattern = "# Identity:(\s*)(\d*\/\d*)(.*)\n"
     identity_line = re.search(identity_pattern,response).group(2).split('/')
+
+    try:
+        os.remove(pred_tmp)
+        os.remove(gold_tmp)
+    except OSError:
+        pass
 
     return float(identity_line[0]) / float(identity_line[1])
 

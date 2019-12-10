@@ -90,7 +90,9 @@ class PenaltyBuilder(object):
 
         See "Google's Neural Machine Translation System" :cite:`wu2016google`.
         """
-
+        print("curr_len "+str(cur_len))
+        print("Len_penalty:")
+        print(((5+cur_len)/6.0) ** alpha)
         return ((5 + cur_len) / 6.0) ** alpha
 
     def length_average(self, cur_len, alpha=0.):

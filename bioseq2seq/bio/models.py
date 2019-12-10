@@ -19,7 +19,7 @@ from bioseq2seq.decoders import TransformerDecoder
 from bioseq2seq.modules import Embeddings
 from bioseq2seq.utils.loss import NMTLossCompute, build_loss_compute
 from bioseq2seq.utils.optimizers import Optimizer
-from bioseq2seq import Trainer
+from bioseq2seq.trainer import Trainer
 from bioseq2seq.utils.report_manager import build_report_manager, ReportMgr
 
 from torch.utils.tensorboard import SummaryWriter
@@ -69,7 +69,8 @@ def make_transformer_model(n=4,d_model=128, d_ff=2048, h=8, dropout=0.1):
     decoder_stack = TransformerDecoder(num_layers = n,d_model = d_model,heads = h, d_ff = d_ff,\
                                        dropout = dropout, embeddings = protein_embeddings,\
                                        self_attn_type = 'scaled-dot',copy_attn = False,\
-                                       max_relative_positions = 10,aan_useffn = False,attention_dropout = 0.1)
+                                       max_relative_positions = 10,aan_useffn = False,attention_dropout = 0.1,\
+                                       full_context_alignment=False,alignment_heads=None,alignment_layer=None)
 
     generator = Generator(128,26)
 

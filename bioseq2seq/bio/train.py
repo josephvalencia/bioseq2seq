@@ -6,11 +6,11 @@ from torch.optim import Adam
 import time
 import torch
 
-from batcher import iterator_from_csv
+from batcher import dataset_from_csv, iterator_from_dataset
 from models import make_transformer_model, make_loss_function
 
 from bioseq2seq.utils.optimizers import Optimizer
-from bioseq2seq import Trainer
+from bioseq2seq.trainer import Trainer
 from bioseq2seq.utils.report_manager import build_report_manager, ReportMgr
 from bioseq2seq.utils.earlystopping import EarlyStopping
 from torch.utils.tensorboard import SummaryWriter
@@ -81,14 +81,16 @@ def test_batch_sizes(iterator):
 def train(args):
 
     data = pd.read_csv(args.input,index_col = 0)
-    data_iterator = iterator_from_csv(data)
 
-    #test_batch_sizes(data_iterator)
+    train,test,dev = dataset_from_csv(data) # obtain splits
+
+    train_iterator = iterator_from_dataset(train)
+    dev_iterator = iterator_from_dataset(dev)
 
     seq2seq = make_transformer_model()
-    seq2seq.to(device = data_iterator.device)
+    seq2seq.to(device = train_iterator.device)
 
-    loss_computer = make_loss_function(device = data_iterator.device,generator = seq2seq.generator)
+    loss_computer = make_loss_function(device = train_iterator.device,generator = seq2seq.generator)
 
     adam = Adam(seq2seq.parameters())
     optim = Optimizer(adam,learning_rate = args.learning_rate)
@@ -97,7 +99,7 @@ def train(args):
     early_stopping = EarlyStopping(tolerance = 5)
 
     saver = ModelSaver(base_path = args.save_directory,model = seq2seq,\
-                       model_opt = None,fields = data_iterator.fields,optim = optim)
+                       model_opt = None,fields = train_iterator.fields,optim = optim)
 
     trainer = Trainer(seq2seq,train_loss = loss_computer,earlystopper = early_stopping,\
                       valid_loss = loss_computer,optim = optim,report_manager = report_manager,\
@@ -107,7 +109,7 @@ def train(args):
 
     for i in range(args.max_epochs):
         s = time.time()
-        stats = trainer.train(data_iterator,1000000,save_checkpoint_steps = args.report_every)
+        stats = trainer.train(train_iter = train_iterator,train_steps = 1000000,save_checkpoint_steps = args.report_every,valid_iter = dev_iterator)
         e = time.time()
         print("Epoch: "+str(i)+" | Time elapsed: "+str(e-s))
 

@@ -7,18 +7,12 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='OpenNMT-py',
-    description='A python implementation of OpenNMT',
+    name='BioSeq2Seq',
+    description='An implementation of seq2seq and language modeling for biological sequences',
     long_description=long_description,
     long_description_content_type='text/markdown',
     version='1.0.0.rc2',
     packages=find_packages(),
-    project_urls={
-        "Documentation": "http://opennmt.net/OpenNMT-py/",
-        "Forum": "http://forum.opennmt.net/",
-        "Gitter": "https://gitter.im/OpenNMT/OpenNMT-py",
-        "Source": "https://github.com/OpenNMT/OpenNMT-py/"
-    },
     install_requires=[
         "six",
         "tqdm~=4.30.0",
@@ -30,13 +24,4 @@ setup(
         "flask",
         "pyonmttok==1.*;platform_system=='Linux'",
     ],
-    entry_points={
-        "console_scripts": [
-            "onmt_server=bioseq2seq.bin.server:main",
-            "onmt_train=bioseq2seq.bin.train:main",
-            "onmt_translate=bioseq2seq.bin.translate:main",
-            "onmt_preprocess=bioseq2seq.bin.preprocess:main",
-            "onmt_average_models=bioseq2seq.bin.average_models:main"
-        ],
-    }
-)
+) 

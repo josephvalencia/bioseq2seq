@@ -9,7 +9,7 @@ multi-bleu.perl
 data/
 Fa/
 experiments/
-
+old_checkpoints/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

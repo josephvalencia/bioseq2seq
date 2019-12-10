@@ -3,9 +3,9 @@ import argparse
 import os
 import pandas as pd
 import torch
-import bioseq2seq
+import sys
 
-from bioseq2seq.inputters import TextDataReader
+from bioseq2seq.inputters import TextDataReader,get_fields
 from bioseq2seq.inputters.text_dataset import TextMultiField
 from bioseq2seq.translate import Translator, GNMTGlobalScorer
 from models import EncoderDecoder, make_transformer_model, make_loss_function
@@ -20,7 +20,7 @@ def start_message():
 
     centered = lambda x : x.center(width)
 
-    welcome = "DeepTranslate"
+    welcome = "BioSeq2Seq"
     welcome = pyfiglet.figlet_format(welcome)
 
     print(welcome+"\n")
@@ -53,6 +53,7 @@ def parse_args():
     # translate optional args
     parser.add_argument("--decoding-strategy","--d",default = "greedy",choices = ["beam","greedy"])
     parser.add_argument("--beam","--b",type = int, default = 4)
+    parser.add_argument("--alpha","--a",type=float,default = 0.5)
 
     return parser.parse_args()
 
@@ -72,15 +73,19 @@ def translate(args):
 
     model = make_transformer_model()
 
-    checkpoint = torch.load(args.checkpoint,map_location = torch.device('cpu'))
+    machine = torch.device('cuda:0')
+    #machine = torch.device('cpu')
+
+    checkpoint = torch.load(args.checkpoint,map_location = machine)
 
     model.load_state_dict(checkpoint['model'],strict = False)
     model.generator.load_state_dict(checkpoint['generator'])
+    model.to(device = machine)
 
     total_params = sum(p.numel() for p in model.parameters())
     print("TOTAL # PARAMS: {} ".format(total_params))
 
-    loss_computer = make_loss_function(device = torch.device('cpu'), generator = model.generator)
+    loss_computer = make_loss_function(device = machine, generator = model.generator)
 
     adam = Adam(model.parameters())
     optim = Optimizer(adam, learning_rate = 1e-3)
@@ -92,9 +97,9 @@ def translate(args):
     src = TextMultiField('src',fields['src'],[])
     tgt = TextMultiField('tgt',fields['tgt'],[])
 
-    google_scorer = GNMTGlobalScorer(alpha = 1.0, beta = 0.0, length_penalty = "wu" , coverage_penalty = "none")
+    google_scorer = GNMTGlobalScorer(alpha = args.alpha, beta = 0.0, length_penalty = "avg" , coverage_penalty = "none")
 
-    text_fields = bioseq2seq.inputters.get_fields(src_data_type ='text', n_src_feats = 0, n_tgt_feats = 0, pad ="<pad>", eos ="<eos>", bos ="<sos>")
+    text_fields = get_fields(src_data_type ='text', n_src_feats = 0, n_tgt_feats = 0, pad ="<pad>", eos ="<eos>", bos ="<sos>")
     text_fields['src'] = src
     text_fields['tgt'] = tgt
 
@@ -104,16 +109,14 @@ def translate(args):
 
     print("MAX_LEN: "+str(max_len))
 
-    translator = Translator(model,src_reader = src_reader,tgt_reader = tgt_reader,\
+    translator = Translator(model,gpu = 0,src_reader = src_reader,tgt_reader = tgt_reader,\
                             fields = text_fields, beam_size = 5, n_best = 4,\
-                            global_scorer = google_scorer,out_file = out_file,verbose = True,max_length = max_len )
+                            global_scorer = google_scorer,out_file = out_file,verbose = True,max_length = max_len)
 
     scores, predictions = translator.translate(src = rna, tgt = protein,batch_size = 16)
 
 if __name__ == "__main__":
 
     args = parse_args()
-
     start_message()
-
     translate(args)

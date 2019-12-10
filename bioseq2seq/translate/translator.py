@@ -18,6 +18,8 @@ from bioseq2seq.utils.misc import tile, set_random_seed, report_matrix
 from bioseq2seq.utils.alignment import extract_alignment, build_align_pharaoh
 from bioseq2seq.modules.copy_generator import collapse_copy_scores
 
+from bioseq2seq.bio.utils import emboss_needle,kmer_overlap_scores
+
 
 def build_translator(opt, report_score=True, logger=None, out_file=None):
     if out_file is None:
@@ -355,6 +357,8 @@ class Translator(object):
 
         start_time = time.time()
 
+        number = 0
+
         for batch in data_iter:
             batch_data = self.translate_batch(
                 batch, data.src_vocabs, attn_debug
@@ -369,7 +373,7 @@ class Translator(object):
                     gold_score_total += trans.gold_score
                     gold_words_total += len(trans.gold_sent) + 1
 
-                n_best_preds = [" ".join(pred)
+                n_best_preds = ["".join(pred)
                                 for pred in trans.pred_sents[:self.n_best]]
                 if self.report_align:
                     align_pharaohs = [build_align_pharaoh(align) for align
@@ -380,7 +384,31 @@ class Translator(object):
                                     for pred, align in zip(
                                         n_best_preds, n_best_preds_align)]
                 all_predictions += [n_best_preds]
-                self.out_file.write('\n'.join(n_best_preds) + '\n')
+
+                #print("gold: "+str("".join(trans.gold_sent)))
+                max_id = 0
+                max_pred = ""
+
+                for i,pred in enumerate(n_best_preds):
+
+                    #print("pred: "+str(pred))
+                    recall,precision,f1 = kmer_overlap_scores(pred,"".join(trans.gold_sent),3)
+                    align_pct = emboss_needle(pred,"".join(trans.gold_sent))
+
+                    if align_pct > max_id:
+                        max_id = align_pct
+                        max_pred = pred
+
+                        #k_log_msg = "Recall: {} Precision: {} F1 {}".format(recall,precision,f1)
+                        #print(k_log_msg)
+
+                    align_msg = "Alignment identity: {}".format(align_pct)
+                    #print(align_msg)
+
+                #self.out_file.write('\n'.join(n_best_preds) + '\n')
+                self.out_file.write(str(max_id)+"\n")
+                self.out_file.write(str(max_pred)+"\n")
+                self.out_file.write("".join(trans.gold_sent)+"\n")
                 self.out_file.flush()
 
                 if self.verbose:
@@ -420,6 +448,10 @@ class Translator(object):
                         self.logger.info(output)
                     else:
                         os.write(1, output.encode('utf-8'))
+
+                number +=1
+                if number >299:
+                    break
 
         end_time = time.time()
 

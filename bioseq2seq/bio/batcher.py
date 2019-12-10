@@ -141,8 +141,7 @@ def tokenize(original):
 def dataset_from_csv(translation_table):
 
     translation_table = filter_by_length(translation_table,1000)
-    cuda0 = torch.device('cuda')
-
+    
     RNA = Field(tokenize=tokenize,use_vocab=True,batch_first=False,include_lengths=True)
     PROTEIN =  Field(tokenize = tokenize, use_vocab=True,batch_first=False,is_target = True,include_lengths = False,init_token = "<sos>", eos_token = "<eos>")
 
@@ -173,6 +172,7 @@ def dataset_from_csv(translation_table):
 
 def iterator_from_dataset(dataset):
 
-    return Translationiterator(BatchMaker(dataset,batch_size=9000,
+    cuda0 = torch.device('cuda')
+    return TranslationIterator(BatchMaker(dataset,batch_size=9000,
                                           device = cuda0,repeat=False,
                                           sort_mode ="source"))
