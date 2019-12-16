@@ -2,9 +2,13 @@ import os
 import argparse
 import pyfiglet
 import pandas as pd
-from torch.optim import Adam 
 import time
+
 import torch
+from torch.utils.tensorboard import SummaryWriter
+from torch.nn import DataParallel
+from torch.optim import Adam 
+
 
 from batcher import dataset_from_csv, iterator_from_dataset
 from models import make_transformer_model, make_loss_function
@@ -13,7 +17,6 @@ from bioseq2seq.utils.optimizers import Optimizer
 from bioseq2seq.trainer import Trainer
 from bioseq2seq.utils.report_manager import build_report_manager, ReportMgr
 from bioseq2seq.utils.earlystopping import EarlyStopping
-from torch.utils.tensorboard import SummaryWriter
 from bioseq2seq.models import ModelSaver
 from bioseq2seq.translate import Translator
 
@@ -80,6 +83,8 @@ def test_batch_sizes(iterator):
 
 def train(args):
 
+    master = torch.device("cuda:0")
+
     data = pd.read_csv(args.input,index_col = 0)
 
     train,test,dev = dataset_from_csv(data) # obtain splits
@@ -89,6 +94,8 @@ def train(args):
 
     seq2seq = make_transformer_model()
     seq2seq.to(device = train_iterator.device)
+
+    #seq2seq.parallelize()
 
     loss_computer = make_loss_function(device = train_iterator.device,generator = seq2seq.generator)
 

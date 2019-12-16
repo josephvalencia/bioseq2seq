@@ -9,7 +9,8 @@ import pandas as pd
 import time
 
 from torch.autograd import Variable
-from torch.optim import Adam 
+from torch.optim import Adam
+from torch.nn import DataParallel
 from tqdm import tqdm
 from batcher import iterator_from_dataset, dataset_from_csv 
 
@@ -45,8 +46,14 @@ class EncoderDecoder(NMTModel):
     def __init__(self, encoder, decoder,generator):
 
         super(EncoderDecoder, self).__init__(encoder,decoder)
-
         self.generator = generator
+
+    def parallelize(self):
+
+        self.encoder = DataParallel(self.encoder)
+        self.decoder = DataParallel(self.decoder)
+        self.generator = DataParallel(self.generator)
+
 
 
 def make_transformer_model(n=4,d_model=128, d_ff=2048, h=8, dropout=0.1):

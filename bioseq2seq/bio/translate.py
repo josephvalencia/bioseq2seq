@@ -110,10 +110,10 @@ def translate(args):
     print("MAX_LEN: "+str(max_len))
 
     translator = Translator(model,gpu = 0,src_reader = src_reader,tgt_reader = tgt_reader,\
-                            fields = text_fields, beam_size = 5, n_best = 4,\
+                            fields = text_fields, beam_size = 8, n_best = 6,\
                             global_scorer = google_scorer,out_file = out_file,verbose = True,max_length = max_len)
 
-    scores, predictions = translator.translate(src = rna, tgt = protein,batch_size = 16)
+    scores, predictions = translator.translate(src = rna, tgt = protein,batch_size = 4)
 
 if __name__ == "__main__":
 
