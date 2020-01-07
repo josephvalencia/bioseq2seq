@@ -28,10 +28,8 @@ def batch_size_fn(new, count, sofar):
     src_elements = count * max_src_in_batch
     tgt_elements = count * max_tgt_in_batch
 
-    #return max(src_elements, tgt_elements)
-    #return src_elements
-
-    return src_elements+tgt_elements
+    #return src_elements+tgt_elements
+    return src_elements
 
 class BatchMaker(torchtext.data.Iterator):
 
@@ -104,7 +102,6 @@ class TransformerBatch(Batch):
 
 class TranslationIterator:
 
-
     def __init__(self, iterator):
 
         self.iterator = iterator
@@ -129,8 +126,6 @@ def filter_by_length(translation_table,max_len):
     translation_table['Protein_LEN'] = [len(x) for x in translation_table['Protein'].values]
     interval = [0.1*x for x in range(1,10)]
 
-    print(translation_table[['RNA_LEN','Protein_LEN']].describe(percentiles = interval))
-
     translation_table = translation_table[translation_table['RNA_LEN'] < max_len]
     return translation_table[['RNA','Protein']]
 
@@ -138,10 +133,9 @@ def tokenize(original):
 
     return [c for c in original]
 
-def dataset_from_csv(translation_table):
+def dataset_from_csv(translation_table,max_len,random_state):
 
-    translation_table = filter_by_length(translation_table,1000)
-    
+    translation_table = filter_by_length(translation_table,max_len)
     RNA = Field(tokenize=tokenize,use_vocab=True,batch_first=False,include_lengths=True)
     PROTEIN =  Field(tokenize = tokenize, use_vocab=True,batch_first=False,is_target = True,include_lengths = False,init_token = "<sos>", eos_token = "<eos>")
 
@@ -165,14 +159,10 @@ def dataset_from_csv(translation_table):
     PROTEIN.build_vocab(dataset)
     RNA.build_vocab(dataset)
 
-    random.seed(65)
-    state = random.getstate()
+    return dataset.split(split_ratio = [0.8,0.1,0.1],random_state = random_state) # train,test,dev split
 
-    return dataset.split(split_ratio = [0.8,0.1,0.1],random_state = state) # train,test,dev split
+def iterator_from_dataset(dataset, max_tokens,device):
 
-def iterator_from_dataset(dataset):
-
-    cuda0 = torch.device('cuda')
-    return TranslationIterator(BatchMaker(dataset,batch_size=9000,
-                                          device = cuda0,repeat=False,
+    return TranslationIterator(BatchMaker(dataset,batch_size = max_tokens,
+                                          device = device,repeat=False,
                                           sort_mode ="source"))

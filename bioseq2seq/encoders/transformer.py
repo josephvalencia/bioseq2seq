@@ -13,7 +13,7 @@ from bioseq2seq.utils.misc import sequence_mask
 class TransformerEncoderLayer(nn.Module):
     """
     A single layer of the transformer encoder.
-
+ 
     Args:
         d_model (int): the dimension of keys/values/queries in
                    MultiHeadedAttention, also the input size of

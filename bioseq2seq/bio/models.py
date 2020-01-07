@@ -11,8 +11,9 @@ import time
 from torch.autograd import Variable
 from torch.optim import Adam
 from torch.nn import DataParallel
+from torch.nn.parallel import DistributedDataParallel as DDP
 from tqdm import tqdm
-from batcher import iterator_from_dataset, dataset_from_csv 
+from batcher import iterator_from_dataset, dataset_from_csv
 
 from bioseq2seq.models import NMTModel
 from bioseq2seq.encoders import TransformerEncoder
@@ -24,7 +25,6 @@ from bioseq2seq.trainer import Trainer
 from bioseq2seq.utils.report_manager import build_report_manager, ReportMgr
 
 from torch.utils.tensorboard import SummaryWriter
-
 
 class Generator(nn.Module):
     "Define standard linear + softmax generation step."
@@ -39,7 +39,6 @@ class Generator(nn.Module):
         logits = F.log_softmax(self.proj(x), dim=-1)
         return logits
 
-
 class EncoderDecoder(NMTModel):
     """ Architecture-independent Encoder-Decoder. """
 
@@ -48,13 +47,11 @@ class EncoderDecoder(NMTModel):
         super(EncoderDecoder, self).__init__(encoder,decoder)
         self.generator = generator
 
-    def parallelize(self):
+    def parallelize(self,device_ids,output_device):
 
-        self.encoder = DataParallel(self.encoder)
-        self.decoder = DataParallel(self.decoder)
-        self.generator = DataParallel(self.generator)
-
-
+        self.encoder = DDP(self.encoder,device_ids = device_ids, output_device = output_device)
+        #self.decoder = DDP(self.decoder,device_ids = device_ids, output_device = output_device)
+        self.generator = DDP(self.generator,device_ids = device_ids, output_device = output_device)
 
 def make_transformer_model(n=4,d_model=128, d_ff=2048, h=8, dropout=0.1):
 
@@ -97,37 +94,3 @@ def make_loss_function(device,generator):
 
     return nmt_loss
 
-if __name__ ==  "__main__":
-
-    translation_record = sys.argv[1]
-
-    data = pd.read_csv(translation_record,index_col = 0)
-    data_iterator = iterator_from_csv(data)
-
-    seq2seq = make_transformer_model()
-    seq2seq.to(device = data_iterator.device)
-
-    loss_computer = make_loss_function(device = data_iterator.device, generator = seq2seq.generator)
-
-    adam = Adam(seq2seq.parameters())
-    optim = Optimizer(adam, learning_rate = 1e-3)
-
-    batch_count = 10000
-
-    report_manager = ReportMgr(report_every = batch_count,tensorboard_writer = SummaryWriter())
-
-    trainer = Trainer(seq2seq,train_loss = loss_computer,valid_loss = loss_computer,\
-                      optim = optim,report_manager = report_manager )
-
-    num_iterations = 1000
-
-    print("Beginning training")
-
-    for i in range(num_iterations):
-
-        s = time.time()
-        stats = trainer.train(data_iterator,1000000)
-        e = time.time()
-        print("Epoch: "+str(i)+" | Time elapsed: "+str(e-s))
-
-    print("Concluding training")

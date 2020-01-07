@@ -157,6 +157,7 @@ class Trainer(object):
                             % (self.dropout[i], step))
 
     def _accum_batches(self, iterator):
+        print("Type of st")
         batches = []
         normalization = 0
         self.accum_count = self._accum_count(self.optim.training_step)
@@ -221,8 +222,11 @@ class Trainer(object):
         report_stats = bioseq2seq.utils.Statistics()
         self._start_report_manager(start_time=total_stats.start_time)
 
+
         for i, (batches, normalization) in enumerate(
                 self._accum_batches(train_iter)):
+
+
             step = self.optim.training_step
             # UPDATE DROPOUT
             self._maybe_update_dropout(step)
@@ -347,7 +351,7 @@ class Trainer(object):
 
             src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                 else (batch.src, None)
-            if src_lengths is not None:
+            if src_lengths is not None and report_stats is not None:
                 report_stats.n_src_words += src_lengths.sum().item()
 
             tgt_outer = batch.tgt
@@ -379,8 +383,9 @@ class Trainer(object):
                     if loss is not None:
                         self.optim.backward(loss)
 
-                    total_stats.update(batch_stats)
-                    report_stats.update(batch_stats)
+                    if total_stats is not None and report_stats is not None:
+                        total_stats.update(batch_stats)
+                        report_stats.update(batch_stats)
 
                 except Exception:
                     traceback.print_exc()

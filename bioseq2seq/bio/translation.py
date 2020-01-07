@@ -5,7 +5,6 @@ from utils import emboss_getorf
 
 class ProteinTranslation(Translation):
 
-
     def log(self,sent_number):
 
         temp = "/home/other/valejose/deep-translate/temp_getorf.fa"

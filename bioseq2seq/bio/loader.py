@@ -1,4 +1,3 @@
-import sklearn
 from Bio import SeqIO
 from Bio.Alphabet import IUPAC
 import sys, os
@@ -37,12 +36,12 @@ class TranslationTable:
         id_fields = seq_record.id.split("|")
 
         tscript_name = [x for x in id_fields if x.startswith("ENST")][0]
+        if tscript_name in self.table:
+            entry = self.table[tscript_name]
 
-        entry = self.table[tscript_name]
+            entry.protein = seq_record.seq
 
-        entry.protein = seq_record.seq
-
-        self.table[tscript_name] = entry
+            self.table[tscript_name] = entry
 
     def add_entry(self,name,transcript,protein):
 
