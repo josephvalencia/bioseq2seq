@@ -47,12 +47,6 @@ class EncoderDecoder(NMTModel):
         super(EncoderDecoder, self).__init__(encoder,decoder)
         self.generator = generator
 
-    def parallelize(self,device_ids,output_device):
-
-        self.encoder = DDP(self.encoder,device_ids = device_ids, output_device = output_device)
-        #self.decoder = DDP(self.decoder,device_ids = device_ids, output_device = output_device)
-        self.generator = DDP(self.generator,device_ids = device_ids, output_device = output_device)
-
 def make_transformer_model(n=4,d_model=128, d_ff=2048, h=8, dropout=0.1):
 
     "construct Transformer encoder-decoder from hyperparameters."
@@ -78,14 +72,16 @@ def make_transformer_model(n=4,d_model=128, d_ff=2048, h=8, dropout=0.1):
 
     generator = Generator(128,26)
 
-    model = EncoderDecoder(encoder_stack,decoder_stack,generator)
+    #model = EncoderDecoder(encoder_stack,decoder_stack,generator)
+    model = NMTModel(encoder_stack,decoder_stack)
+    #model.generator = generator
 
     for p in model.parameters():
 
         if p.dim() > 1:
             nn.init.xavier_uniform_(p)
 
-    return model
+    return model,generator
 
 def make_loss_function(device,generator):
 

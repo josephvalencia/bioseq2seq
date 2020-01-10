@@ -155,7 +155,7 @@ class LossComputeBase(nn.Module):
             A tuple with the loss and a :obj:`bioseq2seq.utils.Statistics` instance.
         """
         if trunc_size is None:
-            trunc_size = batch.tgt.size(0) - trunc_start
+            trunc_size = batch.tgt.size(0) - trunc_start 
         trunc_range = (trunc_start, trunc_start + trunc_size)
         shard_state = self._make_shard_state(batch, output, trunc_range, attns)
         if shard_size == 0:
@@ -282,7 +282,6 @@ class NMTLossCompute(LossComputeBase):
 
         scores = self.generator(bottled_output)
         gtruth = target.view(-1)
-
         loss = self.criterion(scores, gtruth)
         if self.lambda_coverage != 0.0:
             coverage_loss = self._compute_coverage_loss(
@@ -297,7 +296,6 @@ class NMTLossCompute(LossComputeBase):
                 align_head=align_head, ref_align=ref_align)
             loss += align_loss
         stats = self._stats(loss.clone(), scores, gtruth)
-
         return loss, stats
 
     def _compute_coverage_loss(self, std_attn, coverage_attn):

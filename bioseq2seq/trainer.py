@@ -11,9 +11,11 @@
 
 import torch
 import traceback
+from tqdm import tqdm
 
 import bioseq2seq.utils
 from bioseq2seq.utils.logging import logger
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 
 def build_trainer(opt, device_id, model, fields, optim, model_saver=None):
@@ -100,7 +102,7 @@ class Trainer(object):
                 Thus nothing will be saved if this parameter is None
     """
 
-    def __init__(self, model, train_loss, valid_loss, optim,
+    def __init__(self, model, train_loss, valid_loss, optim,rank,
                  trunc_size=0, shard_size=32,
                  norm_method="sents", accum_count=[1],
                  accum_steps=[0],
@@ -132,6 +134,7 @@ class Trainer(object):
         self.earlystopper = earlystopper
         self.dropout = dropout
         self.dropout_steps = dropout_steps
+        self.rank = rank
 
         for i in range(len(self.accum_count_l)):
             assert self.accum_count_l[i] > 0
@@ -157,7 +160,6 @@ class Trainer(object):
                             % (self.dropout[i], step))
 
     def _accum_batches(self, iterator):
-        print("Type of st")
         batches = []
         normalization = 0
         self.accum_count = self._accum_count(self.optim.training_step)
@@ -222,10 +224,16 @@ class Trainer(object):
         report_stats = bioseq2seq.utils.Statistics()
         self._start_report_manager(start_time=total_stats.start_time)
 
+        pbar = tqdm(total=len(train_iter), desc = "CUDA GPU({})".format(train_iter.device),position = self.rank)
 
         for i, (batches, normalization) in enumerate(
                 self._accum_batches(train_iter)):
 
+            effective_batch_size = sum([x.tgt.shape[1] for x in batches])
+
+            #print("Total len = {}".format(len(train_iter)))
+            #print("Effective_batch_size = {}".format(effective_batch_size))
+            #print("Entering batch {} with src shape {} and tgt shape {} from device {}".format(i,batches[0].src[0].shape,batches[0].tgt.shape,self.rank))
 
             step = self.optim.training_step
             # UPDATE DROPOUT
@@ -243,17 +251,21 @@ class Trainer(object):
                                     .all_gather_list
                                     (normalization))
 
+
             self._gradient_accumulation(
                 batches, normalization, total_stats,
                 report_stats)
 
+
             if self.average_decay > 0 and i % self.average_every == 0:
                 self._update_average(step)
+
 
             report_stats = self._maybe_report_training(
                 step, train_steps,
                 self.optim.learning_rate(),
                 report_stats)
+
 
             if valid_iter is not None and step % valid_steps == 0:
                 if self.gpu_verbose_level > 0:
@@ -270,6 +282,8 @@ class Trainer(object):
                                 % (self.gpu_rank, step))
                 self._report_step(self.optim.learning_rate(),
                                   step, valid_stats=valid_stats)
+
+
                 # Run patience mechanism
                 if self.earlystopper is not None:
                     self.earlystopper(valid_stats, step)
@@ -277,16 +291,18 @@ class Trainer(object):
                     if self.earlystopper.has_stopped():
                         break
 
+            pbar.update(effective_batch_size)
             if (self.model_saver is not None
                 and (save_checkpoint_steps != 0
                      and step % save_checkpoint_steps == 0)):
                 self.model_saver.save(step, moving_average=self.moving_average)
-
             if train_steps > 0 and step >= train_steps:
                 break
 
         if self.model_saver is not None:
             self.model_saver.save(step, moving_average=self.moving_average)
+
+        pbar.close()
         return total_stats
 
     def validate(self, valid_iter, moving_average=None):
@@ -365,8 +381,9 @@ class Trainer(object):
                 if self.accum_count == 1:
                     self.optim.zero_grad()
 
-                outputs, attns = self.model(src, tgt, src_lengths, bptt=bptt,
-                                            with_align=self.with_align)
+                parallel_model = DDP(self.model,device_ids = [self.rank],output_device = self.rank)
+                #outputs, attns = self.model(src, tgt, src_lengths, bptt=bptt,with_align=self.with_align)
+                outputs, attns = parallel_model(src, tgt, src_lengths, bptt=bptt,with_align=self.with_align)
                 bptt = True
 
                 # 3. Compute loss.
@@ -379,7 +396,6 @@ class Trainer(object):
                         shard_size=self.shard_size,
                         trunc_start=j,
                         trunc_size=trunc_size)
-
                     if loss is not None:
                         self.optim.backward(loss)
 

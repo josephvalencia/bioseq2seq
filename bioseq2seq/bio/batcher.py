@@ -97,7 +97,7 @@ class TransformerBatch(Batch):
             tgt = getattr(self,'tgt')
             tgt = torch.unsqueeze(tgt,2)
 
-            self.src = torch.unsqueeze(x,2),x_lens 
+            self.src = torch.unsqueeze(x,2),x_lens
             self.tgt = tgt
 
 class TranslationIterator:
@@ -118,10 +118,27 @@ class TranslationIterator:
 
     def __len__(self):
 
-        return len(self.iterator)
+        return len(self.iterator.dataset)
+
+    def __test_batch_sizes__(self):
+        batch_sizes = []
+
+        for batch in self.iterator:
+
+            src_size = torch.sum(batch.src[1])
+            tgt_size = batch.tgt.size(0)*batch.tgt.size(1)
+            batch_sizes.append(batch.tgt.size()[1])
+            total_tokens = src_size+tgt_size
+
+            memory = torch.cuda.memory_allocated() / (1024*1024)
+
+        df = pd.DataFrame()
+        df['BATCH_SIZE'] = batch_sizes
+        print(df.describe())
+
 
 def filter_by_length(translation_table,max_len):
-
+    
     translation_table['RNA_LEN'] = [len(x) for x in translation_table['RNA'].values]
     translation_table['Protein_LEN'] = [len(x) for x in translation_table['Protein'].values]
     interval = [0.1*x for x in range(1,10)]
@@ -142,7 +159,7 @@ def dataset_from_csv(translation_table,max_len,random_state):
     fields = {'RNA':('src', RNA), 'Protein':('tgt',PROTEIN)}
 
     reader = translation_table.to_dict(orient = 'records')
-    examples = [Example.fromdict(line, fields) for line in tqdm(reader)]
+    examples = [Example.fromdict(line, fields) for line in reader]
 
     if isinstance(fields, dict):
 
@@ -160,6 +177,39 @@ def dataset_from_csv(translation_table,max_len,random_state):
     RNA.build_vocab(dataset)
 
     return dataset.split(split_ratio = [0.8,0.1,0.1],random_state = random_state) # train,test,dev split
+
+def dataset_from_csv_v2(train,test,dev):
+
+    RNA = Field(tokenize=tokenize,use_vocab=True,batch_first=False,include_lengths=True)
+    PROTEIN =  Field(tokenize = tokenize, use_vocab=True,batch_first=False,is_target = True,include_lengths = False,init_token = "<sos>", eos_token = "<eos>")
+
+    fields = {'RNA':('src', RNA), 'Protein':('tgt',PROTEIN)}
+
+    splits = []
+
+    for translation_table in [train,test,dev]:
+
+        reader = translation_table.to_dict(orient = 'records')
+        examples = [Example.fromdict(line, fields) for line in reader]
+
+        if isinstance(fields, dict):
+
+            stuff, field_dict = [], fields
+            for field in field_dict.values():
+
+                if isinstance(field, list):
+                    stuff.extend(field)
+                else:
+                    stuff.append(field)
+
+        dataset = Dataset(examples, stuff)
+        splits.append(dataset)
+
+    PROTEIN.build_vocab(splits[0],splits[1],splits[2])
+    RNA.build_vocab(splits[0],splits[1],splits[2])
+
+    return tuple(splits)
+
 
 def iterator_from_dataset(dataset, max_tokens,device):
 
