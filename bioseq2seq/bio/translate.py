@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import torch
 import sys
+import random
 
 from bioseq2seq.inputters import TextDataReader,get_fields
 from bioseq2seq.inputters.text_dataset import TextMultiField
@@ -62,8 +63,13 @@ def define_vocab():
 
 def translate(args):
 
+    random.seed(65)
+    state = random.getstate()
+
     data = pd.read_csv(args.input,index_col = 0)
-    data = data[data.Protein.str.len() < 1000]
+    train,test,dev = dataset_from_csv(data,1000,random_state) # obtain splits
+
+    #data = data[data.Protein.str.len() < 1000]
 
     protein = [x[:5000] for x in data['Protein'].tolist()]
     rna = [x[:5000] for x in data['RNA'].tolist()]
@@ -74,7 +80,6 @@ def translate(args):
     model = make_transformer_model()
 
     machine = torch.device('cuda:0')
-    #machine = torch.device('cpu')
 
     checkpoint = torch.load(args.checkpoint,map_location = machine)
 
@@ -114,6 +119,7 @@ def translate(args):
                             global_scorer = google_scorer,out_file = out_file,verbose = True,max_length = max_len)
 
     scores, predictions = translator.translate(src = rna, tgt = protein,batch_size = 4)
+    out_file.close()
 
 if __name__ == "__main__":
 

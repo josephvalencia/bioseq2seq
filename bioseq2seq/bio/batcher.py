@@ -178,7 +178,20 @@ def dataset_from_csv(translation_table,max_len,random_state):
 
     return dataset.split(split_ratio = [0.8,0.1,0.1],random_state = random_state) # train,test,dev split
 
-def dataset_from_csv_v2(train,test,dev):
+def dataset_from_csv_v2(translation_table,max_len,random_seed,splits =[0.8,0.1,0.1]):
+
+    translation_table = filter_by_length(translation_table,max_len)
+    translation_table = translation_table.sample(frac = 1.0, random_state = random_seed).reset_index(drop=True)
+    N = translation_table.shape[0]
+
+    cumulative = [splits[0]]
+
+    for i in range(1,len(splits) -1):
+        cumulative.append(cumulative[i-1]+splits[i])
+
+    # train,test,dev
+    split_points = [int(round(x*N)) for x in cumulative]
+    train,test,dev = np.split(translation_table,split_points)
 
     RNA = Field(tokenize=tokenize,use_vocab=True,batch_first=False,include_lengths=True)
     PROTEIN =  Field(tokenize = tokenize, use_vocab=True,batch_first=False,is_target = True,include_lengths = False,init_token = "<sos>", eos_token = "<eos>")

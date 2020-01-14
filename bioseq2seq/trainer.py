@@ -102,7 +102,7 @@ class Trainer(object):
                 Thus nothing will be saved if this parameter is None
     """
 
-    def __init__(self, model, train_loss, valid_loss, optim,rank,
+    def __init__(self, model, train_loss, valid_loss, optim,rank,gpus,
                  trunc_size=0, shard_size=32,
                  norm_method="sents", accum_count=[1],
                  accum_steps=[0],
@@ -135,6 +135,7 @@ class Trainer(object):
         self.dropout = dropout
         self.dropout_steps = dropout_steps
         self.rank = rank
+        self.num_gpus = gpus
 
         for i in range(len(self.accum_count_l)):
             assert self.accum_count_l[i] > 0
@@ -224,7 +225,10 @@ class Trainer(object):
         report_stats = bioseq2seq.utils.Statistics()
         self._start_report_manager(start_time=total_stats.start_time)
 
-        pbar = tqdm(total=len(train_iter), desc = "CUDA GPU({})".format(train_iter.device),position = self.rank)
+        show_progress = False
+
+        if self.rank == 0 and show_progress:
+            pbar = tqdm(total=len(train_iter), desc = "GPU({})".format(train_iter.device),position = self.rank)
 
         for i, (batches, normalization) in enumerate(
                 self._accum_batches(train_iter)):
@@ -233,7 +237,7 @@ class Trainer(object):
 
             #print("Total len = {}".format(len(train_iter)))
             #print("Effective_batch_size = {}".format(effective_batch_size))
-            #print("Entering batch {} with src shape {} and tgt shape {} from device {}".format(i,batches[0].src[0].shape,batches[0].tgt.shape,self.rank))
+            print("Entering batch {} with src shape {} and tgt shape {} from device {}".format(i,batches[0].src[0].shape,batches[0].tgt.shape,self.rank))
 
             step = self.optim.training_step
             # UPDATE DROPOUT
@@ -291,7 +295,9 @@ class Trainer(object):
                     if self.earlystopper.has_stopped():
                         break
 
-            pbar.update(effective_batch_size)
+            if self.rank ==0 and show_progress:
+                pbar.update(effective_batch_size)
+
             if (self.model_saver is not None
                 and (save_checkpoint_steps != 0
                      and step % save_checkpoint_steps == 0)):
@@ -302,7 +308,9 @@ class Trainer(object):
         if self.model_saver is not None:
             self.model_saver.save(step, moving_average=self.moving_average)
 
-        pbar.close()
+        if self.rank ==0 and show_progress:
+            pbar.close()
+
         return total_stats
 
     def validate(self, valid_iter, moving_average=None):
@@ -381,9 +389,14 @@ class Trainer(object):
                 if self.accum_count == 1:
                     self.optim.zero_grad()
 
-                parallel_model = DDP(self.model,device_ids = [self.rank],output_device = self.rank)
-                #outputs, attns = self.model(src, tgt, src_lengths, bptt=bptt,with_align=self.with_align)
-                outputs, attns = parallel_model(src, tgt, src_lengths, bptt=bptt,with_align=self.with_align)
+                if self.num_gpus > 1:
+
+                    parallel_model = DDP(self.model,device_ids = [self.rank],output_device = self.rank)
+                    outputs, attns = parallel_model(src, tgt, src_lengths, bptt=bptt,with_align=self.with_align)
+
+                else:
+                    outputs, attns = self.model(src, tgt, src_lengths, bptt=bptt,with_align=self.with_align)
+
                 bptt = True
 
                 # 3. Compute loss.
