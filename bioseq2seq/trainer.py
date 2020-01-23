@@ -225,19 +225,10 @@ class Trainer(object):
         report_stats = bioseq2seq.utils.Statistics()
         self._start_report_manager(start_time=total_stats.start_time)
 
-        show_progress = False
-
-        if self.rank == 0 and show_progress:
-            pbar = tqdm(total=len(train_iter), desc = "GPU({})".format(train_iter.device),position = self.rank)
-
         for i, (batches, normalization) in enumerate(
                 self._accum_batches(train_iter)):
 
             effective_batch_size = sum([x.tgt.shape[1] for x in batches])
-
-            #print("Total len = {}".format(len(train_iter)))
-            #print("Effective_batch_size = {}".format(effective_batch_size))
-            print("Entering batch {} with src shape {} and tgt shape {} from device {}".format(i,batches[0].src[0].shape,batches[0].tgt.shape,self.rank))
 
             step = self.optim.training_step
             # UPDATE DROPOUT
@@ -255,28 +246,27 @@ class Trainer(object):
                                     .all_gather_list
                                     (normalization))
 
-
-            self._gradient_accumulation(
+            self._gradient_accumulation(i,
                 batches, normalization, total_stats,
                 report_stats)
 
-
             if self.average_decay > 0 and i % self.average_every == 0:
                 self._update_average(step)
-
 
             report_stats = self._maybe_report_training(
                 step, train_steps,
                 self.optim.learning_rate(),
                 report_stats)
 
+            if valid_iter is not None and step % valid_steps == 0 and self.rank == 0:
 
-            if valid_iter is not None and step % valid_steps == 0:
                 if self.gpu_verbose_level > 0:
                     logger.info('GpuRank %d: validate step %d'
                                 % (self.gpu_rank, step))
+
                 valid_stats = self.validate(
                     valid_iter, moving_average=self.moving_average)
+                print("Validation completed from rank {}".format(self.rank))
                 if self.gpu_verbose_level > 0:
                     logger.info('GpuRank %d: gather valid stat \
                                 step %d' % (self.gpu_rank, step))
@@ -287,7 +277,6 @@ class Trainer(object):
                 self._report_step(self.optim.learning_rate(),
                                   step, valid_stats=valid_stats)
 
-
                 # Run patience mechanism
                 if self.earlystopper is not None:
                     self.earlystopper(valid_stats, step)
@@ -295,21 +284,16 @@ class Trainer(object):
                     if self.earlystopper.has_stopped():
                         break
 
-            if self.rank ==0 and show_progress:
-                pbar.update(effective_batch_size)
-
             if (self.model_saver is not None
                 and (save_checkpoint_steps != 0
                      and step % save_checkpoint_steps == 0)):
                 self.model_saver.save(step, moving_average=self.moving_average)
+
             if train_steps > 0 and step >= train_steps:
                 break
 
         if self.model_saver is not None:
             self.model_saver.save(step, moving_average=self.moving_average)
-
-        if self.rank ==0 and show_progress:
-            pbar.close()
 
         return total_stats
 
@@ -344,12 +328,12 @@ class Trainer(object):
                 # F-prop through the model.
                 outputs, attns = valid_model(src, tgt, src_lengths,
                                              with_align=self.with_align)
-
                 # Compute loss.
                 _, batch_stats = self.valid_loss(batch, outputs, attns)
 
                 # Update statistics.
                 stats.update(batch_stats)
+
         if moving_average:
             for param_data, param in zip(model_params_data,
                                          self.model.parameters()):
@@ -360,12 +344,17 @@ class Trainer(object):
 
         return stats
 
-    def _gradient_accumulation(self, true_batches, normalization, total_stats,
+    def _gradient_accumulation(self,q, true_batches, normalization, total_stats,
                                report_stats):
         if self.accum_count > 1:
             self.optim.zero_grad()
 
         for k, batch in enumerate(true_batches):
+
+            batch_num = self.accum_count * q + k
+
+            print("Entering batch {} with src shape {} and tgt shape {} from device {}".format(batch_num,batch.src[0].shape,batch.tgt.shape,self.rank))
+
             target_size = batch.tgt.size(0)
             # Truncated BPTT: reminder not compatible with accum > 1
             if self.trunc_size:
@@ -390,10 +379,8 @@ class Trainer(object):
                     self.optim.zero_grad()
 
                 if self.num_gpus > 1:
-
                     parallel_model = DDP(self.model,device_ids = [self.rank],output_device = self.rank)
-                    outputs, attns = parallel_model(src, tgt, src_lengths, bptt=bptt,with_align=self.with_align)
-
+                    outputs,attns = parallel_model(src, tgt, src_lengths, bptt=bptt,with_align=self.with_align)
                 else:
                     outputs, attns = self.model(src, tgt, src_lengths, bptt=bptt,with_align=self.with_align)
 
@@ -406,7 +393,7 @@ class Trainer(object):
                         outputs,
                         attns,
                         normalization=normalization,
-                        shard_size=self.shard_size,
+                        shard_size=0,
                         trunc_start=j,
                         trunc_size=trunc_size)
                     if loss is not None:

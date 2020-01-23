@@ -1,11 +1,11 @@
 import sys
-import torch as torch 
+import torch as torch
 import pandas as pd
 import torchtext
 import random
 
 from tqdm import tqdm
-from torchtext.data import Dataset, Example,Batch,Field,BucketIterator
+from torchtext.data import Dataset, Example,Batch,Field,RawField
 from torchtext.data.iterator import RandomShuffler
 import numpy as np
 import random
@@ -54,7 +54,6 @@ class BatchMaker(torchtext.data.Iterator):
         if self.train:
 
             def pool(d, random_shuffler):
-
                 for p in torchtext.data.batch(d, self.batch_size * 100):
 
                     p_batch = torchtext.data.batch(
@@ -68,15 +67,14 @@ class BatchMaker(torchtext.data.Iterator):
 
         else:
             self.batches = []
-
             for b in Batch(self.data(), self.batch_size,batch_size_fn):
-
                 self.batches.append(sorted(b, key=self.sort_key))
 
-class TransformerBatch(Batch):
+class TransformerBatch(torchtext.data.Batch):
 
         @classmethod
         def from_batch(cls,batch):
+            '''Construct TransformerBatch from Batch '''
 
             batch_items = vars(batch)
 
@@ -89,16 +87,16 @@ class TransformerBatch(Batch):
             return translation_batch
 
         def setup(self):
-            '''
-             Architecture-specific modification of batch attributes 
-            '''
+
+            '''Modify batch attributes to conform with OpenNMT architecture'''
+
             x,x_lens = getattr(self,'src')
 
-            tgt = getattr(self,'tgt')
-            tgt = torch.unsqueeze(tgt,2)
+            # add dummy dimension at axis =2, src is a tuple
+            self.src = torch.unsqueeze(x,2), x_lens
+            self.tgt = torch.unsqueeze(getattr(self,'tgt'),2)
 
-            self.src = torch.unsqueeze(x,2),x_lens
-            self.tgt = tgt
+            self.id = getattr(self,'id')
 
 class TranslationIterator:
 
@@ -111,7 +109,6 @@ class TranslationIterator:
     def __iter__(self):
 
         for batch in self.iterator:
-
             batch = TransformerBatch.from_batch(batch)
             batch.setup()
             yield batch
@@ -121,6 +118,7 @@ class TranslationIterator:
         return len(self.iterator.dataset)
 
     def __test_batch_sizes__(self):
+        '''Summarize batch sizes'''
         batch_sizes = []
 
         for batch in self.iterator:
@@ -136,96 +134,96 @@ class TranslationIterator:
         df['BATCH_SIZE'] = batch_sizes
         print(df.describe())
 
-
-def filter_by_length(translation_table,max_len):
-    
+def filter_by_length(translation_table,max_len,min_len=0):
+    '''Filter dataframe to RNA within (min_len,max_len)'''
     translation_table['RNA_LEN'] = [len(x) for x in translation_table['RNA'].values]
     translation_table['Protein_LEN'] = [len(x) for x in translation_table['Protein'].values]
-    interval = [0.1*x for x in range(1,10)]
 
     translation_table = translation_table[translation_table['RNA_LEN'] < max_len]
-    return translation_table[['RNA','Protein']]
+
+    if min_len > 0:
+        translation_table =  translation_table[translation_table['RNA_LEN'] > min_len]
+
+    return translation_table[['ID','RNA','Protein']]
 
 def tokenize(original):
-
+    "Converts genome into list of nucleotides"
     return [c for c in original]
 
-def dataset_from_csv(translation_table,max_len,random_state):
+def train_test_val_split(translation_table,max_len,random_seed,splits =[0.8,0.1,0.1]):
 
+    # keep entries with RNA length < max_len
     translation_table = filter_by_length(translation_table,max_len)
-    RNA = Field(tokenize=tokenize,use_vocab=True,batch_first=False,include_lengths=True)
-    PROTEIN =  Field(tokenize = tokenize, use_vocab=True,batch_first=False,is_target = True,include_lengths = False,init_token = "<sos>", eos_token = "<eos>")
-
-    fields = {'RNA':('src', RNA), 'Protein':('tgt',PROTEIN)}
-
-    reader = translation_table.to_dict(orient = 'records')
-    examples = [Example.fromdict(line, fields) for line in reader]
-
-    if isinstance(fields, dict):
-
-        fields, field_dict = [], fields
-        for field in field_dict.values():
-
-            if isinstance(field, list):
-                fields.extend(field)
-            else:
-                fields.append(field)
-
-    dataset = Dataset(examples, fields)
-
-    PROTEIN.build_vocab(dataset)
-    RNA.build_vocab(dataset)
-
-    return dataset.split(split_ratio = [0.8,0.1,0.1],random_state = random_state) # train,test,dev split
-
-def dataset_from_csv_v2(translation_table,max_len,random_seed,splits =[0.8,0.1,0.1]):
-
-    translation_table = filter_by_length(translation_table,max_len)
+    # shuffle
     translation_table = translation_table.sample(frac = 1.0, random_state = random_seed).reset_index(drop=True)
     N = translation_table.shape[0]
 
     cumulative = [splits[0]]
 
+    # splits to cumulative percentages
     for i in range(1,len(splits) -1):
         cumulative.append(cumulative[i-1]+splits[i])
 
-    # train,test,dev
+    # train,test,val
     split_points = [int(round(x*N)) for x in cumulative]
-    train,test,dev = np.split(translation_table,split_points)
 
-    RNA = Field(tokenize=tokenize,use_vocab=True,batch_first=False,include_lengths=True)
-    PROTEIN =  Field(tokenize = tokenize, use_vocab=True,batch_first=False,is_target = True,include_lengths = False,init_token = "<sos>", eos_token = "<eos>")
+    # split dataframe at split points
+    train,test,val = np.split(translation_table,split_points)
 
-    fields = {'RNA':('src', RNA), 'Protein':('tgt',PROTEIN)}
+    return train,test,val
+
+def dataset_from_csv(translation_table,max_len,random_seed,splits =[0.8,0.1,0.1]):
+
+    train,test,val = train_test_val_split(translation_table,max_len,random_seed)
+
+    # Fields define tensor attributes
+    RNA = Field(tokenize=tokenize,
+                use_vocab=True,
+                batch_first=False,
+                include_lengths=True)
+
+    PROTEIN =  Field(tokenize = tokenize,
+                     use_vocab=True,
+                     batch_first=False,
+                     is_target = True,
+                     include_lengths = False,
+                     init_token = "<sos>",
+                     eos_token = "<eos>")
+
+    # GENCODE ID is string not tensor
+    ID = RawField()
+
+    # map column name to batch attribute and Field object
+    fields = {'ID':('id',ID),'RNA':('src', RNA), 'Protein':('tgt',PROTEIN)}
 
     splits = []
 
-    for translation_table in [train,test,dev]:
+    for translation_table in [train,test,val]:
 
-        reader = translation_table.to_dict(orient = 'records')
+        reader = translation_table.to_dict(orient = 'records') # [{col:value}]
         examples = [Example.fromdict(line, fields) for line in reader]
 
-        if isinstance(fields, dict):
+        # Dataset expects fields as list
+        field_list, field_dict = [], fields
+        for field in field_dict.values():
+            if isinstance(field, list):
+                field_list.extend(field)
+            else:
+                field_list.append(field)
 
-            stuff, field_dict = [], fields
-            for field in field_dict.values():
-
-                if isinstance(field, list):
-                    stuff.extend(field)
-                else:
-                    stuff.append(field)
-
-        dataset = Dataset(examples, stuff)
+        dataset = Dataset(examples, field_list)
         splits.append(dataset)
 
-    PROTEIN.build_vocab(splits[0],splits[1],splits[2])
-    RNA.build_vocab(splits[0],splits[1],splits[2])
+    # Fields have a shared vocab over all datasets
+    PROTEIN.build_vocab(*splits)
+    RNA.build_vocab(*splits)
 
     return tuple(splits)
 
+def iterator_from_dataset(dataset, max_tokens, device, train):
 
-def iterator_from_dataset(dataset, max_tokens,device):
-
-    return TranslationIterator(BatchMaker(dataset,batch_size = max_tokens,
-                                          device = device,repeat=False,
+    return TranslationIterator(BatchMaker(dataset,
+                                          batch_size = max_tokens,
+                                          device = device,
+                                          repeat= train,
                                           sort_mode ="source"))

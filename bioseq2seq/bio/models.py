@@ -27,7 +27,7 @@ from bioseq2seq.utils.report_manager import build_report_manager, ReportMgr
 from torch.utils.tensorboard import SummaryWriter
 
 class Generator(nn.Module):
-    "Define standard linear + softmax generation step."
+    '''Fully connected + log-softmax over target vocab'''
 
     def __init__(self, d_model, vocab):
 
@@ -39,54 +39,64 @@ class Generator(nn.Module):
         logits = F.log_softmax(self.proj(x), dim=-1)
         return logits
 
-class EncoderDecoder(NMTModel):
-    """ Architecture-independent Encoder-Decoder. """
+def make_transformer_model(n=4,dim_model=128, dim_ff=2048, heads=8, dropout=0.1):
+    ''' construct Transformer encoder-decoder from hyperparameters '''
 
-    def __init__(self, encoder, decoder,generator):
+    max_relative_positions = 10
+    attention_dropout = 0.1
+    NUM_INPUT_CLASSES = 6 # 4 nucleotides + <pad> + <unk>
+    NUM_OUTPUT_CLASSES = 26 # 20 amino acids + <pad> + <unk> + <sos> + <eos>
 
-        super(EncoderDecoder, self).__init__(encoder,decoder)
-        self.generator = generator
+    nucleotide_embeddings = Embeddings(word_vec_size = dim_model,
+                                       word_vocab_size = NUM_INPUT_CLASSES,
+                                       word_padding_idx = 1,
+                                       position_encoding = True)
 
-def make_transformer_model(n=4,d_model=128, d_ff=2048, h=8, dropout=0.1):
+    protein_embeddings = Embeddings(word_vec_size = dim_model,
+                                    word_vocab_size = NUM_OUTPUT_CLASSES,
+                                    word_padding_idx = 1,
+                                    position_encoding = True)
 
-    "construct Transformer encoder-decoder from hyperparameters."
+    encoder_stack = TransformerEncoder(num_layers = n,
+                                       d_model = dim_model,
+                                       heads = heads,
+                                       d_ff = dim_ff,
+                                       dropout = dropout,
+                                       embeddings = nucleotide_embeddings,
+                                       max_relative_positions = max_relative_positions,
+                                       attention_dropout = attention_dropout)
 
-    NUM_INPUT_CLASSES = 6
-    NUM_OUTPUT_CLASSES = 26
+    decoder_stack = TransformerDecoder(num_layers = n,
+                                       d_model = dim_model,
+                                       heads = heads,
+                                       d_ff = dim_ff,
+                                       dropout = dropout,
+                                       embeddings = protein_embeddings,
+                                       self_attn_type = 'scaled-dot',
+                                       copy_attn = False,
+                                       max_relative_positions = max_relative_positions,
+                                       aan_useffn = False,
+                                       attention_dropout = attention_dropout,
+                                       full_context_alignment = False,
+                                       alignment_heads = None,
+                                       alignment_layer = None)
 
-    nucleotide_embeddings = Embeddings(word_vec_size = d_model,word_vocab_size = NUM_INPUT_CLASSES,\
-                                       word_padding_idx = 1,position_encoding = True)
+    generator = Generator(dim_model,NUM_OUTPUT_CLASSES)
 
-    protein_embeddings = Embeddings(word_vec_size = d_model,word_vocab_size =NUM_OUTPUT_CLASSES,\
-                                    word_padding_idx = 1,position_encoding = True)
-
-    encoder_stack = TransformerEncoder(num_layers = n,d_model = d_model,heads = h, d_ff = d_ff,\
-                                       dropout = dropout, embeddings = nucleotide_embeddings,\
-                                       max_relative_positions = 10,attention_dropout = 0.1)
-
-    decoder_stack = TransformerDecoder(num_layers = n,d_model = d_model,heads = h, d_ff = d_ff,\
-                                       dropout = dropout, embeddings = protein_embeddings,\
-                                       self_attn_type = 'scaled-dot',copy_attn = False,\
-                                       max_relative_positions = 10,aan_useffn = False,attention_dropout = 0.1,\
-                                       full_context_alignment=False,alignment_heads=None,alignment_layer=None)
-
-    generator = Generator(128,26)
-
-    #model = EncoderDecoder(encoder_stack,decoder_stack,generator)
     model = NMTModel(encoder_stack,decoder_stack)
-    #model.generator = generator
+    model.generator = generator
 
     for p in model.parameters():
 
         if p.dim() > 1:
             nn.init.xavier_uniform_(p)
 
-    return model,generator
+    return model
 
-def make_loss_function(device,generator):
+def make_loss_function(device,generator,rank,num_gpus):
 
     criterion = nn.NLLLoss(ignore_index=1, reduction='sum')
-    nmt_loss = NMTLossCompute(criterion,generator)
+    nmt_loss = NMTLossCompute(criterion,generator,rank,num_gpus)
 
     return nmt_loss
 

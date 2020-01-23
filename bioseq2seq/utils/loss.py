@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import bioseq2seq
 from bioseq2seq.modules.sparse_losses import SparsemaxLoss
 from bioseq2seq.modules.sparse_activations import LogSparsemax
-
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 def build_loss_compute(model, tgt_field, opt, train=True):
     """
@@ -176,7 +176,7 @@ class LossComputeBase(nn.Module):
             target (:obj:`FloatTensor`): true targets
 
         Returns:
-            :obj:`bioseq2seq.utils.Statistics` : statistics for this batch.
+             :obj:`bioseq2seq.utils.Statistics` : statistics for this batch.
         """
         pred = scores.max(1)[1]
         non_padding = target.ne(self.padding_idx)
@@ -243,7 +243,7 @@ class NMTLossCompute(LossComputeBase):
             assert attns is not None
             assert std is not None, "lambda_coverage != 0.0 requires " \
                 "attention mechanism"
-            assert coverage is not None, "lambda_coverage != 0.0 requires " \
+            assert coverage is not None, "lambda_coverag e != 0.0 requires " \
                 "coverage attention"
 
             shard_state.update({
@@ -281,6 +281,7 @@ class NMTLossCompute(LossComputeBase):
         bottled_output = self._bottle(output)
 
         scores = self.generator(bottled_output)
+
         gtruth = target.view(-1)
         loss = self.criterion(scores, gtruth)
         if self.lambda_coverage != 0.0:

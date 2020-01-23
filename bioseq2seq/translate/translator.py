@@ -449,9 +449,6 @@ class Translator(object):
                     else:
                         os.write(1, output.encode('utf-8'))
 
-                number +=1
-                if number >299:
-                    break
 
         end_time = time.time()
 

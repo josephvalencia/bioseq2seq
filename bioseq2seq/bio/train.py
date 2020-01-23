@@ -5,16 +5,12 @@ import time
 import random
 import numpy as np
 import torch
-from tqdm import tqdm
 import copy
 
+from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import Adam,SGD
-import torch.distributed as dist
-from torch.multiprocessing import spawn
-from torch.utils.data.distributed import DistributedSampler
-from torch.utils.data import DataLoader
 
 from torchtext.data import Dataset, Example,Batch,Field
 from torchtext.data.dataset import RandomShuffler
@@ -25,9 +21,10 @@ from bioseq2seq.utils.report_manager import ReportMgr
 from bioseq2seq.utils.earlystopping import EarlyStopping
 from bioseq2seq.models import ModelSaver
 from bioseq2seq.translate import Translator
+from bioseq2seq.utils.loss import NMTLossCompute
 
-from batcher import dataset_from_csv, iterator_from_dataset,filter_by_length, dataset_from_csv_v2
-from models import make_transformer_model, make_loss_function
+from batcher import dataset_from_csv, iterator_from_dataset
+from models import make_transformer_model
 
 def parse_args():
 
@@ -39,28 +36,24 @@ def parse_args():
     # optional args
     parser.add_argument("--save-directory","--s",help="Name of directory for saving model checkpoints")
     parser.add_argument("--log-directory",'--l',help = "Name of directory for saving TensorBoard log files" )
-    parser.add_argument("--learning-rate","--lr",type = float,default = 3e-3,help = "Optimizer learning rate")
+    parser.add_argument("--learning-rate","--lr",type = float,default = 5e-3,help = "Optimizer learning rate")
     parser.add_argument("--max-epochs","--e",type = int,default = 150000,help = "Maximum number of training epochs" )
-    parser.add_argument("--report-every",'--r',type = int, default = 100, help = "Number of iterations before calculating statistics")
-    parser.add_argument("--num_gpus","--g",type = int,default = 1, help = "Number of GPUs for training")
-    parser.add_argument("--rank",type = int, default = 0, help = "Rank of node in multi-machine training")
+    parser.add_argument("--report-every",'--r',type = int, default = 190, help = "Number of iterations before calculating statistics")
+    parser.add_argument("--num_gpus","--g",type = int,default = 1, help = "Number of GPUs to use on node")
+    parser.add_argument("--accum_steps",type = int,default = 4, help= "Number of batches to accumulate gradients before update")
+    parser.add_argument("--rank",type = int, default = 0, help = "Rank of node in multi-node training")
 
     # optional flags
     parser.add_argument("--verbose",action="store_true")
 
     return parser.parse_args()
 
-def cleanup():
-    """Kill all spawned threads"""
-    dist.destroy_process_group()
-
 def partition(dataset, split_ratios, random_state):
 
-    """Create a random permutation of examples, then split them by ratios
-
+    """Create a random permutation of examples, then split them by split_ratios
     Arguments:
         dataset (torchtext.dataset): Dataset to partition
-        splits (list): split fractions for Dataset partitions.
+        split_ratios (list): split fractions for Dataset partitions.
         random_state (int) : Random seed for shuffler
     """
     N = len(dataset.examples)
@@ -80,110 +73,124 @@ def partition(dataset, split_ratios, random_state):
     indices.append(last_partition)
 
     data = tuple([dataset.examples[i] for i in index] for index in indices)
-    data_lens = [len(x) for x in data]
 
     splits = tuple(Dataset(d, dataset.fields)
                        for d in data )
 
     return splits
 
-def train_helper(rank,args,seq2seq,generator,random_seed):
+def train_helper(rank,args,seq2seq,random_seed):
 
     random.seed(random_seed)
     random_state = random.getstate()
 
-    device = torch.device("cuda:{}".format(rank)) # One process per GPU
+    max_tokens_in_batch = 7000 # determined by GPU memory
+    world_size = args.num_gpus # total GPU devices
+    max_len_transcript = 1000 # maximum length of transcript
+    tolerance = 5 # max train epochs without improvement
+    gradient_accum_steps = 4 # sum gradients for this many batches before optim.step()
 
-    dataframe = pd.read_csv(args.input,index_col = 0) # load translation mapping table
-    train,test,dev = dataset_from_csv_v2(dataframe,1000,random_seed) # obtain splits
+    # GENCODE transcript data. cols = ['ID','RNA','PROTEIN']
+    dataframe = pd.read_csv(args.input)
 
-    if args.num_gpus > 1: # in multi-GPU case provide unique data to each process
+    # obtain splits. Default 80/10/10. Filter below max_len_transcript
+    train,test,val = dataset_from_csv(dataframe,max_len_transcript,random_seed)
 
+    if args.num_gpus > 0: # GPU training
+        # One CUDA device per process
+        device = torch.device("cuda:{}".format(rank))
+        torch.cuda.set_device(device)
+        seq2seq.cuda()
+
+    if args.num_gpus > 1: # multi-GPU training
+
+        # provide unique data to each process
         splits = [1.0/args.num_gpus for _ in range(args.num_gpus)]
         train_partitions = partition(train,split_ratios = splits,random_state = random_state)
-        train_iterator = iterator_from_dataset(train_partitions[rank],7000,device)
 
-        dist.init_process_group(
+        # iterator over training batches
+        train_iterator = iterator_from_dataset(train_partitions[rank],max_tokens_in_batch,device,train=True)
+
+        # configure distributed training with environmental variables
+        os.environ['MASTER_ADDR'] = "127.0.0.1"
+        os.environ['MASTER_PORT'] = '6000'
+
+        torch.distributed.init_process_group(
             backend="nccl",
             init_method= "env://",
-            world_size=4,
+            world_size=world_size,
             rank=rank)
 
     else:
-        train_iterator = iterator_from_dataset(train,7000,device)
+        # iterator over training batches
+        train_iterator = iterator_from_dataset(train,max_tokens_in_batch,device,train=True)
 
-    dev_iterator = iterator_from_dataset(dev,7000,device)
+    # validation data is identical across all processes
+    val_iterator = iterator_from_dataset(val,max_tokens_in_batch,device,train=False)
 
-    torch.cuda.set_device(device)
-    seq2seq.cuda()
-    generator.cuda()
+    # computes position-wise NLLoss
+    criterion = torch.nn.NLLLoss(ignore_index=1, reduction='sum')
+    train_loss_computer = NMTLossCompute(criterion,generator = seq2seq.generator)
+    val_loss_computer = NMTLossCompute(criterion,generator = seq2seq.generator)
 
-    params = list(seq2seq.parameters())+list(generator.parameters())
-
-    loss_computer = make_loss_function(device = train_iterator.device,generator = generator)
-
-    adam = Adam(params)
+    # optimizes model parameters
+    adam = Adam(params = list(seq2seq.parameters()))
     optim = Optimizer(adam,learning_rate = args.learning_rate)
-    #seq2seq,optim = amp.initialize(seq2seq,optim,opt_level="O1")
 
-    early_stopping = EarlyStopping(tolerance = 5)
+    # concludes training if progress does not improve for tolerance epochs
+    early_stopping = EarlyStopping(tolerance = tolerance)
 
     report_manager = None
     saver = None
 
-    if args.num_gpus ==1 or rank == 0: # only rank 0 device is responsible for saving models and reporting progress
+    if args.num_gpus == 1 or rank == 0: # only rank 0 device is responsible for saving models and reporting progress
 
-        save_wrapper = copy.deepcopy(seq2seq)
-        save_wrapper.generator = copy.deepcopy(generator)
-
+        # controls metric and time reporting
         report_manager = ReportMgr(report_every = args.report_every,
                                    tensorboard_writer = SummaryWriter())
 
+        # controls saving model checkpoints
         saver = ModelSaver(base_path = args.save_directory,
-                           model = save_wrapper,
+                           model = seq2seq,
                            model_opt = None,
                            fields = train_iterator.fields,
                            optim = optim)
 
+    # controls training and validation
     trainer = Trainer(seq2seq,
-                      train_loss = loss_computer,
+                      train_loss = train_loss_computer,
                       earlystopper = early_stopping,
-                      valid_loss = loss_computer,
+                      valid_loss = val_loss_computer,
                       optim = optim, rank = rank,
                       gpus = args.num_gpus,
+                      accum_count = [args.accum_steps],
                       report_manager = report_manager,
                       model_saver = saver)
 
-    for i in range(args.max_epochs):
-        s = time.time()
-        stats = trainer.train(train_iter = train_iterator,
-                              train_steps = 1500000,
-                              save_checkpoint_steps = args.report_every,
-                              valid_iter = dev_iterator,valid_steps = args.report_every)
-        e = time.time()
-        print("Epoch: "+str(i)+" | Time elapsed: "+str(e-s))
+    stats = trainer.train(train_iter = train_iterator,
+                          train_steps = 1500000,
+                          save_checkpoint_steps = args.report_every,
+                          valid_iter = val_iterator,
+                          valid_steps = args.report_every)
+
+    print("Final stats from device {} : {}".format(rank,stats))
 
 def train(args):
 
-    os.environ['MASTER_ADDR'] = "127.0.0.1"
-    os.environ['MASTER_PORT'] = '6000'
-    os.environ['NCCL_DEBUG'] = 'INFO'
-    os.environ['NCCL_DEBUG_SUBSYS'] = 'ALL'
+    seq2seq = make_transformer_model()
+    seed = 65 # controls pseudorandom shuffling and partitioning of dataset
 
-    seq2seq,generator = make_transformer_model()
-
-    n_procs = args.num_gpus
-    seed = 65
-
-    if n_procs > 1:
+    if args.num_gpus > 1:
         print("Multi-GPU training")
-        spawn(train_helper, nprocs=n_procs, args=(args,seq2seq,generator,seed))
+        torch.multiprocessing.spawn(train_helper, nprocs=args.num_gpus, args=(args,seq2seq,seed))
+        torch.distributed.destroy_process_group()
     else:
         print("Single-GPU training")
-        train_helper(0,args,seq2seq,generator,state)
+        train_helper(0,args,seq2seq,seed)
+
+    print("Training complete")
 
 if __name__ == "__main__":
 
     args = parse_args()
     train(args)
-

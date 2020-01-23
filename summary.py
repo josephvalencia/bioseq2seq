@@ -4,10 +4,10 @@ import sys
 with open(sys.argv[1]) as inFile:
     data = inFile.read()
 
-lines = data.split("\n\n")[:-1]
+lines = data.split("\n")[:-1]
 pcts = []
-
-for i in range(0,len(lines),4):
+print(lines)
+for i in range(0,len(lines),3):
     pcts.append(float(lines[i]))
 
 df = pd.DataFrame()

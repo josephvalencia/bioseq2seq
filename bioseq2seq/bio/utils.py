@@ -69,11 +69,9 @@ def emboss_needle(seqa, seqb):
     with open(gold_tmp,'w') as tempFile:
         tempFile.write(seqb)
 
-        cmd = NeedleCommandline(asequence = "plain::"+pred_tmp, bsequence = "plain::"+gold_tmp,gapopen = 10, gapextend = 0.5,outfile = out,sprotein=True)
-    try:
-        stdout,stderrf = cmd()
-    except Exception:
-        pass
+        cmd = NeedleCommandline("/home/bb/valejose/EMBOSS-6.6.0/emboss/needle",asequence = "plain::"+pred_tmp, bsequence = "plain::"+gold_tmp,gapopen = 10, gapextend = 0.5,outfile = out,sprotein=True)
+
+    stdout,stderrf = cmd()
 
     response = open(out,'r').read()
 
@@ -113,6 +111,7 @@ if __name__=="__main__":
     for idx,i,g,p in zip(range(len(id_list)),id_list,gold,predictions):
 
         print(idx)
+
         root = "/home/other/valejose/deep-translate/Fa/"
 
         gold_tmp = root+i+"tmp_gold.fa"

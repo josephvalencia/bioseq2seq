@@ -1,0 +1,47 @@
+########################################
+# Program: needle
+# Rundate: Wed 22 Jan 2020 00:09:04
+# Commandline: needle
+#    -outfile alignment.tmp
+#    -asequence plain::pred.tmp
+#    -bsequence plain::gold.tmp
+#    -gapopen 10
+#    -gapextend 0.5
+#    -sprotein True
+# Align_format: srspair
+# Report_file: alignment.tmp
+########################################
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: pred.tmp
+# 2: gold.tmp
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 126
+# Identity:       4/126 ( 3.2%)
+# Similarity:    11/126 ( 8.7%)
+# Gaps:          99/126 (78.6%)
+# Score: 18.0
+# 
+#
+#=======================================
+
+pred.tmp           1 MESKCSDQGTGTEITVDTTWHDPIRLSPGKIIPWQDPVRLHFLASPHCKI     50
+                                                                       
+gold.tmp           0 --------------------------------------------------      0
+
+pred.tmp          51 QDHASLPSACKTCPSPQLQETDLSQAPVFLCSLAINFSFYKNP-------     93
+                                     .:::.::||...:.||........:..       
+gold.tmp           1 ----------------MVKKIEISQHAKYTCSFCGKTKMKRRAVGIWHCG     34
+
+pred.tmp          93 --------------------------     93
+                                               
+gold.tmp          35 SCMKTVAGGAWTYKDAKMEPNLHELC     60
+
+
+#---------------------------------------
+#---------------------------------------

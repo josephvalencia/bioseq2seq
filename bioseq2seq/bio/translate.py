@@ -9,10 +9,11 @@ import random
 from bioseq2seq.inputters import TextDataReader,get_fields
 from bioseq2seq.inputters.text_dataset import TextMultiField
 from bioseq2seq.translate import Translator, GNMTGlobalScorer
-from models import EncoderDecoder, make_transformer_model, make_loss_function
+from models import make_transformer_model, make_loss_function
 
 from torch.optim import Adam
 from bioseq2seq.utils.optimizers import Optimizer
+from bioseq2seq.bio.batcher import train_test_val_split, filter_by_length
 
 def start_message():
 
@@ -53,76 +54,79 @@ def parse_args():
 
     # translate optional args
     parser.add_argument("--decoding-strategy","--d",default = "greedy",choices = ["beam","greedy"])
-    parser.add_argument("--beam","--b",type = int, default = 4)
-    parser.add_argument("--alpha","--a",type=float,default = 0.5)
+    parser.add_argument("--beam_size","--b",type = int, default = 4)
+    parser.add_argument("--alpha","--a",type = float, default = 1.0)
 
     return parser.parse_args()
 
-def define_vocab():
-    pass
-
-def translate(args):
-
-    random.seed(65)
-    state = random.getstate()
-
-    data = pd.read_csv(args.input,index_col = 0)
-    train,test,dev = dataset_from_csv(data,1000,random_state) # obtain splits
-
-    #data = data[data.Protein.str.len() < 1000]
-
-    protein = [x[:5000] for x in data['Protein'].tolist()]
-    rna = [x[:5000] for x in data['RNA'].tolist()]
-
-    src_reader = TextDataReader()
-    tgt_reader = TextDataReader()
+def restore_model(checkpoint,machine):
 
     model = make_transformer_model()
-
-    machine = torch.device('cuda:0')
-
-    checkpoint = torch.load(args.checkpoint,map_location = machine)
-
     model.load_state_dict(checkpoint['model'],strict = False)
     model.generator.load_state_dict(checkpoint['generator'])
     model.to(device = machine)
 
-    total_params = sum(p.numel() for p in model.parameters())
-    print("TOTAL # PARAMS: {} ".format(total_params))
+    return model
 
-    loss_computer = make_loss_function(device = machine, generator = model.generator)
-
-    adam = Adam(model.parameters())
-    optim = Optimizer(adam, learning_rate = 1e-3)
-
-    optim.load_state_dict(checkpoint['optim'])
-
-    fields = checkpoint['vocab']
+def build_vocab(fields,src,tgt):
 
     src = TextMultiField('src',fields['src'],[])
     tgt = TextMultiField('tgt',fields['tgt'],[])
-
-    google_scorer = GNMTGlobalScorer(alpha = args.alpha, beta = 0.0, length_penalty = "avg" , coverage_penalty = "none")
 
     text_fields = get_fields(src_data_type ='text', n_src_feats = 0, n_tgt_feats = 0, pad ="<pad>", eos ="<eos>", bos ="<sos>")
     text_fields['src'] = src
     text_fields['tgt'] = tgt
 
+    return text_fields
+
+def translate_from_checkpoint(args):
+
+    #machine = torch.device('cuda:0')
+    machine = "cpu"
+
+    checkpoint = torch.load(args.checkpoint,map_location = machine)
+
+    random_seed = 65
+    random.seed(random_seed)
+    state = random.getstate()
+
+    data = pd.read_csv(args.input)
+    train,test,dev = train_test_val_split(data,1000,random_seed) # replicate splits
+
+    protein = [x for x in dev['Protein'].tolist()]
+    rna = [x for x in dev['RNA'].tolist()]
+
+    model = restore_model(checkpoint,machine)
+    text_fields = build_vocab(checkpoint['vocab'],rna,protein)
+
+    translate(args,model,text_fields,rna,protein)
+
+def translate(args,model,text_fields,rna,protein):
+
+    beam_scorer = GNMTGlobalScorer(alpha = args.alpha, beta = 0.0, length_penalty = "avg" , coverage_penalty = "none")
+
     out_file = open("translations.out",'w')
 
-    max_len = max([len(x) for x in protein])+100
+    MAX_LEN = 500
 
-    print("MAX_LEN: "+str(max_len))
-
-    translator = Translator(model,gpu = 0,src_reader = src_reader,tgt_reader = tgt_reader,\
-                            fields = text_fields, beam_size = 8, n_best = 6,\
-                            global_scorer = google_scorer,out_file = out_file,verbose = True,max_length = max_len)
+    translator = Translator(model,
+                            gpu = -1,
+                            src_reader = TextDataReader(),
+                            tgt_reader = TextDataReader(),
+                            fields = text_fields,
+                            beam_size = args.beam_size,
+                            n_best = 1,
+                            global_scorer = beam_scorer,
+                            out_file = out_file,
+                            verbose = True,
+                            max_length = MAX_LEN)
 
     scores, predictions = translator.translate(src = rna, tgt = protein,batch_size = 4)
+
     out_file.close()
 
 if __name__ == "__main__":
 
     args = parse_args()
     start_message()
-    translate(args)
+    translate_from_checkpoint(args)
