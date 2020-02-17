@@ -17,6 +17,8 @@ import bioseq2seq.utils
 from bioseq2seq.utils.logging import logger
 from torch.nn.parallel import DistributedDataParallel as DDP
 
+from bioseq2seq.bio.evaluator import Evaluator
+from bioseq2seq.bio.translate import translate
 
 def build_trainer(opt, device_id, model, fields, optim, model_saver=None):
     """
@@ -136,6 +138,7 @@ class Trainer(object):
         self.dropout_steps = dropout_steps
         self.rank = rank
         self.num_gpus = gpus
+        self.evaluator = Evaluator()
 
         for i in range(len(self.accum_count_l)):
             assert self.accum_count_l[i] > 0
@@ -199,7 +202,8 @@ class Trainer(object):
               train_steps,
               save_checkpoint_steps=5000,
               valid_iter=None,
-              valid_steps=10000):
+              valid_steps=10000,
+              valid_state=None):
         """
         The main training loop by iterating over `train_iter` and possibly
         running validation on `valid_iter`.
@@ -220,6 +224,8 @@ class Trainer(object):
         else:
             logger.info('Start training loop and validate every %d steps...',
                         valid_steps)
+
+        #print("Inside trainer.train() type of val_iterator {}".format(type(valid_iter)))
 
         total_stats = bioseq2seq.utils.Statistics()
         report_stats = bioseq2seq.utils.Statistics()
@@ -258,15 +264,17 @@ class Trainer(object):
                 self.optim.learning_rate(),
                 report_stats)
 
-            if valid_iter is not None and step % valid_steps == 0 and self.rank == 0:
+            #print("Outside type valid_iter {}, step {}".format(type(valid_iter),step))
 
+            if valid_iter is not None and step % valid_steps == 0 and self.rank == 0:
+                #print("inside")
                 if self.gpu_verbose_level > 0:
                     logger.info('GpuRank %d: validate step %d'
                                 % (self.gpu_rank, step))
 
-                valid_stats = self.validate(
-                    valid_iter, moving_average=self.moving_average)
-                print("Validation completed from rank {}".format(self.rank))
+                valid_stats = self.validate(valid_iter, moving_average=self.moving_average)
+                #valid_stats = self.validate_structured(valid_iter,valid_state, moving_average = self.moving_average)
+
                 if self.gpu_verbose_level > 0:
                     logger.info('GpuRank %d: gather valid stat \
                                 step %d' % (self.gpu_rank, step))
@@ -344,6 +352,62 @@ class Trainer(object):
 
         return stats
 
+    def validate_structured(self,valid_iter, valid_state, moving_average=None):
+
+        """ Validate model.
+            valid_iter: validate data iterator
+        Returns:
+            :obj:`nmt.Statistics`: validation loss statistics
+        """
+        valid_model = self.model
+        if moving_average:
+            # swap model params w/ moving average
+            # (and keep the original parameters)
+            model_params_data = []
+            for avg, param in zip(self.moving_average,
+                                  valid_model.parameters()):
+                model_params_data.append(param.data)
+                param.data = avg.data.half() if self.optim._fp16 == "legacy" \
+                    else avg.data
+
+        # Set model in validating mode.
+        valid_model.eval()
+
+        with torch.no_grad():
+
+            stats = bioseq2seq.utils.Statistics()
+
+            for batch in valid_iter:
+
+                src, src_lengths = batch.src if isinstance(batch.src, tuple) \
+                                else (batch.src, None)
+                tgt = batch.tgt
+
+                # F-prop through the model.
+                outputs, attns = valid_model(src, tgt, src_lengths,
+                                            with_align=self.with_align)
+                # Compute loss.
+                _, batch_stats = self.valid_loss(batch, outputs, attns)
+
+                # Update statistics.
+                stats.update(batch_stats)
+
+            # Perform beam-search decoding and compute structured metrics
+            translations,gold,scores = translate(args,valid_model, *self.valid_state)
+            print(translations)
+            top_results,top_n_results = self.evaluator.calculate_scores(translations,gold)
+
+            stats.update_structured(top_results,top_n_results)
+
+        if moving_average:
+            for param_data, param in zip(model_params_data,self.model.parameters()):
+                param.data = param_data
+
+        # Set model back to training mode.
+        valid_model.train()
+
+        return stats
+
     def _gradient_accumulation(self,q, true_batches, normalization, total_stats,
                                report_stats):
         if self.accum_count > 1:
@@ -356,6 +420,7 @@ class Trainer(object):
             print("Entering batch {} with src shape {} and tgt shape {} from device {}".format(batch_num,batch.src[0].shape,batch.tgt.shape,self.rank))
 
             target_size = batch.tgt.size(0)
+
             # Truncated BPTT: reminder not compatible with accum > 1
             if self.trunc_size:
                 trunc_size = self.trunc_size
@@ -380,9 +445,9 @@ class Trainer(object):
 
                 if self.num_gpus > 1:
                     parallel_model = DDP(self.model,device_ids = [self.rank],output_device = self.rank)
-                    outputs,attns = parallel_model(src, tgt, src_lengths, bptt=bptt,with_align=self.with_align)
+                    outputs,attns = parallel_model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
                 else:
-                    outputs, attns = self.model(src, tgt, src_lengths, bptt=bptt,with_align=self.with_align)
+                    outputs, attns = self.model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
 
                 bptt = True
 

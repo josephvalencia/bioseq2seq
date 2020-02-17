@@ -92,7 +92,7 @@ class TransformerBatch(torchtext.data.Batch):
 
             x,x_lens = getattr(self,'src')
 
-            # add dummy dimension at axis =2, src is a tuple
+            # add dummy dimension at axis = 2, src is a tuple
             self.src = torch.unsqueeze(x,2), x_lens
             self.tgt = torch.unsqueeze(getattr(self,'tgt'),2)
 
@@ -119,6 +119,7 @@ class TranslationIterator:
 
     def __test_batch_sizes__(self):
         '''Summarize batch sizes'''
+
         batch_sizes = []
 
         for batch in self.iterator:
@@ -172,9 +173,39 @@ def train_test_val_split(translation_table,max_len,random_seed,splits =[0.8,0.1,
 
     return train,test,val
 
-def dataset_from_csv(translation_table,max_len,random_seed,splits =[0.8,0.1,0.1]):
+def partition(dataset, split_ratios, random_state):
 
-    train,test,val = train_test_val_split(translation_table,max_len,random_seed)
+    """Create a random permutation of examples, then split them by split_ratios
+    Arguments:
+        dataset (torchtext.dataset): Dataset to partition
+        split_ratios (list): split fractions for Dataset partitions.
+        random_state (int) : Random seed for shuffler
+    """
+    N = len(dataset.examples)
+    rnd = RandomShuffler(random_state)
+    randperm = rnd(range(N))
+
+    indices = []
+    current_idx = 0
+
+    for ratio in split_ratios[:-1]:
+        partition_len = int(round(ratio*N))
+        partition = randperm[current_idx:current_idx+partition_len]
+        indices.append(partition)
+        current_idx +=partition_len
+
+    last_partition = randperm[current_idx:]
+    indices.append(last_partition)
+
+    data = tuple([dataset.examples[i] for i in index] for index in indices)
+
+    splits = tuple(Dataset(d, dataset.fields)
+                       for d in data )
+
+    return splits
+
+
+def dataset_from_df(train,test,dev):
 
     # Fields define tensor attributes
     RNA = Field(tokenize=tokenize,
@@ -198,7 +229,7 @@ def dataset_from_csv(translation_table,max_len,random_seed,splits =[0.8,0.1,0.1]
 
     splits = []
 
-    for translation_table in [train,test,val]:
+    for translation_table in [train,test,dev]:
 
         reader = translation_table.to_dict(orient = 'records') # [{col:value}]
         examples = [Example.fromdict(line, fields) for line in reader]

@@ -105,7 +105,7 @@ class TranslationBuilder(object):
                     src_vocab, src_raw,
                     tgt[1:, b] if tgt is not None else None, None)
 
-            translation = Translation(
+            translation = Translation(inds[b],
                 src[:, b] if src is not None else None,
                 src_raw, pred_sents, attn[b], pred_score[b],
                 gold_sent, gold_score[b], align[b]
@@ -131,11 +131,12 @@ class Translation(object):
             each translation.
     """
 
-    __slots__ = ["src", "src_raw", "pred_sents", "attns", "pred_scores",
+    __slots__ = ["index","src", "src_raw", "pred_sents", "attns", "pred_scores",
                  "gold_sent", "gold_score", "word_aligns"]
 
-    def __init__(self, src, src_raw, pred_sents,
+    def __init__(self,index, src, src_raw, pred_sents,
                  attn, pred_scores, tgt_sent, gold_score, word_aligns):
+        self.index = index
         self.src = src
         self.src_raw = src_raw
         self.pred_sents = pred_sents
@@ -150,12 +151,12 @@ class Translation(object):
         Log translation.
         """
 
-        msg = ['\nSENT {}: {}\n'.format(sent_number, self.src_raw)]
+        msg = ['\nRNA {}: {}\n'.format(sent_number, " ".join(self.src_raw))]
 
         best_pred = self.pred_sents[0]
         best_score = self.pred_scores[0]
         pred_sent = ' '.join(best_pred)
-        msg.append('PRED {}: {}\n'.format(sent_number, pred_sent))
+        msg.append('PRED PROTEIN {}: {}\n'.format(sent_number, pred_sent))
         msg.append("PRED SCORE: {:.4f}\n".format(best_score))
 
         if self.word_aligns is not None:
@@ -166,11 +167,11 @@ class Translation(object):
 
         if self.gold_sent is not None:
             tgt_sent = ' '.join(self.gold_sent)
-            msg.append('GOLD {}: {}\n'.format(sent_number, tgt_sent))
+            msg.append('GOLD PROTEIN {}: {}\n'.format(sent_number, tgt_sent))
             msg.append(("GOLD SCORE: {:.4f}\n".format(self.gold_score)))
         if len(self.pred_sents) > 1:
             msg.append('\nBEST HYP:\n')
             for score, sent in zip(self.pred_scores, self.pred_sents):
-                msg.append("[{:.4f}] {}\n".format(score, sent))
+                msg.append("[{:.4f}] {}\n".format(score, " ".join(sent)))
 
         return "".join(msg)

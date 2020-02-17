@@ -8,6 +8,11 @@ import time
 from itertools import count, zip_longest
 
 import torch
+import seaborn as sns
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn import preprocessing
 
 import bioseq2seq.model_builder
 import bioseq2seq.inputters as inputters
@@ -17,8 +22,6 @@ from bioseq2seq.translate.greedy_search import GreedySearch
 from bioseq2seq.utils.misc import tile, set_random_seed, report_matrix
 from bioseq2seq.utils.alignment import extract_alignment, build_align_pharaoh
 from bioseq2seq.modules.copy_generator import collapse_copy_scores
-
-from bioseq2seq.bio.utils import emboss_needle,kmer_overlap_scores
 
 
 def build_translator(opt, report_score=True, logger=None, out_file=None):
@@ -43,7 +46,6 @@ def build_translator(opt, report_score=True, logger=None, out_file=None):
         logger=logger
     )
     return translator
-
 
 def max_tok_len(new, count, sofar):
     """
@@ -291,6 +293,7 @@ class Translator(object):
     def translate(
             self,
             src,
+            names,
             tgt=None,
             src_dir=None,
             batch_size=None,
@@ -316,7 +319,7 @@ class Translator(object):
             * all_predictions is a list of `batch_size` lists
                 of `n_best` predictions
         """
-
+ 
         if batch_size is None:
             raise ValueError("batch_size must be set")
 
@@ -354,25 +357,31 @@ class Translator(object):
 
         all_scores = []
         all_predictions = []
+        all_golds = []
 
         start_time = time.time()
 
         number = 0
 
         for batch in data_iter:
+
             batch_data = self.translate_batch(
                 batch, data.src_vocabs, attn_debug
             )
+
             translations = xlation_builder.from_batch(batch_data)
 
             for trans in translations:
                 all_scores += [trans.pred_scores[:self.n_best]]
                 pred_score_total += trans.pred_scores[0]
                 pred_words_total += len(trans.pred_sents[0])
+
+                transcript_name = names[trans.index]
+
                 if tgt is not None:
                     gold_score_total += trans.gold_score
                     gold_words_total += len(trans.gold_sent) + 1
-
+                    all_golds.append(trans.gold_sent)
                 n_best_preds = ["".join(pred)
                                 for pred in trans.pred_sents[:self.n_best]]
                 if self.report_align:
@@ -385,30 +394,12 @@ class Translator(object):
                                         n_best_preds, n_best_preds_align)]
                 all_predictions += [n_best_preds]
 
-                #print("gold: "+str("".join(trans.gold_sent)))
-                max_id = 0
-                max_pred = ""
+                self.out_file.write("ID: {}\n".format(transcript_name))
 
-                for i,pred in enumerate(n_best_preds):
+                for pred in n_best_preds:
+                    self.out_file.write("PRED: "+pred+"\n")
 
-                    #print("pred: "+str(pred))
-                    recall,precision,f1 = kmer_overlap_scores(pred,"".join(trans.gold_sent),3)
-                    align_pct = emboss_needle(pred,"".join(trans.gold_sent))
-
-                    if align_pct > max_id:
-                        max_id = align_pct
-                        max_pred = pred
-
-                        #k_log_msg = "Recall: {} Precision: {} F1 {}".format(recall,precision,f1)
-                        #print(k_log_msg)
-
-                    align_msg = "Alignment identity: {}".format(align_pct)
-                    #print(align_msg)
-
-                #self.out_file.write('\n'.join(n_best_preds) + '\n')
-                self.out_file.write(str(max_id)+"\n")
-                self.out_file.write(str(max_pred)+"\n")
-                self.out_file.write("".join(trans.gold_sent)+"\n")
+                self.out_file.write("GOLD: "+"".join(trans.gold_sent)+"\n\n")
                 self.out_file.flush()
 
                 if self.verbose:
@@ -427,11 +418,16 @@ class Translator(object):
                         srcs = trans.src_raw
                     else:
                         srcs = [str(item) for item in range(len(attns[0]))]
-                    output = report_matrix(srcs, preds, attns)
+                    self._visualize_attention_(transcript_name,preds,attns,srcs)
+
+                    #output = report_matrix(srcs, preds, attns)
+
                     if self.logger:
-                        self.logger.info(output)
+                        #self.logger.info(output)
+                        pass
                     else:
-                        os.write(1, output.encode('utf-8'))
+                        #os.write(1, output.encode('utf-8'))
+                        pass
 
                 if align_debug:
                     if trans.gold_sent is not None:
@@ -448,7 +444,6 @@ class Translator(object):
                         self.logger.info(output)
                     else:
                         os.write(1, output.encode('utf-8'))
-
 
         end_time = time.time()
 
@@ -479,7 +474,40 @@ class Translator(object):
             import json
             json.dump(self.translator.beam_accum,
                       codecs.open(self.dump_beam, 'w', 'utf-8'))
-        return all_scores, all_predictions
+
+        return all_predictions, all_golds, all_scores
+
+    def _visualize_attention_(self,name,preds,attns,srcs):
+
+        src_len = len(srcs)
+
+        format = "SRC_LEN: {}, PREDS_LEN: {}, ATTNS_LEN: {}, ATTNS[0]_LEN : {}"
+
+        print(format.format(len(srcs),len(preds),len(attns),len(attns[0])))
+
+        attns = [a[:src_len] for a in attns]
+        attns = np.asarray(attns)
+
+        normalized_entropy = - (np.log2(attns) * attns).sum(axis=1)
+
+        plt.plot(range(len(normalized_entropy)),normalized_entropy.tolist())
+        plt.ylabel("Attention Entropy (bits)")
+        plt.xlabel("Residue")
+        plt.title("Attention Entropy "+name)
+        plt.savefig("attn_entropy/"+name+"_entropy.pdf")
+        plt.close()
+
+        attns = preprocessing.scale(attns,axis = 1)
+
+        df = pd.DataFrame.from_records(attns)
+        ax = sns.heatmap(df,cmap="Blues")
+
+        plt.title(name)
+        plt.savefig("attn_heatmap/"+name+"_heatmap.pdf")
+        plt.xlabel("Nucleotide")
+        plt.ylabel("Residue")
+        plt.title("Normalized Attention Heatmap "+name)
+        plt.close()
 
     def _align_pad_prediction(self, predictions, bos, pad):
         """
@@ -511,7 +539,7 @@ class Translator(object):
     def _align_forward(self, batch, predictions):
         """
         For a batch of input and its prediction, return a list of batch predict
-        alignment src indice Tensor in size ``(batch, n_best,)``.
+         alignment src indice Tensor in size ``(batch, n_best,)``.
         """
         # (0) add BOS and padding to tgt prediction
         if hasattr(batch, 'tgt'):
@@ -639,7 +667,7 @@ class Translator(object):
             # or [ tgt_len, batch_size, vocab ] when full sentence
         else:
             attn = dec_attn["copy"]
-            scores = self.model.generator(dec_out.view(-1, dec_out.size(2)),
+            scores = self.model .generator(dec_out.view(-1, dec_out.size(2)),
                                           attn.view(-1, attn.size(2)),
                                           src_map)
             # here we have scores [tgt_lenxbatch, vocab] or [beamxbatch, vocab]

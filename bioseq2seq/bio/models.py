@@ -13,7 +13,7 @@ from torch.optim import Adam
 from torch.nn import DataParallel
 from torch.nn.parallel import DistributedDataParallel as DDP
 from tqdm import tqdm
-from batcher import iterator_from_dataset, dataset_from_csv
+from batcher import iterator_from_dataset, dataset_from_df
 
 from bioseq2seq.models import NMTModel
 from bioseq2seq.encoders import TransformerEncoder
@@ -21,7 +21,6 @@ from bioseq2seq.decoders import TransformerDecoder
 from bioseq2seq.modules import Embeddings
 from bioseq2seq.utils.loss import NMTLossCompute, build_loss_compute
 from bioseq2seq.utils.optimizers import Optimizer
-from bioseq2seq.trainer import Trainer
 from bioseq2seq.utils.report_manager import build_report_manager, ReportMgr
 
 from torch.utils.tensorboard import SummaryWriter
