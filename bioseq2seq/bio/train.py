@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument("--log-directory",'--l',help = "Name of directory for saving TensorBoard log files" )
     parser.add_argument("--learning-rate","--lr",type = float,default = 5e-3,help = "Optimizer learning rate")
     parser.add_argument("--max-epochs","--e",type = int,default = 100000,help = "Maximum number of training epochs" )
-    parser.add_argument("--report-every",'--r',type = int, default = 808, help = "Number of iterations before calculating statistics")
+    parser.add_argument("--report-every",'--r',type = int, default = 10, help = "Number of iterations before calculating statistics")
     parser.add_argument("--num_gpus","--g",type = int,default = 1, help = "Number of GPUs to use on node")
     parser.add_argument("--accum_steps",type = int,default = 4, help= "Number of batches to accumulate gradients before update")
     parser.add_argument("--rank",type = int, default = 0, help = "Rank of node in multi-node training")
@@ -57,10 +57,10 @@ def train_helper(rank,args,seq2seq,random_seed):
     max_tokens_in_batch = 7000 # determined by GPU memory
     world_size = args.num_gpus # total GPU devices
     max_len_transcript = 1000 # maximum length of transcript
-    tolerance = 5 # max train epochs without improvement
+    tolerance = 15 # max train epochs without improvement
 
     # raw GENCODE transcript data. cols = ['ID','RNA','PROTEIN']
-    dataframe = pd.read_csv(args.input,sep=",")
+    dataframe = pd.read_csv(args.input,sep="\t")
 
     # obtain splits. Default 80/10/10. Filter below max_len_transcript
     df_train,df_test,df_val = train_test_val_split(dataframe,max_len_transcript,random_seed)
@@ -98,7 +98,7 @@ def train_helper(rank,args,seq2seq,random_seed):
         train_iterator = iterator_from_dataset(train,max_tokens_in_batch,device,train=True)
 
     # computes position-wise NLLoss
-    criterion = torch.nn.NLLLoss(ignore_index = 1, reduction='sum')
+    criterion = torch.nn.NLLLoss(ignore_index = 1, reduction='mean')
     train_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
     val_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
 

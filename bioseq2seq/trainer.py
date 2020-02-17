@@ -12,7 +12,7 @@
 import torch
 import traceback
 from tqdm import tqdm
-
+import datetime
 import bioseq2seq.utils
 from bioseq2seq.utils.logging import logger
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -251,27 +251,22 @@ class Trainer(object):
                 normalization = sum(bioseq2seq.utils.distributed
                                     .all_gather_list
                                     (normalization))
-
             self._gradient_accumulation(i,
                 batches, normalization, total_stats,
                 report_stats)
 
+
             if self.average_decay > 0 and i % self.average_every == 0:
                 self._update_average(step)
-
             report_stats = self._maybe_report_training(
                 step, train_steps,
                 self.optim.learning_rate(),
                 report_stats)
 
-            #print("Outside type valid_iter {}, step {}".format(type(valid_iter),step))
-
             if valid_iter is not None and step % valid_steps == 0 and self.rank == 0:
-                #print("inside")
                 if self.gpu_verbose_level > 0:
                     logger.info('GpuRank %d: validate step %d'
                                 % (self.gpu_rank, step))
-
                 valid_stats = self.validate(valid_iter, moving_average=self.moving_average)
                 #valid_stats = self.validate_structured(valid_iter,valid_state, moving_average = self.moving_average)
 
@@ -290,6 +285,8 @@ class Trainer(object):
                     self.earlystopper(valid_stats, step)
                     # If the patience has reached the limit, stop training
                     if self.earlystopper.has_stopped():
+                        print("EARLY STOPPING!!.Finishing Training")
+                        print(datetime.datetime.now())
                         break
 
             if (self.model_saver is not None
