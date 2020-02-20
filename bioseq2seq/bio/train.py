@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument("--log-directory",'--l',help = "Name of directory for saving TensorBoard log files" )
     parser.add_argument("--learning-rate","--lr",type = float,default = 5e-3,help = "Optimizer learning rate")
     parser.add_argument("--max-epochs","--e",type = int,default = 100000,help = "Maximum number of training epochs" )
-    parser.add_argument("--report-every",'--r',type = int, default = 10, help = "Number of iterations before calculating statistics")
+    parser.add_argument("--report-every",'--r',type = int, default = 808, help = "Number of iterations before calculating statistics")
     parser.add_argument("--num_gpus","--g",type = int,default = 1, help = "Number of GPUs to use on node")
     parser.add_argument("--accum_steps",type = int,default = 4, help= "Number of batches to accumulate gradients before update")
     parser.add_argument("--rank",type = int, default = 0, help = "Rank of node in multi-node training")
@@ -98,7 +98,7 @@ def train_helper(rank,args,seq2seq,random_seed):
         train_iterator = iterator_from_dataset(train,max_tokens_in_batch,device,train=True)
 
     # computes position-wise NLLoss
-    criterion = torch.nn.NLLLoss(ignore_index = 1, reduction='mean')
+    criterion = torch.nn.NLLLoss(ignore_index = 1, reduction='sum')
     train_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
     val_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
 
@@ -126,14 +126,11 @@ def train_helper(rank,args,seq2seq,random_seed):
                            optim = optim)
 
         valid_iterator = iterator_from_dataset(val,max_tokens_in_batch,device,train=False)
-        # print("type of val_iterator {}".format(type(valid_iterator)))
 
         # Translator builds its own iterator from unprocessed data
         valid_state = wrap_validation_state(fields = valid_iterator.fields,
                                             rna = df_val['RNA'].tolist()[:100],
                                             protein = df_val['Protein'].tolist()[:100])
-
-    # print("type of val_iterator {}".format(type(valid_iterator)))
 
     # controls training and validation
     trainer = Trainer(seq2seq,
@@ -146,8 +143,6 @@ def train_helper(rank,args,seq2seq,random_seed):
                       accum_count = [args.accum_steps],
                       report_manager = report_manager,
                       model_saver = saver)
-
-    # print("type of val_iterator {}".format(type(valid_iterator)))
 
     # training loop
     trainer.train(train_iter = train_iterator,

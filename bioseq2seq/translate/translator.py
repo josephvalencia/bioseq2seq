@@ -394,7 +394,10 @@ class Translator(object):
                                         n_best_preds, n_best_preds_align)]
                 all_predictions += [n_best_preds]
 
+                rna = "".join(trans.src_raw)
+
                 self.out_file.write("ID: {}\n".format(transcript_name))
+                self.out_file.write("RNA: {}\n".format(rna))
 
                 for pred in n_best_preds:
                     self.out_file.write("PRED: "+pred+"\n")

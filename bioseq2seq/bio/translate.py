@@ -37,7 +37,7 @@ def parse_args():
     return parser.parse_args()
 
 def restore_model(checkpoint,machine):
-
+    ''''''
     model = make_transformer_model()
     model.load_state_dict(checkpoint['model'],strict = False)
     model.generator.load_state_dict(checkpoint['generator'])
@@ -49,7 +49,7 @@ def make_vocab(fields,src,tgt):
 
     src = TextMultiField('src',fields['src'],[])
     tgt = TextMultiField('tgt',fields['tgt'],[])
-    id = TextMultiField('id',RawField(), [])
+    id = TextMultiField('id',RawField(),[])
 
     text_fields = get_fields(src_data_type ='text',
                              n_src_feats = 0,
@@ -73,7 +73,7 @@ def translate_from_checkpoint(args):
     random.seed(random_seed)
     state = random.getstate()
 
-    data = pd.read_csv(args.input)
+    data = pd.read_csv(args.input,sep="\t")
     train,test,dev = train_test_val_split(data,1000,random_seed) # replicate splits
 
     ids = dev['ID'].tolist()
@@ -87,7 +87,11 @@ def translate_from_checkpoint(args):
 
 def translate(args,model,text_fields,rna,protein,ids):
 
-    beam_scorer = GNMTGlobalScorer(alpha = args.alpha, beta = 0.0, length_penalty = "avg" , coverage_penalty = "none")
+    # global scorer for beam decoding
+    beam_scorer = GNMTGlobalScorer(alpha = args.alpha,
+                                   beta = 0.0,
+                                   length_penalty = "avg" ,
+                                   coverage_penalty = "none")
 
     out_file = open("translations.out",'w')
 
@@ -109,7 +113,7 @@ def translate(args,model,text_fields,rna,protein,ids):
                                                       tgt = protein,
                                                       names = ids,
                                                       batch_size = 8,
-                                                      attn_debug = False)
+                                                      attn_debug = True)
 
     out_file.close()
 
