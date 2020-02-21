@@ -3,7 +3,6 @@ import torch.nn as nn
 
 from bioseq2seq.models.stacked_rnn import StackedLSTM, StackedGRU
 from bioseq2seq.modules import context_gate_factory, GlobalAttention
-from bioseq2seq.utils.rnn_factory import rnn_factory
 
 from bioseq2seq.utils.misc import aeq
 
@@ -18,15 +17,6 @@ class DecoderBase(nn.Module):
     def __init__(self, attentional=True):
         super(DecoderBase, self).__init__()
         self.attentional = attentional
-
-    @classmethod
-    def from_opt(cls, opt, embeddings):
-        """Alternate constructor.
-
-        Subclasses should override this method.
-        """
-
-        raise NotImplementedError
 
 
 class RNNDecoderBase(DecoderBase):
@@ -137,25 +127,6 @@ class RNNDecoderBase(DecoderBase):
         self._reuse_copy_attn = reuse_copy_attn and copy_attn
         if self._reuse_copy_attn and not self.attentional:
             raise ValueError("Cannot reuse copy attention with no attention.")
-
-    @classmethod
-    def from_opt(cls, opt, embeddings):
-        """Alternate constructor."""
-        return cls(
-            opt.rnn_type,
-            opt.brnn,
-            opt.dec_layers,
-            opt.dec_rnn_size,
-            opt.global_attention,
-            opt.global_attention_function,
-            opt.coverage_attn,
-            opt.context_gate,
-            opt.copy_attn,
-            opt.dropout[0] if type(opt.dropout) is list
-            else opt.dropout,
-            embeddings,
-            opt.reuse_copy_attn,
-            opt.copy_attn_type)
 
     def init_state(self, src, memory_bank, encoder_final):
         """Initialize decoder state with last state of the encoder."""
@@ -318,10 +289,6 @@ class StdRNNDecoder(RNNDecoderBase):
 
         dec_outs = self.dropout(dec_outs)
         return dec_state, dec_outs, attns
-
-    def _build_rnn(self, rnn_type, **kwargs):
-        rnn, _ = rnn_factory(rnn_type, **kwargs)
-        return rnn
 
     @property
     def _input_size(self):

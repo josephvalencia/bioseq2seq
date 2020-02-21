@@ -30,10 +30,6 @@ class EncoderBase(nn.Module):
           E-->G
     """
 
-    @classmethod
-    def from_opt(cls, opt, embeddings=None):
-        raise NotImplementedError
-
     def _check_args(self, src, lengths=None, hidden=None):
         n_batch = src.size(1)
         if lengths is not None:

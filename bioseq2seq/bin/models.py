@@ -1,29 +1,10 @@
-import torch as torch
-import numpy as np
-import sys
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math, copy, time
-import pandas as pd
-import time
-
-from torch.autograd import Variable
-from torch.optim import Adam
-from torch.nn import DataParallel
-from torch.nn.parallel import DistributedDataParallel as DDP
-from tqdm import tqdm
-from batcher import iterator_from_dataset, dataset_from_df
 
 from bioseq2seq.models import NMTModel
 from bioseq2seq.encoders import TransformerEncoder
 from bioseq2seq.decoders import TransformerDecoder
 from bioseq2seq.modules import Embeddings
-from bioseq2seq.utils.loss import NMTLossCompute, build_loss_compute
-from bioseq2seq.utils.optimizers import Optimizer
-from bioseq2seq.utils.report_manager import build_report_manager, ReportMgr
-
-from torch.utils.tensorboard import SummaryWriter
 
 class Generator(nn.Module):
     '''Fully connected + log-softmax over target vocab'''
@@ -39,6 +20,7 @@ class Generator(nn.Module):
         return logits
 
 def make_transformer_model(n=4,dim_model=128, dim_ff=2048, heads=8, dropout=0.1):
+
     ''' construct Transformer encoder-decoder from hyperparameters '''
 
     max_relative_positions = 10
@@ -92,10 +74,4 @@ def make_transformer_model(n=4,dim_model=128, dim_ff=2048, heads=8, dropout=0.1)
 
     return model
 
-def make_loss_function(device,generator,rank,num_gpus):
-
-    criterion = nn.NLLLoss(ignore_index=1, reduction='sum')
-    nmt_loss = NMTLossCompute(criterion,generator,rank,num_gpus)
-
-    return nmt_loss
 

@@ -10,59 +10,6 @@ import torch.nn.functional as F
 import bioseq2seq
 from bioseq2seq.modules.sparse_losses import SparsemaxLoss
 from bioseq2seq.modules.sparse_activations import LogSparsemax
-from torch.nn.parallel import DistributedDataParallel as DDP
-
-def build_loss_compute(model, tgt_field, opt, train=True):
-    """
-    Returns a LossCompute subclass which wraps around an nn.Module subclass
-    (such as nn.NLLLoss) which defines the loss criterion. The LossCompute
-    object allows this loss to be computed in shards and passes the relevant
-    data to a Statistics object which handles training/validation logging.
-    Currently, the NMTLossCompute class handles all loss computation except
-    for when using a copy mechanism.
-    """
-    device = torch.device("cuda" if bioseq2seq.utils.misc.use_gpu(opt) else "cpu")
-
-    padding_idx = tgt_field.vocab.stoi[tgt_field.pad_token]
-    unk_idx = tgt_field.vocab.stoi[tgt_field.unk_token]
-
-    if opt.lambda_coverage != 0:
-        assert opt.coverage_attn, "--coverage_attn needs to be set in " \
-            "order to use --lambda_coverage != 0"
-
-    if opt.copy_attn:
-        criterion = bioseq2seq.modules.CopyGeneratorLoss(
-            len(tgt_field.vocab), opt.copy_attn_force,
-            unk_index=unk_idx, ignore_index=padding_idx
-        )
-    elif opt.label_smoothing > 0 and train:
-        criterion = LabelSmoothingLoss(
-            opt.label_smoothing, len(tgt_field.vocab), ignore_index=padding_idx
-        )
-    elif isinstance(model.generator[-1], LogSparsemax):
-        criterion = SparsemaxLoss(ignore_index=padding_idx, reduction='sum')
-    else:
-        criterion = nn.NLLLoss(ignore_index=padding_idx, reduction='sum')
-
-    # if the loss function operates on vectors of raw logits instead of
-    # probabilities, only the first part of the generator needs to be
-    # passed to the NMTLossCompute. At the moment, the only supported
-    # loss function of this kind is the sparsemax loss.
-    use_raw_logits = isinstance(criterion, SparsemaxLoss)
-    loss_gen = model.generator[0] if use_raw_logits else model.generator
-    if opt.copy_attn:
-        compute = bioseq2seq.modules.CopyGeneratorLossCompute(
-            criterion, loss_gen, tgt_field.vocab, opt.copy_loss_by_seqlength,
-            lambda_coverage=opt.lambda_coverage
-        )
-    else:
-        compute = NMTLossCompute(
-            criterion, loss_gen, lambda_coverage=opt.lambda_coverage,
-            lambda_align=opt.lambda_align)
-    compute.to(device)
-
-    return compute
-
 
 class LossComputeBase(nn.Module):
     """

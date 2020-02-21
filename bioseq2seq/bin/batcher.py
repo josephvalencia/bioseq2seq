@@ -1,10 +1,7 @@
-import sys
 import torch as torch
 import pandas as pd
 import torchtext
-import random
 
-from tqdm import tqdm
 from torchtext.data import Dataset, Example,Batch,Field,RawField
 from torchtext.data.iterator import RandomShuffler
 import numpy as np

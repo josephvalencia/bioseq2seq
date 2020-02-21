@@ -68,19 +68,6 @@ SCORER_BUILDER = {
     "accuracy": AccuracyScorer
 }
 
-
-def scorers_from_opts(opt):
-    if opt.early_stopping_criteria is None:
-        return DEFAULT_SCORERS
-    else:
-        scorers = []
-        for criterion in set(opt.early_stopping_criteria):
-            assert criterion in SCORER_BUILDER.keys(), \
-                "Criterion {} not found".format(criterion)
-            scorers.append(SCORER_BUILDER[criterion]())
-        return scorers
-
-
 class EarlyStopping(object):
 
     def __init__(self, tolerance, scorers=DEFAULT_SCORERS):

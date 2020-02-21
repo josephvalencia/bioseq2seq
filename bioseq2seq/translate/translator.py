@@ -14,7 +14,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
 
-import bioseq2seq.model_builder
 import bioseq2seq.inputters as inputters
 import bioseq2seq.decoders.ensemble
 from bioseq2seq.translate.beam_search import BeamSearch
@@ -24,28 +23,6 @@ from bioseq2seq.utils.alignment import extract_alignment, build_align_pharaoh
 from bioseq2seq.modules.copy_generator import collapse_copy_scores
 
 
-def build_translator(opt, report_score=True, logger=None, out_file=None):
-    if out_file is None:
-        out_file = codecs.open(opt.output, 'w+', 'utf-8')
-
-    load_test_model = bioseq2seq.decoders.ensemble.load_test_model \
-        if len(opt.models) > 1 else bioseq2seq.model_builder.load_test_model
-    fields, model, model_opt = load_test_model(opt)
-
-    scorer = bioseq2seq.translate.GNMTGlobalScorer.from_opt(opt)
-
-    translator = Translator.from_opt(
-        model,
-        fields,
-        opt,
-        model_opt,
-        global_scorer=scorer,
-        out_file=out_file,
-        report_align=opt.report_align,
-        report_score=report_score,
-        logger=logger
-    )
-    return translator
 
 def max_tok_len(new, count, sofar):
     """
@@ -209,69 +186,6 @@ class Translator(object):
 
         set_random_seed(seed, self._use_cuda)
 
-    @classmethod
-    def from_opt(
-            cls,
-            model,
-            fields,
-            opt,
-            model_opt,
-            global_scorer=None,
-            out_file=None,
-            report_align=False,
-            report_score=True,
-            logger=None):
-        """Alternate constructor.
-
-        Args:
-            model (onmt.modules.NMTModel): See :func:`__init__()`.
-            fields (dict[str, torchtext.data.Field]): See
-                :func:`__init__()`.
-            opt (argparse.Namespace): Command line options
-            model_opt (argparse.Namespace): Command line options saved with
-                the model checkpoint.
-            global_scorer (bioseq2seq.translate.GNMTGlobalScorer): See
-                :func:`__init__()`..
-            out_file (TextIO or codecs.StreamReaderWriter): See
-                :func:`__init__()`.
-            report_align (bool) : See :func:`__init__()`.
-            report_score (bool) : See :func:`__init__()`.
-            logger (logging.Logger or NoneType): See :func:`__init__()`.
-        """
-
-        src_reader = inputters.str2reader[opt.data_type].from_opt(opt)
-        tgt_reader = inputters.str2reader["text"].from_opt(opt)
-        return cls(
-            model,
-            fields,
-            src_reader,
-            tgt_reader,
-            gpu=opt.gpu,
-            n_best=opt.n_best,
-            min_length=opt.min_length,
-            max_length=opt.max_length,
-            ratio=opt.ratio,
-            beam_size=opt.beam_size,
-            random_sampling_topk=opt.random_sampling_topk,
-            random_sampling_temp=opt.random_sampling_temp,
-            stepwise_penalty=opt.stepwise_penalty,
-            dump_beam=opt.dump_beam,
-            block_ngram_repeat=opt.block_ngram_repeat,
-            ignore_when_blocking=set(opt.ignore_when_blocking),
-            replace_unk=opt.replace_unk,
-            phrase_table=opt.phrase_table,
-            data_type=opt.data_type,
-            verbose=opt.verbose,
-            report_bleu=opt.report_bleu,
-            report_rouge=opt.report_rouge,
-            report_time=opt.report_time,
-            copy_attn=model_opt.copy_attn,
-            global_scorer=global_scorer,
-            out_file=out_file,
-            report_align=report_align,
-            report_score=report_score,
-            logger=logger,
-            seed=opt.seed)
 
     def _log(self, msg):
         if self.logger:
@@ -458,12 +372,7 @@ class Translator(object):
                 msg = self._report_score('GOLD', gold_score_total,
                                          gold_words_total)
                 self._log(msg)
-                if self.report_bleu:
-                    msg = self._report_bleu(tgt)
-                    self._log(msg)
-                if self.report_rouge:
-                    msg = self._report_rouge(tgt)
-                    self._log(msg)
+
 
         if self.report_time:
             total_time = end_time - start_time
@@ -809,26 +718,3 @@ class Translator(object):
                 name, math.exp(-score_total / words_total)))
         return msg
 
-    def _report_bleu(self, tgt_path):
-        import subprocess
-        base_dir = os.path.abspath(__file__ + "/../../..")
-        # Rollback pointer to the beginning.
-        self.out_file.seek(0)
-        print()
-
-        res = subprocess.check_output(
-            "perl %s/tools/multi-bleu.perl %s" % (base_dir, tgt_path),
-            stdin=self.out_file, shell=True
-        ).decode("utf-8")
-
-        msg = ">> " + res.strip()
-        return msg
-
-    def _report_rouge(self, tgt_path):
-        import subprocess
-        path = os.path.split(os.path.realpath(__file__))[0]
-        msg = subprocess.check_output(
-            "python %s/tools/test_rouge.py -r %s -c STDIN" % (path, tgt_path),
-            shell=True, stdin=self.out_file
-        ).decode("utf-8").strip()
-        return msg

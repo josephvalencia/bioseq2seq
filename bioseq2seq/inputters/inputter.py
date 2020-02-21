@@ -14,14 +14,9 @@ from torchtext.vocab import Vocab
 from torchtext.data.utils import RandomShuffler
 
 from bioseq2seq.inputters.text_dataset import text_fields, TextMultiField
-from bioseq2seq.inputters.image_dataset import image_fields
-from bioseq2seq.inputters.audio_dataset import audio_fields
-from bioseq2seq.inputters.vec_dataset import vec_fields
 from bioseq2seq.utils.logging import logger
 # backwards compatibility
 from bioseq2seq.inputters.text_dataset import _feature_tokenize  # noqa: F401
-from bioseq2seq.inputters.image_dataset import (  # noqa: F401
-    batch_img as make_img)
 
 import gc
 
@@ -141,10 +136,7 @@ def get_fields(
         'it is not possible to use dynamic_dict with non-text input'
     fields = {}
 
-    fields_getters = {"text": text_fields,
-                      "img": image_fields,
-                      "audio": audio_fields,
-                      "vec": vec_fields}
+    fields_getters = {"text": text_fields}
 
     src_field_kwargs = {"n_feats": n_src_feats,
                         "include_lengths": True,
@@ -182,108 +174,6 @@ def get_fields(
         fields["align"] = word_align
 
     return fields
-
-
-def load_old_vocab(vocab, data_type="text", dynamic_dict=False):
-    """Update a legacy vocab/field format.
-
-    Args:
-        vocab: a list of (field name, torchtext.vocab.Vocab) pairs. This is the
-            format formerly saved in *.vocab.pt files. Or, text data
-            not using a :class:`TextMultiField`.
-        data_type (str): text, img, or audio
-        dynamic_dict (bool): Used for copy attention.
-
-    Returns:
-        a dictionary whose keys are the field names and whose values Fields.
-    """
-
-    if _old_style_vocab(vocab):
-        # List[Tuple[str, Vocab]] -> List[Tuple[str, Field]]
-        # -> dict[str, Field]
-        vocab = dict(vocab)
-        n_src_features = sum('src_feat_' in k for k in vocab)
-        n_tgt_features = sum('tgt_feat_' in k for k in vocab)
-        fields = get_fields(
-            data_type, n_src_features, n_tgt_features,
-            dynamic_dict=dynamic_dict)
-        for n, f in fields.items():
-            try:
-                f_iter = iter(f)
-            except TypeError:
-                f_iter = [(n, f)]
-            for sub_n, sub_f in f_iter:
-                if sub_n in vocab:
-                    sub_f.vocab = vocab[sub_n]
-        return fields
-
-    if _old_style_field_list(vocab):  # upgrade to multifield
-        # Dict[str, List[Tuple[str, Field]]]
-        # doesn't change structure - don't return early.
-        fields = vocab
-        for base_name, vals in fields.items():
-            if ((base_name == 'src' and data_type == 'text') or
-                    base_name == 'tgt'):
-                assert not isinstance(vals[0][1], TextMultiField)
-                fields[base_name] = [(base_name, TextMultiField(
-                    vals[0][0], vals[0][1], vals[1:]))]
-
-    if _old_style_nesting(vocab):
-        # Dict[str, List[Tuple[str, Field]]] -> List[Tuple[str, Field]]
-        # -> dict[str, Field]
-        fields = dict(list(chain.from_iterable(vocab.values())))
-
-    return fields
-
-
-def _old_style_vocab(vocab):
-    """Detect old-style vocabs (``List[Tuple[str, torchtext.data.Vocab]]``).
-
-    Args:
-        vocab: some object loaded from a *.vocab.pt file
-
-    Returns:
-        Whether ``vocab`` is a list of pairs where the second object
-        is a :class:`torchtext.vocab.Vocab` object.
-
-    This exists because previously only the vocab objects from the fields
-    were saved directly, not the fields themselves, and the fields needed to
-    be reconstructed at training and translation time.
-    """
-
-    return isinstance(vocab, list) and \
-        any(isinstance(v[1], Vocab) for v in vocab)
-
-
-def _old_style_nesting(vocab):
-    """Detect old-style nesting (``dict[str, List[Tuple[str, Field]]]``)."""
-    return isinstance(vocab, dict) and \
-        any(isinstance(v, list) for v in vocab.values())
-
-
-def _old_style_field_list(vocab):
-    """Detect old-style text fields.
-
-    Not old style vocab, old nesting, and text-type fields not using
-    ``TextMultiField``.
-
-    Args:
-        vocab: some object loaded from a *.vocab.pt file
-
-    Returns:
-        Whether ``vocab`` is not an :func:`_old_style_vocab` and not
-        a :class:`TextMultiField` (using an old-style text representation).
-    """
-
-    # if tgt isn't using TextMultiField, then no text field is.
-    return (not _old_style_vocab(vocab)) and _old_style_nesting(vocab) and \
-        (not isinstance(vocab['tgt'][0][1], TextMultiField))
-
-
-def old_style_vocab(vocab):
-    """The vocab/fields need updated."""
-    return _old_style_vocab(vocab) or _old_style_field_list(vocab) or \
-        _old_style_nesting(vocab)
 
 
 def filter_example(ex, use_src_len=True, use_tgt_len=True,

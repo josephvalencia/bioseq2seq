@@ -6,8 +6,6 @@ from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 
 from bioseq2seq.encoders.encoder import EncoderBase
-from bioseq2seq.utils.rnn_factory import rnn_factory
-
 
 class RNNEncoder(EncoderBase):
     """ A generic recurrent neural network encoder.
@@ -48,17 +46,6 @@ class RNNEncoder(EncoderBase):
                                     hidden_size,
                                     num_layers)
 
-    @classmethod
-    def from_opt(cls, opt, embeddings):
-        """Alternate constructor."""
-        return cls(
-            opt.rnn_type,
-            opt.brnn,
-            opt.enc_layers,
-            opt.enc_rnn_size,
-            opt.dropout[0] if type(opt.dropout) is list else opt.dropout,
-            embeddings,
-            opt.bridge)
 
     def forward(self, src, lengths=None):
         """See :func:`EncoderBase.forward()`"""

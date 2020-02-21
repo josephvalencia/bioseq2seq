@@ -1,7 +1,5 @@
 from Bio import SeqIO
-from Bio.Alphabet import IUPAC
-import sys, os, re
-import matplotlib.pyplot as plt
+import sys,re
 import pandas as pd
 
 class TranslationTable:
@@ -74,9 +72,11 @@ def dataset_from_fasta(mRNA_file,protein_file,lncRNA_file,coding_list,noncoding_
 
 def parse_GFF(gff):
 
-    save_attributes = set(["ID",",gene_id","gene_type","gene_status","transcript_id","transcript_type","transcript_status","protein_id"])
-    tags = set(["CCDS","basic","upstream_ATG","downstream_ATG","non_ATG_start","cds_start_NF","cds_end_NF","mRNA_end_NF","mRNA_start_NF"])
-    alt_pc_types = set(["nonsense_mediated_decay","non_stop_decay" ,"polymorphic_pseudogene"])
+    save_attributes = {"ID", ",gene_id", "gene_type", "gene_status", "transcript_id", "transcript_type",
+                       "transcript_status", "protein_id"}
+    tags = {"CCDS", "basic", "upstream_ATG", "downstream_ATG", "non_ATG_start", "cds_start_NF", "cds_end_NF",
+            "mRNA_end_NF", "mRNA_start_NF"}
+    alt_pc_types = {"nonsense_mediated_decay", "non_stop_decay", "polymorphic_pseudogene"}
 
     count_pc = count_alt = count_lnc =  count_transcript = 0
 

@@ -1,52 +1,119 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+import argparse
+import pandas as pd
+import torch
+import random
 
-from __future__ import unicode_literals
+from bioseq2seq.inputters import TextDataReader,get_fields
+from bioseq2seq.inputters.text_dataset import TextMultiField
+from bioseq2seq.translate import Translator, GNMTGlobalScorer
+from bioseq2seq.bin.models import make_transformer_model
 
-from bioseq2seq.utils.logging import init_logger
-from bioseq2seq.utils.misc import split_corpus
-from bioseq2seq.translate.translator import build_translator
+from torchtext.data import RawField
+from bioseq2seq.bin.batcher import train_test_val_split
 
-import bioseq2seq.opts as opts
-from bioseq2seq.utils.parse import ArgumentParser
+def parse_args():
 
+    parser = argparse.ArgumentParser()
 
-def translate(opt):
-    ArgumentParser.validate_translate_opts(opt)
-    logger = init_logger(opt.log_file)
+    # optional flags
+    parser.add_argument("--verbose",action="store_true")
 
-    translator = build_translator(opt, report_score=True)
-    src_shards = split_corpus(opt.src, opt.shard_size)
-    tgt_shards = split_corpus(opt.tgt, opt.shard_size)
-    shard_pairs = zip(src_shards, tgt_shards)
+    # translate required args
+    parser.add_argument("--input",help="File for translation")
+    parser.add_argument("--stats-output","--st",help = "Name of file for saving evaluation statistics")
+    parser.add_argument("--translation-output","--o",help = "Name of file for saving predicted translations")
+    parser.add_argument("--checkpoint", "--c",help="ONMT checkpoint (.pt)")
 
-    for i, (src_shard, tgt_shard) in enumerate(shard_pairs):
-        logger.info("Translating shard %d." % i)
-        translator.translate(
-            src=src_shard,
-            tgt=tgt_shard,
-            src_dir=opt.src_dir,
-            batch_size=opt.batch_size,
-            batch_type=opt.batch_type,
-            attn_debug=opt.attn_debug,
-            align_debug=opt.align_debug
-            )
+    # translate optional args
+    parser.add_argument("--beam_size","--b",type = int, default = 8, help ="Beam size for decoding")
+    parser.add_argument("--n_best", type = int, default = 4, help = "Number of beams to wait for")
+    parser.add_argument("--alpha","--a",type = float, default = 1.0)
 
+    return parser.parse_args()
 
-def _get_parser():
-    parser = ArgumentParser(description='translate.py')
+def restore_model(checkpoint,machine):
+    ''''''
+    model = make_transformer_model()
+    model.load_state_dict(checkpoint['model'],strict = False)
+    model.generator.load_state_dict(checkpoint['generator'])
+    model.to(device = machine)
 
-    opts.config_opts(parser)
-    opts.translate_opts(parser)
-    return parser
+    return model
 
+def make_vocab(fields,src,tgt):
 
-def main():
-    parser = _get_parser()
+    src = TextMultiField('src',fields['src'],[])
+    tgt = TextMultiField('tgt',fields['tgt'],[])
+    id = TextMultiField('id',RawField(),[])
 
-    opt = parser.parse_args()
-    translate(opt)
+    text_fields = get_fields(src_data_type ='text',
+                             n_src_feats = 0,
+                             n_tgt_feats = 0,
+                             pad ="<pad>",
+                             eos ="<eos>",
+                             bos ="<sos>")
 
+    text_fields['src'] = src
+    text_fields['tgt'] = tgt
+
+    return text_fields
+
+def translate_from_checkpoint(args):
+
+    machine = "cpu"
+
+    checkpoint = torch.load(args.checkpoint,map_location = machine)
+
+    random_seed = 65
+    random.seed(random_seed)
+    state = random.getstate()
+
+    data = pd.read_csv(args.input)
+    train,test,dev = train_test_val_split(data,1000,random_seed) # replicate splits
+
+    ids = dev['ID'].tolist()
+    protein =  dev['Protein'].tolist()
+    rna = dev['RNA'].tolist()
+
+    model = restore_model(checkpoint,machine)
+    text_fields = make_vocab(checkpoint['vocab'],rna,protein)
+
+    translate(args,model,text_fields,rna,protein,ids)
+
+def translate(args,model,text_fields,rna,protein,ids):
+
+    # global scorer for beam decoding
+    beam_scorer = GNMTGlobalScorer(alpha = args.alpha,
+                                   beta = 0.0,
+                                   length_penalty = "avg" ,
+                                   coverage_penalty = "none")
+
+    out_file = open("translations.out",'w')
+
+    MAX_LEN = 500
+
+    translator = Translator(model,
+                            gpu = -1,
+                            src_reader = TextDataReader(),
+                            tgt_reader = TextDataReader(),
+                            fields = text_fields,
+                            beam_size = args.beam_size,
+                            n_best = args.n_best,
+                            global_scorer = beam_scorer,
+                            out_file = out_file,
+                            verbose = True,
+                            max_length = MAX_LEN)
+
+    predictions, golds, scores = translator.translate(src = rna,
+                                                      tgt = protein,
+                                                      names = ids,
+                                                      batch_size = 8,
+                                                      attn_debug = True)
+
+    out_file.close()
 
 if __name__ == "__main__":
-    main()
+
+    args = parse_args()
+    translate_from_checkpoint(args)

@@ -1,82 +1,23 @@
 """
     This is the loadable seq2seq trainer library that is
     in charge of training details, loss compute, and statistics.
-    See train.py for a use case of this library.
+    See onmt_train.py for a use case of this library.
 
     Note: To make this a general library, we implement *only*
           mechanism things here(i.e. what to do), and leave the strategy
-          things to users(i.e. how to do it). Also see train.py(one of the
+          things to users(i.e. how to do it). Also see onmt_train.py(one of the
           users of this library) for the strategy things we do.
 """
 
 import torch
 import traceback
-from tqdm import tqdm
 import datetime
 import bioseq2seq.utils
 from bioseq2seq.utils.logging import logger
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from bioseq2seq.bio.evaluator import Evaluator
-from bioseq2seq.bio.translate import translate
-
-def build_trainer(opt, device_id, model, fields, optim, model_saver=None):
-    """
-    Simplify `Trainer` creation based on user `opt`s*
-
-    Args:
-        opt (:obj:`Namespace`): user options (usually from argument parsing)
-        model (:obj:`bioseq2seq.models.NMTModel`): the model to train
-        fields (dict): dict of fields
-        optim (:obj:`bioseq2seq.utils.Optimizer`): optimizer used during training
-        data_type (str): string describing the type of data
-            e.g. "text", "img", "audio"
-        model_saver(:obj:`bioseq2seq.models.ModelSaverBase`): the utility object
-            used to save the model
-    """
-
-    tgt_field = dict(fields)["tgt"].base_field
-    train_loss = bioseq2seq.utils.loss.build_loss_compute(model, tgt_field, opt)
-    valid_loss = bioseq2seq.utils.loss.build_loss_compute(
-        model, tgt_field, opt, train=False)
-
-    trunc_size = opt.truncated_decoder  # Badly named...
-    shard_size = opt.max_generator_batches if opt.model_dtype == 'fp32' else 0
-    norm_method = opt.normalization
-    accum_count = opt.accum_count
-    accum_steps = opt.accum_steps
-    n_gpu = opt.world_size
-    average_decay = opt.average_decay
-    average_every = opt.average_every
-    dropout = opt.dropout
-    dropout_steps = opt.dropout_steps
-    if device_id >= 0:
-        gpu_rank = opt.gpu_ranks[device_id]
-    else:
-        gpu_rank = 0
-        n_gpu = 0
-    gpu_verbose_level = opt.gpu_verbose_level
-
-    earlystopper = bioseq2seq.utils.EarlyStopping(
-        opt.early_stopping, scorers=bioseq2seq.utils.scorers_from_opts(opt)) \
-        if opt.early_stopping > 0 else None
-
-    report_manager = bioseq2seq.utils.build_report_manager(opt, gpu_rank)
-    trainer = bioseq2seq.Trainer(model, train_loss, valid_loss, optim, trunc_size,
-                                 shard_size, norm_method,
-                                 accum_count, accum_steps,
-                                 n_gpu, gpu_rank,
-                                 gpu_verbose_level, report_manager,
-                                 with_align=True if opt.lambda_align > 0 else False,
-                                 model_saver=model_saver if gpu_rank == 0 else None,
-                                 average_decay=average_decay,
-                                 average_every=average_every,
-                                 model_dtype=opt.model_dtype,
-                                 earlystopper=earlystopper,
-                                 dropout=dropout,
-                                 dropout_steps=dropout_steps)
-    return trainer
-
+from bioseq2seq.bin.evaluator import Evaluator
+from bioseq2seq.bin.translate import translate
 
 class Trainer(object):
     """

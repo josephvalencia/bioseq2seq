@@ -327,14 +327,6 @@ class GNMTGlobalScorer(object):
         has_len_pen (bool): See :class:`penalties.PenaltyBuilder`.
     """
 
-    @classmethod
-    def from_opt(cls, opt):
-        return cls(
-            opt.alpha,
-            opt.beta,
-            opt.length_penalty,
-            opt.coverage_penalty)
-
     def __init__(self, alpha, beta, length_penalty, coverage_penalty):
         self._validate(alpha, beta, length_penalty, coverage_penalty)
         self.alpha = alpha

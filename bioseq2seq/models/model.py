@@ -1,7 +1,6 @@
 """ Onmt NMT Model base class definition """
 import torch.nn as nn
 
-
 class NMTModel(nn.Module):
     """
     Core trainable object in OpenNMT. Implements a trainable interface

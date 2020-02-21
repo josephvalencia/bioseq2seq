@@ -100,19 +100,6 @@ class TransformerEncoder(EncoderBase):
              for i in range(num_layers)])
         self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
 
-    @classmethod
-    def from_opt(cls, opt, embeddings):
-        """Alternate constructor."""
-        return cls(
-            opt.enc_layers,
-            opt.enc_rnn_size,
-            opt.heads,
-            opt.transformer_ff,
-            opt.dropout[0] if type(opt.dropout) is list else opt.dropout,
-            opt.attention_dropout[0] if type(opt.attention_dropout)
-            is list else opt.attention_dropout,
-            embeddings,
-            opt.max_relative_positions)
 
     def forward(self, src, lengths=None):
         """See :func:`EncoderBase.forward()`"""

@@ -206,25 +206,6 @@ class TransformerDecoder(DecoderBase):
 
         self.alignment_layer = alignment_layer
 
-    @classmethod
-    def from_opt(cls, opt, embeddings):
-        """Alternate constructor."""
-        return cls(
-            opt.dec_layers,
-            opt.dec_rnn_size,
-            opt.heads,
-            opt.transformer_ff,
-            opt.copy_attn,
-            opt.self_attn_type,
-            opt.dropout[0] if type(opt.dropout) is list else opt.dropout,
-            opt.attention_dropout[0] if type(opt.attention_dropout)
-            is list else opt.dropout,
-            embeddings,
-            opt.max_relative_positions,
-            opt.aan_useffn,
-            opt.full_context_alignment,
-            opt.alignment_layer,
-            alignment_heads=opt.alignment_heads)
 
     def init_state(self, src, memory_bank, enc_hidden):
         """Initialize decoder state."""
