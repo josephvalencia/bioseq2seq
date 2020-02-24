@@ -28,14 +28,16 @@ def parse_args():
     parser.add_argument("--input",'--i',help = "File containing RNA to Protein dataset")
 
     # optional args
-    parser.add_argument("--save-directory","--s",help="Name of directory for saving model checkpoints")
-    parser.add_argument("--log-directory",'--l',help = "Name of directory for saving TensorBoard log files" )
-    parser.add_argument("--learning-rate","--lr",type = float,default = 5e-3,help = "Optimizer learning rate")
-    parser.add_argument("--max-epochs","--e",type = int,default = 100000,help = "Maximum number of training epochs" )
-    parser.add_argument("--report-every",'--r',type = int, default = 808, help = "Number of iterations before calculating statistics")
-    parser.add_argument("--num_gpus","--g",type = int,default = 1, help = "Number of GPUs to use on node")
-    parser.add_argument("--accum_steps",type = int,default = 4, help= "Number of batches to accumulate gradients before update")
-    parser.add_argument("--rank",type = int, default = 0, help = "Rank of node in multi-node training")
+    parser.add_argument("--save-directory","--s", help = "Name of directory for saving model checkpoints")
+    parser.add_argument("--log-directory",'--l', help = "Name of directory for saving TensorBoard log files" )
+    parser.add_argument("--learning-rate","--lr", type = float, default = 5e-3,help = "Optimizer learning rate")
+    parser.add_argument("--max-epochs","--e", type = int, default = 100000,help = "Maximum number of training epochs" )
+    parser.add_argument("--report-every",'--r', type = int, default = 3031, help = "Number of iterations before calculating statistics")
+    parser.add_argument("--num_gpus","--g", type = int, default = 1, help = "Number of GPUs to use on node")
+    parser.add_argument("--accum_steps", type = int, default = 1, help = "Number of batches to accumulate gradients before update")
+    parser.add_argument("--rank", type = int, default = 0, help = "Rank of node in multi-node training")
+    parser.add_argument("--max_len_transcript", type = int, default = 1000, help = "Maximum length of transcript")
+    parser.add_argument("--patience", type = int, default = 15, help = "Maximum epochs without improvement")
 
     # optional flags
     parser.add_argument("--verbose",action="store_true")
@@ -47,16 +49,14 @@ def train_helper(rank,args,seq2seq,random_seed):
     random.seed(random_seed)
     random_state = random.getstate()
 
-    max_tokens_in_batch = 7000 # determined by GPU memory
-    world_size = args.num_gpus # total GPU devices
-    max_len_transcript = 1000 # maximum length of transcript
-    tolerance = 15 # max train epochs without improvement
+    # determined by GPU memory
+    max_tokens_in_batch = 7000
 
     # raw GENCODE transcript data. cols = ['ID','RNA','PROTEIN']
     dataframe = pd.read_csv(args.input)
 
     # obtain splits. Default 80/10/10. Filter below max_len_transcript
-    df_train,df_test,df_val = train_test_val_split(dataframe,max_len_transcript,random_seed)
+    df_train,df_test,df_val = train_test_val_split(dataframe,args.max_len_transcript,random_seed)
 
     # convert to torchtext.Dataset
     train,test,val = dataset_from_df(df_train,df_test,df_val)
@@ -87,13 +87,13 @@ def train_helper(rank,args,seq2seq,random_seed):
         torch.distributed.init_process_group(
             backend="nccl",
             init_method= "env://",
-            world_size=world_size,
+            world_size=args.num_gpus,
             rank=rank)
     else:
         train_iterator = iterator_from_dataset(train,max_tokens_in_batch,device,train=True)
 
     # computes position-wise NLLoss
-    criterion = torch.nn.NLLLoss(ignore_index = 1, reduction='sum')
+    criterion = torch.nn.NLLLoss(ignore_index = 1,reduction='sum')
     train_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
     val_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
 
@@ -101,8 +101,8 @@ def train_helper(rank,args,seq2seq,random_seed):
     adam = Adam(params = seq2seq.parameters())
     optim = Optimizer(adam,learning_rate = args.learning_rate)
 
-    # concludes training if progress does not improve for tolerance epochs
-    early_stopping = EarlyStopping(tolerance = tolerance)
+    # concludes training if progress does not improve for |patience| epochs
+    early_stopping = EarlyStopping(tolerance = args.patience)
 
     report_manager = saver = valid_state = valid_iterator = None
 
@@ -154,8 +154,10 @@ def wrap_validation_state(fields,rna,protein):
 
 def train(args):
 
+    # controls pseudorandom shuffling and partitioning of dataset
+    seed = 65
+
     seq2seq = make_transformer_model()
-    seed = 65 # controls pseudorandom shuffling and partitioning of dataset
 
     if args.num_gpus > 1:
         print("Multi-GPU training")

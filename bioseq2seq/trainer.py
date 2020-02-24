@@ -1,17 +1,12 @@
 """
     This is the loadable seq2seq trainer library that is
     in charge of training details, loss compute, and statistics.
-    See onmt_train.py for a use case of this library.
-
-    Note: To make this a general library, we implement *only*
-          mechanism things here(i.e. what to do), and leave the strategy
-          things to users(i.e. how to do it). Also see onmt_train.py(one of the
-          users of this library) for the strategy things we do.
 """
 
 import torch
 import traceback
 import datetime
+import time
 import bioseq2seq.utils
 from bioseq2seq.utils.logging import logger
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -53,6 +48,7 @@ class Trainer(object):
                  report_manager=None, with_align=False, model_saver=None,
                  average_decay=0, average_every=1, model_dtype='fp32',
                  earlystopper=None, dropout=[0.3], dropout_steps=[0]):
+
         # Basic attributes.
         self.model = model
         self.train_loss = train_loss
@@ -111,8 +107,7 @@ class Trainer(object):
         for batch in iterator:
             batches.append(batch)
             if self.norm_method == "tokens":
-                num_tokens = batch.tgt[1:, :, 0].ne(
-                    self.train_loss.padding_idx).sum()
+                num_tokens = batch.tgt[1:, :, 0].ne(self.train_loss.padding_idx).sum()
                 normalization += num_tokens.item()
             else:
                 normalization += batch.batch_size
@@ -166,11 +161,11 @@ class Trainer(object):
             logger.info('Start training loop and validate every %d steps...',
                         valid_steps)
 
-        #print("Inside trainer.train() type of val_iterator {}".format(type(valid_iter)))
-
         total_stats = bioseq2seq.utils.Statistics()
         report_stats = bioseq2seq.utils.Statistics()
         self._start_report_manager(start_time=total_stats.start_time)
+
+        begin_time = time.time()
 
         for i, (batches, normalization) in enumerate(
                 self._accum_batches(train_iter)):
@@ -192,13 +187,14 @@ class Trainer(object):
                 normalization = sum(bioseq2seq.utils.distributed
                                     .all_gather_list
                                     (normalization))
+
             self._gradient_accumulation(i,
                 batches, normalization, total_stats,
                 report_stats)
 
-
             if self.average_decay > 0 and i % self.average_every == 0:
                 self._update_average(step)
+
             report_stats = self._maybe_report_training(
                 step, train_steps,
                 self.optim.learning_rate(),
@@ -208,8 +204,9 @@ class Trainer(object):
                 if self.gpu_verbose_level > 0:
                     logger.info('GpuRank %d: validate step %d'
                                 % (self.gpu_rank, step))
+
                 valid_stats = self.validate(valid_iter, moving_average=self.moving_average)
-                #valid_stats = self.validate_structured(valid_iter,valid_state, moving_average = self.moving_average)
+                #valid_stats = self.validate_structured(valid_iter,valid_state, moving_average=self.moving_average)
 
                 if self.gpu_verbose_level > 0:
                     logger.info('GpuRank %d: gather valid stat \
@@ -221,13 +218,16 @@ class Trainer(object):
                 self._report_step(self.optim.learning_rate(),
                                   step, valid_stats=valid_stats)
 
+                elapsed = time.time() - begin_time
+                print("Elapsed time: {} minutes".format(elapsed/60.))
+                quit()
+
                 # Run patience mechanism
                 if self.earlystopper is not None:
                     self.earlystopper(valid_stats, step)
                     # If the patience has reached the limit, stop training
                     if self.earlystopper.has_stopped():
-                        print("EARLY STOPPING!!.Finishing Training")
-                        print(datetime.datetime.now())
+                        print("EARLY STOPPING!!Finishing Training")
                         break
 
             if (self.model_saver is not None
@@ -244,6 +244,7 @@ class Trainer(object):
         return total_stats
 
     def validate(self, valid_iter, moving_average=None):
+
         """ Validate model.
             valid_iter: validate data iterator
         Returns:
@@ -346,16 +347,17 @@ class Trainer(object):
 
         return stats
 
-    def _gradient_accumulation(self,q, true_batches, normalization, total_stats,
+    def _gradient_accumulation(self,batch_num,true_batches, normalization, total_stats,
                                report_stats):
         if self.accum_count > 1:
             self.optim.zero_grad()
 
         for k, batch in enumerate(true_batches):
 
-            batch_num = self.accum_count * q + k
+            true_batch_num = batch_num *self.accum_count + k
 
-            print("Entering batch {} with src shape {} and tgt shape {} from device {}".format(batch_num,batch.src[0].shape,batch.tgt.shape,self.rank))
+            msg = "Entering batch {} with src shape {} and tgt shape {} from device {}"
+            print(msg.format(true_batch_num,batch.src[0].shape,batch.tgt.shape,self.rank))
 
             target_size = batch.tgt.size(0)
 

@@ -32,8 +32,15 @@ def parse_args():
 
     return parser.parse_args()
 
-def restore_model(checkpoint,machine):
-    ''''''
+def restore_transformer_model(checkpoint,machine):
+
+    ''' Restore a Transformer model from .pt
+    Args:
+        checkpoint : path to .pt saved model
+        machine : torch device
+    Returns:
+        restored model'''
+
     model = make_transformer_model()
     model.load_state_dict(checkpoint['model'],strict = False)
     model.generator.load_state_dict(checkpoint['generator'])
@@ -43,9 +50,16 @@ def restore_model(checkpoint,machine):
 
 def make_vocab(fields,src,tgt):
 
+    '''Map Vocab and raw source/target text as required by bioseq.translate.Translator
+    Args:
+        fields : torchtext.Vocab to apply to data
+        src : input data (list(string))
+        tgt : output data (list(string))
+    Returns:
+        fields dictionary
+    '''
     src = TextMultiField('src',fields['src'],[])
     tgt = TextMultiField('tgt',fields['tgt'],[])
-    id = TextMultiField('id',RawField(),[])
 
     text_fields = get_fields(src_data_type ='text',
                              n_src_feats = 0,
@@ -59,29 +73,30 @@ def make_vocab(fields,src,tgt):
 
     return text_fields
 
-def translate_from_checkpoint(args):
-
-    machine = "cpu"
-
-    checkpoint = torch.load(args.checkpoint,map_location = machine)
+def translate_from_transformer_checkpt(args,machine):
 
     random_seed = 65
     random.seed(random_seed)
     state = random.getstate()
 
-    data = pd.read_csv(args.input)
-    train,test,dev = train_test_val_split(data,1000,random_seed) # replicate splits
+    data = pd.read_csv(args.input,sep="\t")
 
+    # replicate splits
+    train,test,dev = train_test_val_split(data,1000,random_seed)
+
+    # raw data
     ids = dev['ID'].tolist()
     protein =  dev['Protein'].tolist()
     rna = dev['RNA'].tolist()
 
-    model = restore_model(checkpoint,machine)
+    checkpoint = torch.load(args.checkpoint,map_location = machine)
+
+    model = restore_transformer_model(checkpoint,machine)
     text_fields = make_vocab(checkpoint['vocab'],rna,protein)
 
-    translate(args,model,text_fields,rna,protein,ids)
+    translate(model,text_fields,rna,protein,ids,args,machine)
 
-def translate(args,model,text_fields,rna,protein,ids):
+def translate(model,text_fields,rna,protein,ids,args,machine):
 
     # global scorer for beam decoding
     beam_scorer = GNMTGlobalScorer(alpha = args.alpha,
@@ -92,6 +107,8 @@ def translate(args,model,text_fields,rna,protein,ids):
     out_file = open("translations.out",'w')
 
     MAX_LEN = 500
+
+    gpu_num = -1 if machine == "cpu" else machine.index
 
     translator = Translator(model,
                             gpu = -1,
@@ -116,4 +133,5 @@ def translate(args,model,text_fields,rna,protein,ids):
 if __name__ == "__main__":
 
     args = parse_args()
-    translate_from_checkpoint(args)
+    machine = "cpu"
+    translate_from_transformer_checkpt(args,machine)
