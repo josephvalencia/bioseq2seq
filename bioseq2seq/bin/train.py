@@ -21,7 +21,9 @@ from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, parti
 from bioseq2seq.bin.models import make_transformer_model
 
 def parse_args():
-
+    """
+    Parse required and optional configuration arguments.
+    """
     parser = argparse.ArgumentParser()
 
     # required args
@@ -38,6 +40,8 @@ def parse_args():
     parser.add_argument("--rank", type = int, default = 0, help = "Rank of node in multi-node training")
     parser.add_argument("--max_len_transcript", type = int, default = 1000, help = "Maximum length of transcript")
     parser.add_argument("--patience", type = int, default = 15, help = "Maximum epochs without improvement")
+    parser.add_argument("--address",default =  "127.0.0.1",help = "IP address for master process in distributed training")
+    parser.add_argument("--port",default = "6000",help = "Port for master process in distributed training")
 
     # optional flags
     parser.add_argument("--verbose",action="store_true")
@@ -45,6 +49,14 @@ def parse_args():
     return parser.parse_args()
 
 def train_helper(rank,args,seq2seq,random_seed):
+
+    """ Train and validate on subset of data. In DistributedDataParallel setting, use one GPU per process.
+    Args:
+        rank (int): order of process in distributed training
+        args (argparse.namespace): See above
+        seq2seq (bioseq2seq.models.NMTModel): Encoder-Decoder + generator to train
+        random_seed (int): Used for deterministic dataset partitioning
+    """
 
     random.seed(random_seed)
     random_state = random.getstate()
@@ -81,8 +93,8 @@ def train_helper(rank,args,seq2seq,random_seed):
         train_iterator = iterator_from_dataset(local_slice,max_tokens_in_batch,device,train=True)
 
         # configure distributed training with environmental variables
-        os.environ['MASTER_ADDR'] = "127.0.0.1"
-        os.environ['MASTER_PORT'] = '6000'
+        os.environ['MASTER_ADDR'] = args.address
+        os.environ['MASTER_PORT'] = args.port
 
         torch.distributed.init_process_group(
             backend="nccl",
@@ -93,7 +105,7 @@ def train_helper(rank,args,seq2seq,random_seed):
         train_iterator = iterator_from_dataset(train,max_tokens_in_batch,device,train=True)
 
     # computes position-wise NLLoss
-    criterion = torch.nn.NLLLoss(ignore_index = 1,reduction='sum')
+    criterion = torch.nn.NLLLoss(ignore_index=1,reduction='sum')
     train_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
     val_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
 
@@ -150,7 +162,7 @@ def train_helper(rank,args,seq2seq,random_seed):
 def wrap_validation_state(fields,rna,protein):
 
     fields = make_vocab(fields,rna,protein)
-    return tuple([fields,rna,protein])
+    return (fields,rna,protein)
 
 def train(args):
 

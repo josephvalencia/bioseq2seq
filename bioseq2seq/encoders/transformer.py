@@ -3,7 +3,7 @@ Implementation of "Attention is All You Need"
 """
 
 import torch.nn as nn
-
+import torch
 from bioseq2seq.encoders.encoder import EncoderBase
 from bioseq2seq.modules import MultiHeadedAttention
 from bioseq2seq.modules.position_ffn import PositionwiseFeedForward
@@ -34,7 +34,7 @@ class TransformerEncoderLayer(nn.Module):
         self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, inputs, mask):
+    def forward(self, inputs, mask , attn_debug = False):
         """
         Args:
             inputs (FloatTensor): ``(batch_size, src_len, model_dim)``
@@ -46,10 +46,14 @@ class TransformerEncoderLayer(nn.Module):
             * outputs ``(batch_size, src_len, model_dim)``
         """
         input_norm = self.layer_norm(inputs)
-        context, _ = self.self_attn(input_norm, input_norm, input_norm,
+        context, attn_scores = self.self_attn(input_norm, input_norm, input_norm,
                                     mask=mask, attn_type="self")
         out = self.dropout(context) + inputs
-        return self.feed_forward(out)
+
+        if attn_debug:
+            return self.feed_forward(out), attn_scores
+        else:
+            return self.feed_forward(out)
 
     def update_dropout(self, dropout, attention_dropout):
         self.self_attn.update_dropout(attention_dropout)
@@ -101,7 +105,7 @@ class TransformerEncoder(EncoderBase):
         self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
 
 
-    def forward(self, src, lengths=None):
+    def forward(self, src, lengths=None, attn_debug = True):
         """See :func:`EncoderBase.forward()`"""
         self._check_args(src, lengths)
 
@@ -109,12 +113,18 @@ class TransformerEncoder(EncoderBase):
 
         out = emb.transpose(0, 1).contiguous()
         mask = ~sequence_mask(lengths).unsqueeze(1)
+
+        layer_attentions = []
+
         # Run the forward pass of every layer of the tranformer.
         for layer in self.transformer:
-            out = layer(out, mask)
+            out,attn = layer(out, mask,attn_debug)
+            layer_attentions.append(attn)
+
+        self_attns = torch.stack(layer_attentions,dim = 4)
         out = self.layer_norm(out)
 
-        return emb, out.transpose(0, 1).contiguous(), lengths
+        return emb, out.transpose(0, 1).contiguous(), lengths , self_attns
 
     def update_dropout(self, dropout, attention_dropout):
         self.embeddings.update_dropout(dropout)

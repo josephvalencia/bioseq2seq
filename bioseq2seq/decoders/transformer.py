@@ -65,22 +65,22 @@ class TransformerDecoderLayer(nn.Module):
             * attn_align ``(batch_size, 1, src_len)`` or None
         """
         with_align = kwargs.pop('with_align', False)
-        output, attns = self._forward(*args, **kwargs)
-        top_attn = attns[:, 0, :, :].contiguous()
+        output, dec_attns, context_attns = self._forward(*args, **kwargs)
+        top_attn = context_attns[:, 0, :, :].contiguous()
         attn_align = None
         if with_align:
             if self.full_context_alignment:
                 # return _, (B, Q_len, K_len)
-                _, attns = self._forward(*args, **kwargs, future=True)
+                _,dec_attns, context_attns = self._forward(*args, **kwargs, future=True)
 
             if self.alignment_heads is not None:
-                attns = attns[:, :self.alignment_heads, :, :].contiguous()
+                attns = context_attns[:, :self.alignment_heads, :, :].contiguous()
             # layer average attention across heads, get ``(B, Q, K)``
             # Case 1: no full_context, no align heads -> layer avg baseline
             # Case 2: no full_context, 1 align heads -> guided align
             # Case 3: full_context, 1 align heads -> full cte guided align
             attn_align = attns.mean(dim=1)
-        return output, top_attn, attn_align
+        return output, dec_attns, top_attn, attn_align
 
     def _forward(self, inputs, memory_bank, src_pad_mask, tgt_pad_mask,
                  layer_cache=None, step=None, future=False):
@@ -121,24 +121,24 @@ class TransformerDecoderLayer(nn.Module):
         input_norm = self.layer_norm_1(inputs)
 
         if isinstance(self.self_attn, MultiHeadedAttention):
-            query, _ = self.self_attn(input_norm, input_norm, input_norm,
+            query, dec_attns = self.self_attn(input_norm, input_norm, input_norm,
                                       mask=dec_mask,
                                       layer_cache=layer_cache,
                                       attn_type="self")
         elif isinstance(self.self_attn, AverageAttention):
-            query, _ = self.self_attn(input_norm, mask=dec_mask,
+            query, dec_attns = self.self_attn(input_norm, mask=dec_mask,
                                       layer_cache=layer_cache, step=step)
 
         query = self.drop(query) + inputs
 
         query_norm = self.layer_norm_2(query)
-        mid, attns = self.context_attn(memory_bank, memory_bank, query_norm,
+        mid, context_attns = self.context_attn(memory_bank, memory_bank, query_norm,
                                        mask=src_pad_mask,
                                        layer_cache=layer_cache,
                                        attn_type="context")
         output = self.feed_forward(self.drop(mid) + query)
 
-        return output, attns
+        return output, dec_attns, context_attns
 
     def update_dropout(self, dropout, attention_dropout):
         self.self_attn.update_dropout(attention_dropout)
@@ -163,7 +163,6 @@ class TransformerDecoder(DecoderBase):
           B --> BB
           BB --> C
           C --> O
-
 
     Args:
        num_layers (int): number of encoder layers.
@@ -206,7 +205,6 @@ class TransformerDecoder(DecoderBase):
 
         self.alignment_layer = alignment_layer
 
-
     def init_state(self, src, memory_bank, enc_hidden):
         """Initialize decoder state."""
         self.state["src"] = src
@@ -248,12 +246,12 @@ class TransformerDecoder(DecoderBase):
         tgt_pad_mask = tgt_words.data.eq(pad_idx).unsqueeze(1)  # [B, 1, T_tgt]
 
         with_align = kwargs.pop('with_align', False)
-        attn_aligns = []
 
+        attn_aligns = []
         for i, layer in enumerate(self.transformer_layers):
             layer_cache = self.state["cache"]["layer_{}".format(i)] \
                 if step is not None else None
-            output, attn, attn_align = layer(
+            output,dec_attn, context_attn, attn_align = layer(
                 output,
                 src_memory_bank,
                 src_pad_mask,
@@ -266,7 +264,7 @@ class TransformerDecoder(DecoderBase):
 
         output = self.layer_norm(output)
         dec_outs = output.transpose(0, 1).contiguous()
-        attn = attn.transpose(0, 1).contiguous()
+        attn = context_attn.transpose(0, 1).contiguous()
 
         attns = {"std": attn}
         if self._copy:

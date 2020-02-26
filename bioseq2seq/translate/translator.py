@@ -20,8 +20,6 @@ from bioseq2seq.translate.beam_search import BeamSearch
 from bioseq2seq.translate.greedy_search import GreedySearch
 from bioseq2seq.utils.misc import tile, set_random_seed, report_matrix
 from bioseq2seq.utils.alignment import extract_alignment, build_align_pharaoh
-from bioseq2seq.modules.copy_generator import collapse_copy_scores
-
 
 
 def max_tok_len(new, count, sofar):
@@ -73,10 +71,7 @@ class Translator(object):
         replace_unk (bool): Replace unknown token.
         data_type (str): Source data type.
         verbose (bool): Print/log every translation.
-        report_bleu (bool): Print/log Bleu metric.
-        report_rouge (bool): Print/log Rouge metric.
         report_time (bool): Print/log total time/frequency.
-        copy_attn (bool): Use copy attention.
         global_scorer (bioseq2seq.translate.GNMTGlobalScorer): Translation
             scoring/reranking object.
         out_file (TextIO or codecs.StreamReaderWriter): Output file.
@@ -106,16 +101,14 @@ class Translator(object):
             phrase_table="",
             data_type="text",
             verbose=False,
-            report_bleu=False,
-            report_rouge=False,
             report_time=False,
-            copy_attn=False,
-            global_scorer=None,
+            global_scorer = None,
             out_file=None,
             report_align=False,
             report_score=True,
             logger=None,
             seed=-1):
+
         self.model = model
         self.fields = fields
         tgt_field = dict(self.fields)["tgt"].base_field
@@ -155,11 +148,7 @@ class Translator(object):
         self.phrase_table = phrase_table
         self.data_type = data_type
         self.verbose = verbose
-        self.report_bleu = report_bleu
-        self.report_rouge = report_rouge
         self.report_time = report_time
-
-        self.copy_attn = copy_attn
 
         self.global_scorer = global_scorer
         if self.global_scorer.has_cov_pen and \
@@ -193,12 +182,11 @@ class Translator(object):
         else:
             print(msg)
 
-    def _gold_score(self, batch, memory_bank, src_lengths, src_vocabs,
-                    use_src_map, enc_states, batch_size, src):
+    def _gold_score(self, batch, memory_bank, src_lengths,
+                    enc_states, batch_size, src):
         if "tgt" in batch.__dict__:
             gs = self._score_target(
-                batch, memory_bank, src_lengths, src_vocabs,
-                batch.src_map if use_src_map else None)
+                batch, memory_bank, src_lengths)
             self.model.decoder.init_state(src, memory_bank, enc_states)
         else:
             gs = [0] * batch_size
@@ -335,8 +323,8 @@ class Translator(object):
                         srcs = trans.src_raw
                     else:
                         srcs = [str(item) for item in range(len(attns[0]))]
-                    self._visualize_attention_(transcript_name,preds,attns,srcs)
 
+                    #self._visualize_attention_(transcript_name,preds,attns,srcs)
                     #output = report_matrix(srcs, preds, attns)
 
                     if self.logger:
@@ -394,7 +382,6 @@ class Translator(object):
         src_len = len(srcs)
 
         format = "SRC_LEN: {}, PREDS_LEN: {}, ATTNS_LEN: {}, ATTNS[0]_LEN : {}"
-
         print(format.format(len(srcs),len(preds),len(attns),len(attns[0])))
 
         attns = [a[:src_len] for a in attns]
@@ -465,7 +452,7 @@ class Translator(object):
 
         n_best = batch_tgt_idxs.size(1)
         # (1) Encoder forward.
-        src, enc_states, memory_bank, src_lengths = self._run_encoder(batch)
+        src, enc_states, memory_bank, src_lengths, dec_attn = self._run_encoder(batch)
 
         # (2) Repeat src objects `n_best` times.
         # We use batch_size x n_best, get ``(src_len, batch * n_best, nfeat)``
@@ -526,14 +513,13 @@ class Translator(object):
                     exclusion_tokens=self._exclusion_idxs,
                     stepwise_penalty=self.stepwise_penalty,
                     ratio=self.ratio)
-            return self._translate_batch_with_strategy(batch, src_vocabs,
-                                                       decode_strategy)
+            return self._translate_batch_with_strategy(batch,decode_strategy)
 
     def _run_encoder(self, batch):
         src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                            else (batch.src, None)
 
-        enc_states, memory_bank, src_lengths = self.model.encoder(
+        enc_states, memory_bank, src_lengths, dec_attn = self.model.encoder(
             src, src_lengths)
         if src_lengths is None:
             assert not isinstance(memory_bank, tuple), \
@@ -542,23 +528,15 @@ class Translator(object):
                                .type_as(memory_bank) \
                                .long() \
                                .fill_(memory_bank.size(0))
-        return src, enc_states, memory_bank, src_lengths
+        return src, enc_states, memory_bank, src_lengths,dec_attn
 
     def _decode_and_generate(
             self,
             decoder_in,
             memory_bank,
             batch,
-            src_vocabs,
             memory_lengths,
-            src_map=None,
-            step=None,
-            batch_offset=None):
-        if self.copy_attn:
-            # Turn any copied words into UNKs.
-            decoder_in = decoder_in.masked_fill(
-                decoder_in.gt(self._tgt_vocab_len - 1), self._tgt_unk_idx
-            )
+            step=None):
 
         # Decoder forward, takes [tgt_len, batch, nfeats] as input
         # and [src_len, batch, hidden] as memory_bank
@@ -569,49 +547,25 @@ class Translator(object):
         )
 
         # Generator forward.
-        if not self.copy_attn:
-            if "std" in dec_attn:
-                attn = dec_attn["std"]
-            else:
-                attn = None
-            log_probs = self.model.generator(dec_out.squeeze(0))
-            # returns [(batch_size x beam_size) , vocab ] when 1 step
-            # or [ tgt_len, batch_size, vocab ] when full sentence
+
+        if "std" in dec_attn:
+            attn = dec_attn["std"]
         else:
-            attn = dec_attn["copy"]
-            scores = self.model .generator(dec_out.view(-1, dec_out.size(2)),
-                                          attn.view(-1, attn.size(2)),
-                                          src_map)
-            # here we have scores [tgt_lenxbatch, vocab] or [beamxbatch, vocab]
-            if batch_offset is None:
-                scores = scores.view(-1, batch.batch_size, scores.size(-1))
-                scores = scores.transpose(0, 1).contiguous()
-            else:
-                scores = scores.view(-1, self.beam_size, scores.size(-1))
-            scores = collapse_copy_scores(
-                scores,
-                batch,
-                self._tgt_vocab,
-                src_vocabs,
-                batch_dim=0,
-                batch_offset=batch_offset
-            )
-            scores = scores.view(decoder_in.size(0), -1, scores.size(-1))
-            log_probs = scores.squeeze(0).log()
-            # returns [(batch_size x beam_size) , vocab ] when 1 step
-            # or [ tgt_len, batch_size, vocab ] when full sentence
+            attn = None
+        log_probs = self.model.generator(dec_out.squeeze(0))
+        # returns [(batch_size x beam_size) , vocab ] when 1 step
+        # or [ tgt_len, batch_size, vocab ] when full sentence
+
         return log_probs, attn
 
     def _translate_batch_with_strategy(
             self,
             batch,
-            src_vocabs,
             decode_strategy):
         """Translate a batch of sentences step by step using cache.
 
         Args:
             batch: a batch of sentences, yield by data iterator.
-            src_vocabs (list): list of torchtext.data.Vocab if can_copy.
             decode_strategy (DecodeStrategy): A decode strategy to use for
                 generate translation step by step.
 
@@ -619,12 +573,13 @@ class Translator(object):
             results (dict): The translation results.
         """
         # (0) Prep the components of the search.
-        use_src_map = self.copy_attn
+
         parallel_paths = decode_strategy.parallel_paths  # beam_size
         batch_size = batch.batch_size
 
         # (1) Run the encoder on the src.
-        src, enc_states, memory_bank, src_lengths = self._run_encoder(batch)
+        src, enc_states, memory_bank, src_lengths, enc_attn = self._run_encoder(batch)
+        print("ENC_ATTN {}".format(enc_attn.shape))
         self.model.decoder.init_state(src, memory_bank, enc_states)
 
         results = {
@@ -633,11 +588,11 @@ class Translator(object):
             "attention": None,
             "batch": batch,
             "gold_score": self._gold_score(
-                batch, memory_bank, src_lengths, src_vocabs, use_src_map,
+                batch, memory_bank, src_lengths,
                 enc_states, batch_size, src)}
 
         # (2) prep decode_strategy. Possibly repeat src objects.
-        src_map = batch.src_map if use_src_map else None
+        src_map = None
         fn_map_state, memory_bank, memory_lengths, src_map = \
             decode_strategy.initialize(memory_bank, src_lengths, src_map)
         if fn_map_state is not None:
@@ -651,11 +606,8 @@ class Translator(object):
                 decoder_input,
                 memory_bank,
                 batch,
-                src_vocabs,
                 memory_lengths=memory_lengths,
-                src_map=src_map,
-                step=step,
-                batch_offset=decode_strategy.batch_offset)
+                step=step)
 
             decode_strategy.advance(log_probs, attn)
             any_finished = decode_strategy.is_finished.any()
@@ -686,6 +638,7 @@ class Translator(object):
         results["scores"] = decode_strategy.scores
         results["predictions"] = decode_strategy.predictions
         results["attention"] = decode_strategy.attention
+
         if self.report_align:
             results["alignment"] = self._align_forward(
                 batch, decode_strategy.predictions)
@@ -693,14 +646,13 @@ class Translator(object):
             results["alignment"] = [[] for _ in range(batch_size)]
         return results
 
-    def _score_target(self, batch, memory_bank, src_lengths,
-                      src_vocabs, src_map):
+    def _score_target(self, batch, memory_bank, src_lengths):
         tgt = batch.tgt
         tgt_in = tgt[:-1]
 
         log_probs, attn = self._decode_and_generate(
-            tgt_in, memory_bank, batch, src_vocabs,
-            memory_lengths=src_lengths, src_map=src_map)
+            tgt_in, memory_bank, batch,
+            memory_lengths=src_lengths)
 
         log_probs[:, :, self._tgt_pad_idx] = 0
         gold = tgt[1:]

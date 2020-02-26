@@ -41,14 +41,15 @@ class NMTModel(nn.Module):
         """
         dec_in = tgt[:-1]  # exclude last target from inputs
 
-        enc_state, memory_bank, lengths = self.encoder(src, lengths)
+        enc_state, memory_bank, lengths, enc_self_attn = self.encoder(src, lengths)
 
         if bptt is False:
             self.decoder.init_state(src, memory_bank, enc_state)
-        dec_out, attns = self.decoder(dec_in, memory_bank,
+        dec_out, dec_self_attn, enc_dec_attn = self.decoder(dec_in, memory_bank,
                                       memory_lengths=lengths,
                                       with_align=with_align)
-        return dec_out, attns
+
+        return dec_out, enc_self_attn, dec_self_attn, enc_dec_attn
 
     def update_dropout(self, dropout):
         self.encoder.update_dropout(dropout)

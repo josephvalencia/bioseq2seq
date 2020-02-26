@@ -13,6 +13,7 @@ from torchtext.data import RawField
 from bioseq2seq.bin.batcher import train_test_val_split
 
 def parse_args():
+    """ Parse required and optional configuration arguments."""
 
     parser = argparse.ArgumentParser()
 
@@ -33,7 +34,6 @@ def parse_args():
     return parser.parse_args()
 
 def restore_transformer_model(checkpoint,machine):
-
     ''' Restore a Transformer model from .pt
     Args:
         checkpoint : path to .pt saved model
@@ -49,15 +49,15 @@ def restore_transformer_model(checkpoint,machine):
     return model
 
 def make_vocab(fields,src,tgt):
-
-    '''Map Vocab and raw source/target text as required by bioseq.translate.Translator
+    """ Map torchtext.Vocab and raw source/target text as required by bioseq.translate.Translator
     Args:
-        fields : torchtext.Vocab to apply to data
-        src : input data (list(string))
-        tgt : output data (list(string))
+        fields (torchtext.Vocab): to apply to data
+        src (list(str)): input data
+        tgt (list(str)): output data
     Returns:
-        fields dictionary
-    '''
+        fields (dict)
+    """
+
     src = TextMultiField('src',fields['src'],[])
     tgt = TextMultiField('tgt',fields['tgt'],[])
 
@@ -73,13 +73,13 @@ def make_vocab(fields,src,tgt):
 
     return text_fields
 
-def translate_from_transformer_checkpt(args,machine):
+def translate_from_transformer_checkpt(args,device):
 
     random_seed = 65
     random.seed(random_seed)
     state = random.getstate()
 
-    data = pd.read_csv(args.input,sep="\t")
+    data = pd.read_csv(args.input)
 
     # replicate splits
     train,test,dev = train_test_val_split(data,1000,random_seed)
@@ -89,14 +89,24 @@ def translate_from_transformer_checkpt(args,machine):
     protein =  dev['Protein'].tolist()
     rna = dev['RNA'].tolist()
 
-    checkpoint = torch.load(args.checkpoint,map_location = machine)
+    checkpoint = torch.load(args.checkpoint,map_location = device)
 
-    model = restore_transformer_model(checkpoint,machine)
+    model = restore_transformer_model(checkpoint,device)
     text_fields = make_vocab(checkpoint['vocab'],rna,protein)
 
-    translate(model,text_fields,rna,protein,ids,args,machine)
+    translate(model,text_fields,rna,protein,ids,args,device)
 
-def translate(model,text_fields,rna,protein,ids,args,machine):
+def translate(model,text_fields,rna,protein,ids,args,device):
+    """ Translate raw data
+    Args:
+        model (bioseq2seq.translate.NMTModel): Encoder-Decoder + generator for translation
+        text_fields (dict): returned by make_vocab()
+        rna (list(str)): raw src (RNA) data
+        protein (list(str)): raw tgt (Protein) data
+        ids (list(str)): GENCODE ids
+        args (argparse.Namespace | dict): config arguments
+        device (torch.device | str): device for translation.
+    """
 
     # global scorer for beam decoding
     beam_scorer = GNMTGlobalScorer(alpha = args.alpha,
@@ -108,10 +118,10 @@ def translate(model,text_fields,rna,protein,ids,args,machine):
 
     MAX_LEN = 500
 
-    gpu_num = -1 if machine == "cpu" else machine.index
+    gpu_num = -1 if machine == "cpu" else int(device.split(":")[1])
 
     translator = Translator(model,
-                            gpu = -1,
+                            gpu = gpu_num,
                             src_reader = TextDataReader(),
                             tgt_reader = TextDataReader(),
                             fields = text_fields,
@@ -125,7 +135,7 @@ def translate(model,text_fields,rna,protein,ids,args,machine):
     predictions, golds, scores = translator.translate(src = rna,
                                                       tgt = protein,
                                                       names = ids,
-                                                      batch_size = 8,
+                                                      batch_size = 16,
                                                       attn_debug = True)
 
     out_file.close()
@@ -133,5 +143,5 @@ def translate(model,text_fields,rna,protein,ids,args,machine):
 if __name__ == "__main__":
 
     args = parse_args()
-    machine = "cpu"
+    machine = "cuda:0"
     translate_from_transformer_checkpt(args,machine)
