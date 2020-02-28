@@ -13,6 +13,7 @@ experiments/
 old_checkpoints/
 attn_entropy/
 attn_heatmap/
+/output/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

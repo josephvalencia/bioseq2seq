@@ -162,7 +162,7 @@ def train_helper(rank,args,seq2seq,random_seed):
 def wrap_validation_state(fields,rna,protein):
 
     fields = make_vocab(fields,rna,protein)
-    return (fields,rna,protein)
+    return fields,rna,protein
 
 def train(args):
 

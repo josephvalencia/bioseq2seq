@@ -123,7 +123,8 @@ class Translation(object):
         src_raw (List[str]): Raw source words.
         pred_sents (List[List[str]]): Words from the n-best translations.
         pred_scores (List[List[float]]): Log-probs of n-best translations.
-        attns (List[FloatTensor]) : Attention distribution for each
+        encoder_attn (SelfAttentionContainer)
+        context_attns (List[FloatTensor]) : Context (Encoder-Decoder) Attention distribution for each
             translation.
         gold_sent (List[str]): Words from gold translation.
         gold_score (List[float]): Log-prob of gold translation.
@@ -140,7 +141,7 @@ class Translation(object):
         self.src = src
         self.src_raw = src_raw
         self.pred_sents = pred_sents
-        self.attns = attn
+        self.context_attns = attn
         self.pred_scores = pred_scores
         self.gold_sent = tgt_sent
         self.gold_score = gold_score

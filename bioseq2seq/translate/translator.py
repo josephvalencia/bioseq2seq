@@ -20,7 +20,7 @@ from bioseq2seq.translate.beam_search import BeamSearch
 from bioseq2seq.translate.greedy_search import GreedySearch
 from bioseq2seq.utils.misc import tile, set_random_seed, report_matrix
 from bioseq2seq.utils.alignment import extract_alignment, build_align_pharaoh
-
+from bioseq2seq.utils.attention_stats import SelfAttentionDistribution
 
 def max_tok_len(new, count, sofar):
     """
@@ -236,6 +236,8 @@ class Translator(object):
             filter_pred=self._filter_pred
         )
 
+        enc_params = [name for name,param in self.model.encoder.named_parameters()]
+
         data_iter = inputters.OrderedIterator(
             dataset=data,
             device=self._dev,
@@ -324,14 +326,14 @@ class Translator(object):
                     else:
                         srcs = [str(item) for item in range(len(attns[0]))]
 
-                    #self._visualize_attention_(transcript_name,preds,attns,srcs)
-                    #output = report_matrix(srcs, preds, attns)
+                    # self._visualize_attention_(transcript_name,preds,attns,srcs)
+                    # output = report_matrix(srcs, preds, attns)
 
                     if self.logger:
-                        #self.logger.info(output)
+                        # self.logger.info(output)
                         pass
                     else:
-                        #os.write(1, output.encode('utf-8'))
+                        # os.write(1, output.encode('utf-8'))
                         pass
 
                 if align_debug:
@@ -519,7 +521,7 @@ class Translator(object):
         src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                            else (batch.src, None)
 
-        enc_states, memory_bank, src_lengths, dec_attn = self.model.encoder(
+        enc_states, memory_bank, src_lengths, enc_attn = self.model.encoder(
             src, src_lengths)
         if src_lengths is None:
             assert not isinstance(memory_bank, tuple), \
@@ -528,7 +530,7 @@ class Translator(object):
                                .type_as(memory_bank) \
                                .long() \
                                .fill_(memory_bank.size(0))
-        return src, enc_states, memory_bank, src_lengths,dec_attn
+        return src, enc_states, memory_bank, src_lengths,enc_attn
 
     def _decode_and_generate(
             self,
@@ -579,7 +581,13 @@ class Translator(object):
 
         # (1) Run the encoder on the src.
         src, enc_states, memory_bank, src_lengths, enc_attn = self._run_encoder(batch)
-        print("ENC_ATTN {}".format(enc_attn.shape))
+
+        # (B,H,L,L,N) -> (N,H,L,L)
+        test = enc_attn[0,:,:,:,:].permute(3,0,1,2)
+
+        enc_attn_state = SelfAttentionDistribution("testing",test)
+        enc_attn_state.summarize()
+
         self.model.decoder.init_state(src, memory_bank, enc_states)
 
         results = {

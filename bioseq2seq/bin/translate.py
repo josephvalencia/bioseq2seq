@@ -135,7 +135,7 @@ def translate(model,text_fields,rna,protein,ids,args,device):
     predictions, golds, scores = translator.translate(src = rna,
                                                       tgt = protein,
                                                       names = ids,
-                                                      batch_size = 16,
+                                                      batch_size = 14,
                                                       attn_debug = True)
 
     out_file.close()
