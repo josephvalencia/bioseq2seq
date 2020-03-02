@@ -51,7 +51,7 @@ class TransformerEncoderLayer(nn.Module):
         out = self.dropout(context) + inputs
 
         if attn_debug:
-            return self.feed_forward(out), attn_scores
+            return self.feed_forward(out), attn_scores 
         else:
             return self.feed_forward(out)
 
@@ -121,7 +121,7 @@ class TransformerEncoder(EncoderBase):
             out,attn = layer(out, mask,attn_debug)
             layer_attentions.append(attn)
 
-        self_attns = torch.stack(layer_attentions,dim = 4)
+        self_attns = torch.stack(layer_attentions,dim=4)
         out = self.layer_norm(out)
 
         return emb, out.transpose(0, 1).contiguous(), lengths , self_attns

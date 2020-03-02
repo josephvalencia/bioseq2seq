@@ -63,15 +63,16 @@ class TranslationBuilder(object):
                len(translation_batch["predictions"]))
         batch_size = batch.batch_size
 
-        preds, pred_score, attn, align, gold_score, indices = list(zip(
+        preds, pred_score, self_attn, context_attn, align, gold_score, indices = list(zip(
             *sorted(zip(translation_batch["predictions"],
                         translation_batch["scores"],
-                        translation_batch["attention"],
+                        translation_batch["self_attention"],
+                        translation_batch["context_attention"],
                         translation_batch["alignment"],
                         translation_batch["gold_score"],
                         batch.indices.data),
                     key=lambda x: x[-1])))
-
+        print(self_attn[0].shape)
         if not any(align):  # when align is a empty nested list
             align = [None] * batch_size
 
@@ -96,7 +97,7 @@ class TranslationBuilder(object):
             pred_sents = [self._build_target_tokens(
                 src[:, b] if src is not None else None,
                 src_vocab, src_raw,
-                preds[b][n], attn[b][n])
+                preds[b][n], context_attn[b][n])
                 for n in range(self.n_best)]
             gold_sent = None
             if tgt is not None:
@@ -107,7 +108,7 @@ class TranslationBuilder(object):
 
             translation = Translation(inds[b],
                 src[:, b] if src is not None else None,
-                src_raw, pred_sents, attn[b], pred_score[b],
+                                      src_raw, pred_sents, self_attn[0].permute(3,0,1,2), context_attn[b], pred_score[b],
                 gold_sent, gold_score[b], align[b]
             )
             translations.append(translation)
@@ -124,7 +125,7 @@ class Translation(object):
         pred_sents (List[List[str]]): Words from the n-best translations.
         pred_scores (List[List[float]]): Log-probs of n-best translations.
         encoder_attn (SelfAttentionContainer)
-        context_attns (List[FloatTensor]) : Context (Encoder-Decoder) Attention distribution for each
+        context_attn (List[FloatTensor]) : Context (Encoder-Decoder) Attention distribution for each
             translation.
         gold_sent (List[str]): Words from gold translation.
         gold_score (List[float]): Log-prob of gold translation.
@@ -132,16 +133,17 @@ class Translation(object):
             each translation.
     """
 
-    __slots__ = ["index","src", "src_raw", "pred_sents", "attns", "pred_scores",
+    __slots__ = ["index","src", "src_raw", "pred_sents", "self_attn", "context_attn", "pred_scores",
                  "gold_sent", "gold_score", "word_aligns"]
 
-    def __init__(self,index, src, src_raw, pred_sents,
-                 attn, pred_scores, tgt_sent, gold_score, word_aligns):
+    def __init__(self,index, src, src_raw, pred_sents,self_attn,
+                 context_attn, pred_scores, tgt_sent, gold_score, word_aligns):
         self.index = index
         self.src = src
         self.src_raw = src_raw
         self.pred_sents = pred_sents
-        self.context_attns = attn
+        self.self_attn = self_attn
+        self.context_attn = context_attn
         self.pred_scores = pred_scores
         self.gold_sent = tgt_sent
         self.gold_score = gold_score

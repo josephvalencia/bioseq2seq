@@ -40,7 +40,6 @@ def max_tok_len(new, count, sofar):
     src_elements = count * max_src_in_batch
     return src_elements
 
-
 class Translator(object):
     """Translate a batch of sentences with a saved model.
 
@@ -221,7 +220,7 @@ class Translator(object):
             * all_predictions is a list of `batch_size` lists
                 of `n_best` predictions
         """
- 
+
         if batch_size is None:
             raise ValueError("batch_size must be set")
 
@@ -282,6 +281,10 @@ class Translator(object):
 
                 transcript_name = names[trans.index]
 
+                enc_attn = trans.self_attn
+                enc_attn_state = SelfAttentionDistribution(transcript_name,enc_attn)
+                enc_attn_state.summarize()
+
                 if tgt is not None:
                     gold_score_total += trans.gold_score
                     gold_words_total += len(trans.gold_sent) + 1
@@ -293,7 +296,7 @@ class Translator(object):
                                       in trans.word_aligns[:self.n_best]]
                     n_best_preds_align = [" ".join(align) for align
                                           in align_pharaohs]
-                    n_best_preds = [pred + " ||| " + align
+                    n_best_preds= [pred + " ||| " + align
                                     for pred, align in zip(
                                         n_best_preds, n_best_preds_align)]
                 all_predictions += [n_best_preds]
@@ -320,13 +323,13 @@ class Translator(object):
                 if attn_debug:
                     preds = trans.pred_sents[0]
                     preds.append('</s>')
-                    attns = trans.attns[0].tolist()
+                    attns = trans.context_attn[0].tolist()
                     if self.data_type == 'text':
                         srcs = trans.src_raw
                     else:
                         srcs = [str(item) for item in range(len(attns[0]))]
 
-                    # self._visualize_attention_(transcript_name,preds,attns,srcs)
+                    #self._visualize_attention_(transcript_name,preds,attns,srcs)
                     # output = report_matrix(srcs, preds, attns)
 
                     if self.logger:
@@ -395,7 +398,7 @@ class Translator(object):
         plt.ylabel("Attention Entropy (bits)")
         plt.xlabel("Residue")
         plt.title("Attention Entropy "+name)
-        plt.savefig("attn_entropy/"+name+"_entropy.pdf")
+        plt.savefig("output/"+name+"context_entropy.pdf")
         plt.close()
 
         attns = preprocessing.scale(attns,axis = 1)
@@ -404,7 +407,7 @@ class Translator(object):
         ax = sns.heatmap(df,cmap="Blues")
 
         plt.title(name)
-        plt.savefig("attn_heatmap/"+name+"_heatmap.pdf")
+        plt.savefig("attn_heatmap/"+name+"context_heatmap.pdf")
         plt.xlabel("Nucleotide")
         plt.ylabel("Residue")
         plt.title("Normalized Attention Heatmap "+name)
@@ -549,7 +552,7 @@ class Translator(object):
         )
 
         # Generator forward.
-
+        
         if "std" in dec_attn:
             attn = dec_attn["std"]
         else:
@@ -570,7 +573,7 @@ class Translator(object):
             batch: a batch of sentences, yield by data iterator.
             decode_strategy (DecodeStrategy): A decode strategy to use for
                 generate translation step by step.
-
+        
         Returns:
             results (dict): The translation results.
         """
@@ -581,19 +584,14 @@ class Translator(object):
 
         # (1) Run the encoder on the src.
         src, enc_states, memory_bank, src_lengths, enc_attn = self._run_encoder(batch)
-
-        # (B,H,L,L,N) -> (N,H,L,L)
-        test = enc_attn[0,:,:,:,:].permute(3,0,1,2)
-
-        enc_attn_state = SelfAttentionDistribution("testing",test)
-        enc_attn_state.summarize()
-
+        print(enc_attn.shape)
         self.model.decoder.init_state(src, memory_bank, enc_states)
 
         results = {
             "predictions": None,
             "scores": None,
-            "attention": None,
+            "self_attention": enc_attn,
+            "context_attention" : None,
             "batch": batch,
             "gold_score": self._gold_score(
                 batch, memory_bank, src_lengths,
@@ -645,7 +643,7 @@ class Translator(object):
 
         results["scores"] = decode_strategy.scores
         results["predictions"] = decode_strategy.predictions
-        results["attention"] = decode_strategy.attention
+        results["context_attention"] = decode_strategy.attention
 
         if self.report_align:
             results["alignment"] = self._align_forward(

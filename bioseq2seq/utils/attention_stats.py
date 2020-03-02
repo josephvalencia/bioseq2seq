@@ -27,16 +27,14 @@ class SelfAttentionDistribution(object):
 
         for n in range(N):
             for h in range(H):
+
                 head_name = "layer-{}.head-{}".format(n,h)
+                print("Summarizing {}.{}".format(self.tscript_name,head_name))
+
                 dist = self.bulk_attn[n,h,:,:]
 
-                self.plot_entropy(head_name,dist)
                 self.plot_max(head_name,dist)
                 self.plot_center(head_name,dist)
-                #self.plot_heatmap(head_name,dist)
-                self.plot_center(head_name,dist,relative=True)
-                self.plot_max(head_name,dist,relative=True)
-                quit()
 
     def __attention_entropy__(self,attns):
         """
@@ -54,20 +52,19 @@ class SelfAttentionDistribution(object):
 
     def __max_attention__(self,attns,axis =1):
 
-        max = torch.argmax(attns, dim=axis)
+        max = torch.argmax(attns,dim=axis)
         return max.cpu().numpy()
 
     def plot_entropy(self,head_name,attns):
         """
             Args:
         """
-
         entropy = self.__attention_entropy__(attns)
 
         plt.plot(range(entropy.shape[0]),entropy)
-        plt.ylabel("Attention Entropy (bits)")
+        plt.ylabel("Entropy (bits)")
         plt.xlabel("Nucleotide")
-        plt.title("Attention Entropy "+self.tscript_name+"-"+head_name)
+        plt.title("Attention Entropy "+self.tscript_name+"."+head_name)
         plt.savefig("output/"+self.tscript_name+"/"+head_name+"_entropy.pdf")
         plt.close()
 
@@ -79,14 +76,17 @@ class SelfAttentionDistribution(object):
 
         if relative:
             offset = max_attns - np.arange(max_attns.shape[0])
-            plt.plot(range(max_attns.shape[0]),offset)
-            plt.title("Max Attention (Relative) "+self.tscript_name+"-"+head_name)
+            plt.scatter(range(max_attns.shape[0]),offset)
+            plt.xlabel("Nuc Index")
+            plt.ylabel("Max Index")
+            plt.title("Max Attention (Relative) "+self.tscript_name+"."+head_name)
             plt.savefig("output/"+self.tscript_name+"/"+head_name+"_max_relative.pdf")
         else:
-            plt.plot(range(max_attns.shape[0]),max_attns)
-            plt.title("Max Attention "+self.tscript_name+"-"+head_name)
+            plt.scatter(range(max_attns.shape[0]),max_attns)
+            plt.xlabel("Nuc Index")
+            plt.ylabel("Max Index")
+            plt.title("Max Attention "+self.tscript_name+"."+head_name)
             plt.savefig("output/"+self.tscript_name+"/"+head_name+"_max.pdf")
-
         plt.close()
 
     def plot_center(self,head_name,attns,relative = False):
@@ -97,22 +97,26 @@ class SelfAttentionDistribution(object):
 
         if relative:
             offset = centers - np.arange(centers.shape[0])
-            plt.plot(range(centers.shape[0]),offset)
-            plt.title("Center of Attention (Relative) "+self.tscript_name+"-"+head_name)
+            plt.xlabel("Nuc Index")
+            plt.ylabel("Center Index")
+            plt.scatter(range(centers.shape[0]),offset)
+            plt.title("Center of Attention (Relative) "+self.tscript_name+"."+head_name)
             plt.savefig("output/"+self.tscript_name+"/"+head_name+"_center_relative.pdf")
         else:
-            plt.plot(range(centers.shape[0]),centers)
-            plt.title("Center of Attention "+self.tscript_name+"-"+head_name)
+            plt.scatter(range(centers.shape[0]),centers)
+            plt.xlabel("Nuc Index")
+            plt.ylabel("Center Index")
+            plt.title("Center of Attention "+self.tscript_name+"."+head_name)
             plt.savefig("output/"+self.tscript_name+"/"+head_name+"_center.pdf")
-
         plt.close()
 
     def plot_heatmap(self,head_name,attns):
 
-        df = pd.DataFrame.from_records(attns)
+        df = pd.DataFrame.from_records(attns.cpu().numpy())
         ax = sns.heatmap(df,cmap="Blues")
-
-        plt.title("Attention Heatmap "+self.tscript_name+"-"+head_name)
+        plt.xlabel("Key")
+        plt.ylabel("Query")
+        plt.title("Attention Heatmap "+self.tscript_name+"."+head_name)
         plt.savefig("output/"+self.tscript_name+"/"+head_name+"_heatmap.pdf")
         plt.close()
 
