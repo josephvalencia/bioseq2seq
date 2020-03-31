@@ -25,7 +25,8 @@ def batch_size_fn(new, count, sofar):
     src_elements = count * max_src_in_batch
     tgt_elements = count * max_tgt_in_batch
 
-    #return src_elements+tgt_elements
+    # return src_elements+tgt_elements
+
     return src_elements
 
 class BatchMaker(torchtext.data.Iterator):
@@ -134,15 +135,24 @@ class TranslationIterator:
 
 def filter_by_length(translation_table,max_len,min_len=0):
     '''Filter dataframe to RNA within (min_len,max_len)'''
+
     translation_table['RNA_LEN'] = [len(x) for x in translation_table['RNA'].values]
     translation_table['Protein_LEN'] = [len(x) for x in translation_table['Protein'].values]
+
+    percentiles = [0.1 * x for x in range(1,10)]
+
+    #print("BEFORE")
+    #print(translation_table[['RNA_LEN','Protein_LEN']].describe(percentiles = percentiles))
 
     translation_table = translation_table[translation_table['RNA_LEN'] < max_len]
 
     if min_len > 0:
         translation_table =  translation_table[translation_table['RNA_LEN'] > min_len]
 
-    return translation_table[['ID','RNA','Protein']]
+    #print("AFTER")
+    #print(translation_table[['RNA_LEN','Protein_LEN']].describe(percentiles = percentiles))
+
+    return translation_table[['ID','RNA','CDS','Protein']]
 
 def tokenize(original):
     "Converts genome into list of nucleotides"
@@ -201,7 +211,6 @@ def partition(dataset, split_ratios, random_state):
 
     return splits
 
-
 def dataset_from_df(train,test,dev):
 
     # Fields define tensor attributes
@@ -210,11 +219,11 @@ def dataset_from_df(train,test,dev):
                 batch_first=False,
                 include_lengths=True)
 
-    PROTEIN =  Field(tokenize = tokenize,
+    PROTEIN =  Field(tokenize=tokenize,
                      use_vocab=True,
                      batch_first=False,
-                     is_target = True,
-                     include_lengths = False,
+                     is_target=True,
+                     include_lengths=False,
                      init_token = "<sos>",
                      eos_token = "<eos>")
 
@@ -227,8 +236,8 @@ def dataset_from_df(train,test,dev):
     splits = []
 
     for translation_table in [train,test,dev]:
-
-        reader = translation_table.to_dict(orient = 'records') # [{col:value}]
+        # [{col:value}]
+        reader = translation_table.to_dict(orient = 'records')
         examples = [Example.fromdict(line, fields) for line in reader]
 
         # Dataset expects fields as list
@@ -246,12 +255,15 @@ def dataset_from_df(train,test,dev):
     PROTEIN.build_vocab(*splits)
     RNA.build_vocab(*splits)
 
+    # print(RNA.vocab.stoi)
+    # print(PROTEIN.vocab.stoi)
+
     return tuple(splits)
 
 def iterator_from_dataset(dataset, max_tokens, device, train):
 
     return TranslationIterator(BatchMaker(dataset,
-                                          batch_size = max_tokens,
-                                          device = device,
-                                          repeat= train,
-                                          sort_mode ="source"))
+                                          batch_size=max_tokens,
+                                          device=device,
+                                          repeat=train,
+                                          sort_mode="source"))

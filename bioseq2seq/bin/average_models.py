@@ -2,7 +2,6 @@
 import argparse
 import torch
 
-
 def average_models(model_files, fp32=False):
     vocab = None
     opt = None
@@ -35,8 +34,8 @@ def average_models(model_files, fp32=False):
              "generator": avg_generator, "model": avg_model}
     return final
 
-
 def main():
+
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("-models", "-m", nargs="+", required=True,
                         help="List of models")
@@ -48,7 +47,6 @@ def main():
 
     final = average_models(opt.models, opt.fp32)
     torch.save(final, opt.output)
-
 
 if __name__ == "__main__":
     main()

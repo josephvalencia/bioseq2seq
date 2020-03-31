@@ -7,7 +7,6 @@ from collections import Counter, defaultdict
 class Evaluator:
 
     def __init__(self, k=15, best_of = 1, full_align = False, exact_match = False):
-
         self.k = k
         self.best_of_n = best_of
         self.full_align = full_align
@@ -43,14 +42,13 @@ class Evaluator:
                         msg = "BEST: {} PCT: {}\nBEST_N: {} PCT {}\nGOLD: {}\n"
                         print(msg.format(candidates[0],pct_align_best,candidates[best_n_loc],pct_align_best_n,gold))
 
-
                 if self.exact_match:
 
                     perfect_matches = [self.perfect_match(c,gold) for c in candidates]
                     best_stats['exact_match_rate'] += perfect_matches[0]
                     best_n_stats['exact_match_rate'] += max(perfect_matches)
 
-                if self.k >1:
+                if self.k > 1:
 
                     kmer_results = [self.kmer_overlap_scores(c,gold,self.k) for c in candidates]
 
@@ -78,7 +76,6 @@ class Evaluator:
         else: # report only best of 1
 
             for candidate,gold in zip(preds,golds):
-
                 if self.full_align:
                     best_match,best_total = self.emboss_needle(candidate,gold)
                     best_stats['avg_align_id'] += divide(best_match,best_total)
@@ -89,6 +86,7 @@ class Evaluator:
                     tp,ref_len,query_len = self.kmer_overlap_scores(candidate,gold,self.k)
                     best_stats['avg_kmer_recall'] += divide(tp,ref_len)
                     best_stats['avg_kmer_precision'] += divide(tp,query_len)
+
             # average
             for k in best_stats.keys():
                 best_stats[k] /= total_items
@@ -125,7 +123,6 @@ class Evaluator:
         return tp, len(reference) - k+1, len(query) - k+1
 
     def emboss_needle(self,seqa,seqb):
-
         '''Calculate Needleman-Wunsch global alignment percentage identity using needle from EMBOSS package.
         See http://www.bioinformatics.nl/cgi-bin/emboss/help/needle '''
 
@@ -140,7 +137,6 @@ class Evaluator:
         return int(match), int(total)
 
     def emboss_getorf(self,nucleotide_seq):
-
         '''Find longest Open Reading Frame (START-STOP) using getorf from needle package.
         See http://bioinf-hpc.ibun.unal.edu.co/cgi-bin/emboss/help/getorf'''
 

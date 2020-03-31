@@ -1,6 +1,7 @@
 # repo-specific stuff
 pred.txt
 multi-bleu.perl
+*.out
 *.pt
 .translations.out
 \#*#
@@ -8,6 +9,7 @@ multi-bleu.perl
 *.sublime-*
 .DS_Store
 data/
+/examples
 Fa/
 experiments/
 old_checkpoints/

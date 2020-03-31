@@ -20,7 +20,7 @@ from bioseq2seq.translate.beam_search import BeamSearch
 from bioseq2seq.translate.greedy_search import GreedySearch
 from bioseq2seq.utils.misc import tile, set_random_seed, report_matrix
 from bioseq2seq.utils.alignment import extract_alignment, build_align_pharaoh
-from bioseq2seq.utils.attention_stats import SelfAttentionDistribution
+from bioseq2seq.attention.attention_stats import SelfAttentionDistribution
 
 def max_tok_len(new, count, sofar):
     """
@@ -30,7 +30,7 @@ def max_tok_len(new, count, sofar):
     """
     # Maintains the longest src and tgt length in the current batch
     global max_src_in_batch  # this is a hack
-    # Reset current longest length at a new batch (count=1)
+    # Reset current longest leng th at a new batch (count=1)
     if count == 1:
         max_src_in_batch = 0
         # max_tgt_in_batch = 0
@@ -195,6 +195,7 @@ class Translator(object):
             self,
             src,
             names,
+            cds,
             tgt=None,
             src_dir=None,
             batch_size=None,
@@ -265,6 +266,7 @@ class Translator(object):
         start_time = time.time()
 
         number = 0
+        attn_file = open("attentions.out",'w')
 
         for batch in data_iter:
 
@@ -279,11 +281,21 @@ class Translator(object):
                 pred_score_total += trans.pred_scores[0]
                 pred_words_total += len(trans.pred_sents[0])
 
+                rna = "".join(trans.src_raw)
+
+                print("length of seq {}".format(len(rna)))
+
                 transcript_name = names[trans.index]
 
+                bounds = cds[trans.index]
+                cds_bounds = None if bounds == "-1" else [int(x) for x in bounds.split("-")]
+
                 enc_attn = trans.self_attn
-                enc_attn_state = SelfAttentionDistribution(transcript_name,enc_attn)
-                enc_attn_state.summarize()
+                print("size of attn {}".format(enc_attn.shape))
+                enc_attn_state = SelfAttentionDistribution(transcript_name,enc_attn,rna,cds_bounds)
+
+                summary = enc_attn_state.summarize()
+                attn_file.write(summary+"\n")
 
                 if tgt is not None:
                     gold_score_total += trans.gold_score
@@ -301,7 +313,6 @@ class Translator(object):
                                         n_best_preds, n_best_preds_align)]
                 all_predictions += [n_best_preds]
 
-                rna = "".join(trans.src_raw)
 
                 self.out_file.write("ID: {}\n".format(transcript_name))
                 self.out_file.write("RNA: {}\n".format(rna))
@@ -311,6 +322,7 @@ class Translator(object):
 
                 self.out_file.write("GOLD: "+"".join(trans.gold_sent)+"\n\n")
                 self.out_file.flush()
+                attn_file.flush()
 
                 if self.verbose:
                     sent_number = next(counter)
@@ -379,6 +391,8 @@ class Translator(object):
             import json
             json.dump(self.translator.beam_accum,
                       codecs.open(self.dump_beam, 'w', 'utf-8'))
+
+        attn_file.close()
 
         return all_predictions, all_golds, all_scores
 

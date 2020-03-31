@@ -246,6 +246,8 @@ if __name__ == "__main__":
     df_dev['BEST_N'] = all_best_n
     df_dev['BEST_PCT'] = all_best_pct
     df_dev['BEST_N_PCT'] = all_best_n_pct
+    print(df_dev[["BEST_N_PCT","BEST_PCT"]].describe())
+    quit()
     df_dev["GOLD"] = all_gold
     df_dev["INCOMPLETE"] = [ True if not x.startswith("M") else False for x in all_gold]
 

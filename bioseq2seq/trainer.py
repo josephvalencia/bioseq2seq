@@ -206,7 +206,7 @@ class Trainer(object):
                                 % (self.gpu_rank, step))
 
                 valid_stats = self.validate(valid_iter, moving_average=self.moving_average)
-                #valid_stats = self.validate_structured(valid_iter,valid_state, moving_average=self.moving_average)
+                valid_stats = self.validate_structured(valid_iter,valid_state, moving_average=self.moving_average)
 
                 if self.gpu_verbose_level > 0:
                     logger.info('GpuRank %d: gather valid stat \
@@ -219,8 +219,8 @@ class Trainer(object):
                                   step, valid_stats=valid_stats)
 
                 elapsed = time.time() - begin_time
-                print("Elapsed time: {} minutes".format(elapsed/60.))
-                quit()
+
+                #print("Elapsed time: {} minutes".format(elapsed/60.))
 
                 # Run patience mechanism
                 if self.earlystopper is not None:
@@ -273,7 +273,7 @@ class Trainer(object):
                 tgt = batch.tgt
 
                 # F-prop through the model.
-                outputs, attns = valid_model(src, tgt, src_lengths,
+                outputs, enc_attn, attns = valid_model(src, tgt, src_lengths,
                                              with_align=self.with_align)
                 # Compute loss.
                 _, batch_stats = self.valid_loss(batch, outputs, attns)
@@ -385,9 +385,9 @@ class Trainer(object):
 
                 if self.num_gpus > 1:
                     parallel_model = DDP(self.model,device_ids = [self.rank],output_device = self.rank)
-                    outputs,attns = parallel_model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
+                    outputs,enc_attn,attns = parallel_model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
                 else:
-                    outputs, attns = self.model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
+                    outputs,enc_attn, attns = self.model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
 
                 bptt = True
 

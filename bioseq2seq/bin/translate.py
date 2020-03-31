@@ -13,7 +13,7 @@ from torchtext.data import RawField
 from bioseq2seq.bin.batcher import train_test_val_split
 
 def parse_args():
-    """ Parse required and optional configuration arguments."""
+    """ Parse required and optional configuration arguments"""
 
     parser = argparse.ArgumentParser()
 
@@ -79,7 +79,7 @@ def translate_from_transformer_checkpt(args,device):
     random.seed(random_seed)
     state = random.getstate()
 
-    data = pd.read_csv(args.input)
+    data = pd.read_csv(args.input,sep="\t")
 
     # replicate splits
     train,test,dev = train_test_val_split(data,1000,random_seed)
@@ -88,15 +88,23 @@ def translate_from_transformer_checkpt(args,device):
     ids = dev['ID'].tolist()
     protein =  dev['Protein'].tolist()
     rna = dev['RNA'].tolist()
+    cds = dev['CDS'].tolist()
 
     checkpoint = torch.load(args.checkpoint,map_location = device)
+    saved_params = checkpoint['opt']
+
+    if not saved_params is None:
+        model_name = ""
+        print("----------- Saved Parameters for ------------ {}".format("SAVED MODEL"))
+        for k,v in vars(saved_params).items():
+            print(k,v)
 
     model = restore_transformer_model(checkpoint,device)
     text_fields = make_vocab(checkpoint['vocab'],rna,protein)
 
-    translate(model,text_fields,rna,protein,ids,args,device)
+    translate(model,text_fields,rna,protein,ids,cds,args,device)
 
-def translate(model,text_fields,rna,protein,ids,args,device):
+def translate(model,text_fields,rna,protein,ids,cds,args,device):
     """ Translate raw data
     Args:
         model (bioseq2seq.translate.NMTModel): Encoder-Decoder + generator for translation
@@ -135,9 +143,9 @@ def translate(model,text_fields,rna,protein,ids,args,device):
     predictions, golds, scores = translator.translate(src = rna,
                                                       tgt = protein,
                                                       names = ids,
+                                                      cds = cds,
                                                       batch_size = 1,
-                                                      attn_debug = False)
-
+                                                      attn_debug = True)
     out_file.close()
 
 if __name__ == "__main__":

@@ -14,19 +14,19 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.proj = nn.Linear(d_model, vocab)
 
-    def forward(self, x):
+    def forward(self,x):
 
         logits = F.log_softmax(self.proj(x), dim=-1)
         return logits
 
-def make_transformer_model(n=4,dim_model=128, dim_ff=2048, heads=8, dropout=0.1):
+def make_transformer_model(n=4,dim_model=128,dim_ff=2048, heads=8, dropout=0.1):
 
     ''' construct Transformer encoder-decoder from hyperparameters '''
 
     max_relative_positions = 10
     attention_dropout = 0.1
     NUM_INPUT_CLASSES = 6 # 4 nucleotides + <pad> + <unk>
-    NUM_OUTPUT_CLASSES = 26 # 20 amino acids + <pad> + <unk> + <sos> + <eos>
+    NUM_OUTPUT_CLASSES = 27 # 20 amino acids + <pad> + <unk> + <sos> + <eos> + ? <LNC> <PC>
 
     nucleotide_embeddings = Embeddings(word_vec_size = dim_model,
                                        word_vocab_size = NUM_INPUT_CLASSES,
@@ -68,10 +68,7 @@ def make_transformer_model(n=4,dim_model=128, dim_ff=2048, heads=8, dropout=0.1)
     model.generator = generator
 
     for p in model.parameters():
-
         if p.dim() > 1:
             nn.init.xavier_uniform_(p)
 
     return model
-
-
