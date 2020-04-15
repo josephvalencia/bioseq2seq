@@ -7,8 +7,8 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='BioSeq2Seq',
-    description='An implementation of seq2seq and language modeling for biological sequences',
+    name='RiboSeq2Seq',
+    description='An implementation of seq2seq for RNA translation',
     long_description=long_description,
     long_description_content_type='text/markdown',
     version='1.0.0.rc2',

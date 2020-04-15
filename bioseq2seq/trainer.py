@@ -155,11 +155,6 @@ class Trainer(object):
         Returns:
             The gathered statistics.
         """
-        if valid_iter is None:
-            logger.info('Start training loop without validation...')
-        else:
-            logger.info('Start training loop and validate every %d steps...',
-                        valid_steps)
 
         total_stats = bioseq2seq.utils.Statistics()
         report_stats = bioseq2seq.utils.Statistics()
@@ -171,22 +166,10 @@ class Trainer(object):
                 self._accum_batches(train_iter)):
 
             effective_batch_size = sum([x.tgt.shape[1] for x in batches])
-
             step = self.optim.training_step
+
             # UPDATE DROPOUT
             self._maybe_update_dropout(step)
-
-            if self.gpu_verbose_level > 1:
-                logger.info("GpuRank %d: index: %d", self.gpu_rank, i)
-            if self.gpu_verbose_level > 0:
-                logger.info("GpuRank %d: reduce_counter: %d \
-                            n_minibatch %d"
-                            % (self.gpu_rank, i + 1, len(batches)))
-
-            if self.n_gpu > 1:
-                normalization = sum(bioseq2seq.utils.distributed
-                                    .all_gather_list
-                                    (normalization))
 
             self._gradient_accumulation(i,
                 batches, normalization, total_stats,
@@ -201,25 +184,15 @@ class Trainer(object):
                 report_stats)
 
             if valid_iter is not None and step % valid_steps == 0 and self.rank == 0:
-                if self.gpu_verbose_level > 0:
-                    logger.info('GpuRank %d: validate step %d'
-                                % (self.gpu_rank, step))
 
-                valid_stats = self.validate(valid_iter, moving_average=self.moving_average)
+                # valid_stats = self.validate(valid_iter, moving_average=self.moving_average)
                 valid_stats = self.validate_structured(valid_iter,valid_state, moving_average=self.moving_average)
-
-                if self.gpu_verbose_level > 0:
-                    logger.info('GpuRank %d: gather valid stat \
-                                step %d' % (self.gpu_rank, step))
                 valid_stats = self._maybe_gather_stats(valid_stats)
-                if self.gpu_verbose_level > 0:
-                    logger.info('GpuRank %d: report stat step %d'
-                                % (self.gpu_rank, step))
+
                 self._report_step(self.optim.learning_rate(),
                                   step, valid_stats=valid_stats)
 
                 elapsed = time.time() - begin_time
-
                 #print("Elapsed time: {} minutes".format(elapsed/60.))
 
                 # Run patience mechanism
@@ -323,7 +296,7 @@ class Trainer(object):
                 tgt = batch.tgt
 
                 # F-prop through the model.
-                outputs, attns = valid_model(src, tgt, src_lengths,
+                outputs, enc_attn, attns  = valid_model(src, tgt, src_lengths,
                                             with_align=self.with_align)
                 # Compute loss.
                 _, batch_stats = self.valid_loss(batch, outputs, attns)
@@ -332,9 +305,10 @@ class Trainer(object):
                 stats.update(batch_stats)
 
             # Perform beam-search decoding and compute structured metrics
-            translations,gold,scores = translate(args,valid_model, *self.valid_state)
-            print(translations)
-            top_results,top_n_results = self.evaluator.calculate_scores(translations,gold)
+            translations,gold,scores = translate(valid_model, *valid_state)
+
+            top_results,top_n_results = self.evaluator.calculate_stats(translations,gold,full_align=True)
+            print(top_results)
 
             stats.update_structured(top_results,top_n_results)
 
@@ -369,6 +343,7 @@ class Trainer(object):
 
             src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                 else (batch.src, None)
+
             if src_lengths is not None and report_stats is not None:
                 report_stats.n_src_words += src_lengths.sum().item()
 
@@ -413,34 +388,16 @@ class Trainer(object):
                     logger.info("At step %d, we removed a batch - accum %d",
                                 self.optim.training_step, k)
 
-                # 4. Update the parameters and statistics.
                 if self.accum_count == 1:
-                    # Multi GPU gradient gather
-                    if self.n_gpu > 1:
-                        grads = [p.grad.data for p in self.model.parameters()
-                                 if p.requires_grad
-                                 and p.grad is not None]
-                        bioseq2seq.utils.distributed.all_reduce_and_rescale_tensors(
-                            grads, float(1))
                     self.optim.step()
 
                 # If truncated, don't backprop fully.
-                # TO CHECK
-                # if dec_state is not None:
-                #    dec_state.detach()
+
                 if self.model.decoder.state is not None:
                     self.model.decoder.detach_state()
 
         # in case of multi step gradient accumulation,
-        # update only after accum batches
-        if self.accum_count > 1:
-            if self.n_gpu > 1:
-                grads = [p.grad.data for p in self.model.parameters()
-                         if p.requires_grad
-                         and p.grad is not None]
-                bioseq2seq.utils.distributed.all_reduce_and_rescale_tensors(
-                    grads, float(1))
-            self.optim.step()
+        # update only after accum batchesk
 
     def _start_report_manager(self, start_time=None):
         """
@@ -453,19 +410,17 @@ class Trainer(object):
                 self.report_manager.start_time = start_time
 
     def _maybe_gather_stats(self, stat):
-        """
-        Gather statistics in multi-processes cases
-
-        Args:
-            stat(:obj:bioseq2seq.utils.Statistics): a Statistics object to gather
-                or None (it returns None in this case)
-
-        Returns:
-            stat: the updated (or unchanged) stat object
-        """
-        if stat is not None and self.n_gpu > 1:
-            return bioseq2seq.utils.Statistics.all_gather_stats(stat)
-        return stat
+            """
+            Gather statistics in multi-processes cases
+            Args:
+                stat(:obj:onmt.utils.Statistics): a Statistics object to gather
+                    or None (it returns None in this case)
+            Returns:
+                stat: the updated (or unchanged) stat object
+            """
+            if stat is not None and self.n_gpu > 1:
+                return bioseq2seq.utils.Statistics.all_gather_stats(stat)
+            return stat
 
     def _maybe_report_training(self, step, num_steps, learning_rate,
                                report_stats):

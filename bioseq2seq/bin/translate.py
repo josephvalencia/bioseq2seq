@@ -42,7 +42,7 @@ def restore_transformer_model(checkpoint,machine):
         restored model'''
 
     model = make_transformer_model()
-    model.load_state_dict(checkpoint['model'],strict = False)
+    model.load_state_dict(checkpoint['model'],strict=False)
     model.generator.load_state_dict(checkpoint['generator'])
     model.to(device = machine)
 
@@ -86,7 +86,9 @@ def translate_from_transformer_checkpt(args,device):
 
     # raw data
     ids = dev['ID'].tolist()
-    protein =  dev['Protein'].tolist()
+
+
+    protein = (dev['Type'] + dev['Protein']).tolist()
     rna = dev['RNA'].tolist()
     cds = dev['CDS'].tolist()
 
@@ -102,9 +104,9 @@ def translate_from_transformer_checkpt(args,device):
     model = restore_transformer_model(checkpoint,device)
     text_fields = make_vocab(checkpoint['vocab'],rna,protein)
 
-    translate(model,text_fields,rna,protein,ids,cds,args,device)
+    translate(model,text_fields,rna,protein,ids,cds,device,beam_size=args.beam_size,n_best=args.n_best)
 
-def translate(model,text_fields,rna,protein,ids,cds,args,device):
+def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,n_best = 4 ):
     """ Translate raw data
     Args:
         model (bioseq2seq.translate.NMTModel): Encoder-Decoder + generator for translation
@@ -117,37 +119,33 @@ def translate(model,text_fields,rna,protein,ids,cds,args,device):
     """
 
     # global scorer for beam decoding
-    beam_scorer = GNMTGlobalScorer(alpha = args.alpha,
+    beam_scorer = GNMTGlobalScorer(alpha = 1.0,
                                    beta = 0.0,
                                    length_penalty = "avg" ,
                                    coverage_penalty = "none")
 
-    out_file = open("translations.out",'w')
-
     MAX_LEN = 500
-
-    gpu_num = -1 if machine == "cpu" else int(device.split(":")[1])
+    outfile = open("translations.out",'w')
 
     translator = Translator(model,
-                            gpu = gpu_num,
+                            device = device,
                             src_reader = TextDataReader(),
                             tgt_reader = TextDataReader(),
                             fields = text_fields,
-                            beam_size = args.beam_size,
-                            n_best = args.n_best,
+                            beam_size = beam_size,
+                            n_best = n_best,
                             global_scorer = beam_scorer,
-                            out_file = out_file,
-                            verbose = True,
+                            verbose = False,
+                            outfile=outfile,
                             max_length = MAX_LEN)
 
     predictions, golds, scores = translator.translate(src = rna,
                                                       tgt = protein,
                                                       names = ids,
                                                       cds = cds,
-                                                      batch_size = 1,
-                                                      attn_debug = True)
-    out_file.close()
-
+                                                      batch_size = 8)
+    outfile.close()
+    return predictions,golds,scores
 if __name__ == "__main__":
 
     args = parse_args()

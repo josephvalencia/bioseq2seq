@@ -8,6 +8,7 @@ import bioseq2seq.models
 import bioseq2seq.utils
 import bioseq2seq.modules
 import bioseq2seq.bin
+import bioseq2seq.attention
 from bioseq2seq.trainer import Trainer
 import sys
 import bioseq2seq.utils.optimizers

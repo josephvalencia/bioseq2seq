@@ -15,6 +15,8 @@ experiments/
 old_checkpoints/
 attn_entropy/
 attn_heatmap/
+/comparison
+/stats
 /output/
 ./translations.out
 # Byte-compiled / optimized / DLL files

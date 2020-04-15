@@ -22,10 +22,8 @@ from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, parti
 from bioseq2seq.bin.models import make_transformer_model
 
 def parse_args():
-    """Parse required and optional configuration arguments."""
-
+    """Parse required and optional configuration arguments.""" 
     parser = argparse.ArgumentParser()
-
     # required args
     parser.add_argument("--input",'--i',help = "File containing RNA to Protein dataset")
 
@@ -34,7 +32,7 @@ def parse_args():
     parser.add_argument("--log-directory",'--l',default = "runs/", help = "Name of directory for saving TensorBoard log files" )
     parser.add_argument("--learning-rate","--lr", type = float, default = 1e-3,help = "Optimizer learning rate")
     parser.add_argument("--max-epochs","--e", type = int, default = 100000,help = "Maximum number of training epochs" )
-    parser.add_argument("--report-every",'--r', type = int, default = 1000, help = "Number of iterations before calculating statistics")
+    parser.add_argument("--report-every",'--r', type = int, default = 10, help = "Number of iterations before calculating statistics")
     parser.add_argument("--num_gpus","--g", type = int, default = 1, help = "Number of GPUs to use on node")
     parser.add_argument("--accum_steps", type = int, default = 1, help = "Number of batches to accumulate gradients before update")
     parser.add_argument("--rank", type = int, default = 0, help = "Rank of node in multi-node training")
@@ -69,7 +67,6 @@ def train_helper(rank,args,seq2seq,random_seed):
 
     # obtain splits. Default 80/10/10. Filter below max_len_transcript
     df_train,df_test,df_val = train_test_val_split(dataframe,args.max_len_transcript,random_seed)
-
     # convert to torchtext.Dataset
     train,test,val = dataset_from_df(df_train,df_test,df_val)
 
@@ -129,6 +126,7 @@ def train_helper(rank,args,seq2seq,random_seed):
         save_path =  args.save_directory + datetime.now().strftime('%b%d_%H-%M-%S')+"/"
 
         if not os.path.isdir(save_path):
+            print("Building directory ...")
             os.mkdir(save_path)
 
         saver = ModelSaver(base_path=save_path,
@@ -141,8 +139,11 @@ def train_helper(rank,args,seq2seq,random_seed):
 
         # Translator builds its own iterator from unprocessed data
         valid_state = wrap_validation_state(fields=valid_iterator.fields,
-                                            rna=df_val['RNA'].tolist()[:100],
-                                            protein=df_val['Protein'].tolist()[:100])
+                                            rna=df_val['RNA'].tolist()[:1000],
+                                            protein=(df_val['Type']+df_val['Protein']).tolist()[:1000],
+                                            id=df_val['ID'].tolist()[:1000],
+                                            cds=df_val['CDS'].tolist()[:1000],
+                                            device=device)
 
     # controls training and validation
     trainer = Trainer(seq2seq,
@@ -164,10 +165,10 @@ def train_helper(rank,args,seq2seq,random_seed):
                   valid_steps=args.report_every,
                   valid_state=valid_state)
 
-def wrap_validation_state(fields,rna,protein):
+def wrap_validation_state(fields,rna,protein,id,cds,device):
 
     fields = make_vocab(fields,rna,protein)
-    return fields,rna,protein
+    return fields,rna,protein,id,cds,device
 
 def restore_transformer_model(checkpoint):
 
@@ -214,3 +215,4 @@ if __name__ == "__main__":
 
     args = parse_args()
     train(args)
+    

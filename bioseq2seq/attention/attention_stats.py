@@ -39,7 +39,6 @@ class SelfAttentionDistribution(object):
             entry['CDS_START'] = -1
             entry['CDS_END'] = -1
 
-
         layers = []
 
         for n in range(N):
@@ -71,19 +70,19 @@ class SelfAttentionDistribution(object):
         return entropy.detach().cpu().numpy()
 
     def __center_of_attention__(self,attns,axis = 1):
-        """ Finds index where 1/2 of cumulative weight is to the left and 1/2 to the right.
-        """
+        """ Finds index where 1/2 of cumulative weight is to the left and 1/2 to the right."""
+
         cumulative = torch.cumsum(attns,axis)
         mask = cumulative <= 0.5
         return mask.sum(axis = 1).detach().cpu().numpy()
 
     def __max_attention__(self,attns,axis=1):
-        """ Finds index where maximum attention weight comes from.
-        """
+        """ Finds index where maximum attention weight comes from."""
+
         max = torch.argmax(attns,dim=axis)
         return max.detach().cpu().numpy()
 
-class AttentionGradientHandler(object):
+class AttentionGradientHandler:
 
     def __init__(self, encoder_params):
         self.encoder_params = encoder_params

@@ -28,19 +28,20 @@ def plot(values,cds_start,cds_end,xlabel,ylabel,title,mask_diagonal = False):
     else:
         x = np.arange(values.shape[0])
 
-    colors = get_colors(values,cds_start,cds_end)
-
-    plt.scatter(x,values,s=1,c=colors)
-    annotate_cds(cds_start,cds_end)
+    if cds_start != -1 and cds_end != -1:
+        colors = get_colors(values,cds_start,cds_end)
+        plt.scatter(x,values,s=1,c=colors)
+        annotate_cds(cds_start,cds_end)
+    else:
+        plt.scatter(x,values,s=1)
 
     plt.ylabel(ylabel)
     plt.xlabel(xlabel)
     plt.title(title)
 
 def get_colors(values,cds_start,cds_end):
-    # colorbrewer categorical color-blind safe
 
-    # green, orange, purple
+    # colorbrewer categorical color-blind safe green, orange, purple
     color_map = {0:"#66c2a5",1:"#fc8d62",2:"#8da0cb"}
 
     cds_len = cds_end - cds_start
@@ -82,10 +83,10 @@ def plot_max(max_attns,cds_start,cds_end,tscript_name,head_name,line = False,no_
 
 def plot_maxdist(max_attns,tscript_name,head_name):
 
-    distance = np.abs(max_attns - np.arange(max_attns.shape[0]))
-    sns.distplot(distance)
+    distance = max_attns - np.arange(max_attns.shape[0])
+    sns.distplot(distance,bins= 2 * max_attns.shape[0],kde=False)
     plt.xlabel("Distance to Max")
-    plt.ylabel("Density")
+    plt.ylabel("Count")
     plt.title(head_name)
 
 def plot_center(centers,cds_start,cds_end,tscript_name,head_name,line = False,no_diagonal = False):
@@ -138,7 +139,7 @@ def load_JSON(saved_attn):
                 max_PDF(layer,cds_start,cds_end,tscript_id)
                 maxdist_PDF(layer,tscript_id)
                 maxdist_txt(layer,tscript_id,seq)
-                entropy_PDF(layer,tscript_id)
+                #entropy_PDF(layer,tscript_id)
 
 def max_PDF(layer,cds_start,cds_end,tscript_id):
 
@@ -234,6 +235,7 @@ def maxdist_txt(layer,tscript_id,seq):
     with open(filename,'w') as outFile:
 
         for head in heads:
+
             head_name = "Head {}\n".format(head['head'])
             outFile.write(head_name)
             max_attns = head['max']

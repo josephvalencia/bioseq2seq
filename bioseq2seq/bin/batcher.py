@@ -1,7 +1,7 @@
 import torch as torch
 import pandas as pd
 import torchtext
-
+import re
 from torchtext.data import Dataset, Example,Batch,Field,RawField
 from torchtext.data.iterator import RandomShuffler
 import numpy as np
@@ -75,7 +75,6 @@ class TransformerBatch(torchtext.data.Batch):
             '''Construct TransformerBatch from Batch '''
 
             batch_items = vars(batch)
-
             dataset = batch_items.pop('dataset',None)
             batch_size = batch_items.pop('batch_size',None)
             fields = batch_items.pop('fields',None)
@@ -85,7 +84,6 @@ class TransformerBatch(torchtext.data.Batch):
             return translation_batch
 
         def setup(self):
-
             '''Modify batch attributes to conform with OpenNMT architecture'''
 
             x,x_lens = getattr(self,'src')
@@ -93,7 +91,6 @@ class TransformerBatch(torchtext.data.Batch):
             # add dummy dimension at axis = 2, src is a tuple
             self.src = torch.unsqueeze(x,2), x_lens
             self.tgt = torch.unsqueeze(getattr(self,'tgt'),2)
-
             self.id = getattr(self,'id')
 
 class TranslationIterator:
@@ -152,18 +149,32 @@ def filter_by_length(translation_table,max_len,min_len=0):
     #print("AFTER")
     #print(translation_table[['RNA_LEN','Protein_LEN']].describe(percentiles = percentiles))
 
-    return translation_table[['ID','RNA','CDS','Protein']]
+    return translation_table[['ID','RNA','CDS','Type','Protein']]
 
-def tokenize(original):
+def src_tokenize(original):
     "Converts genome into list of nucleotides"
+
     return [c for c in original]
+
+def tgt_tokenize(original):
+    "Converts protein into list of amino acids prepended with class label "
+
+    splits = re.match("(<\w*>)(\w*)",original)
+
+    if not splits is None:
+        label = splits.group(1)
+        protein = splits.group(2)
+    else:
+        label = "NONE"
+        protein = original
+    return [label]+[c for c in protein]
 
 def train_test_val_split(translation_table,max_len,random_seed,splits =[0.8,0.1,0.1]):
 
     # keep entries with RNA length < max_len
     translation_table = filter_by_length(translation_table,max_len)
     # shuffle
-    translation_table = translation_table.sample(frac = 1.0, random_state = random_seed).reset_index(drop=True)
+    translation_table = translation_table.sample(frac=1.0, random_state=random_seed).reset_index(drop=True)
     N = translation_table.shape[0]
 
     cumulative = [splits[0]]
@@ -214,30 +225,38 @@ def partition(dataset, split_ratios, random_state):
 def dataset_from_df(train,test,dev):
 
     # Fields define tensor attributes
-    RNA = Field(tokenize=tokenize,
+    RNA = Field(tokenize=src_tokenize,
                 use_vocab=True,
                 batch_first=False,
                 include_lengths=True)
 
-    PROTEIN =  Field(tokenize=tokenize,
+    PROTEIN =  Field(tokenize=tgt_tokenize,
                      use_vocab=True,
                      batch_first=False,
                      is_target=True,
                      include_lengths=False,
-                     init_token = "<sos>",
-                     eos_token = "<eos>")
+                     init_token="<sos>",
+                     eos_token="<eos>")
 
     # GENCODE ID is string not tensor
     ID = RawField()
-
-    # map column name to batch attribute and Field object
-    fields = {'ID':('id',ID),'RNA':('src', RNA), 'Protein':('tgt',PROTEIN)}
+    mode = "translate"
 
     splits = []
 
     for translation_table in [train,test,dev]:
+
+        # map column name to batch attribute and Field object
+
+        if mode == "classify":
+            fields = {'ID':('id',ID),'RNA':('src', RNA),'Type':('tgt',PROTEIN)}
+
+        elif mode == "translate":
+            translation_table['Protein'] = translation_table['Type']+translation_table['Protein']
+            fields = {'ID':('id',ID),'RNA':('src', RNA),'Protein':('tgt',PROTEIN)}
+
         # [{col:value}]
-        reader = translation_table.to_dict(orient = 'records')
+        reader = translation_table.to_dict(orient='records')
         examples = [Example.fromdict(line, fields) for line in reader]
 
         # Dataset expects fields as list

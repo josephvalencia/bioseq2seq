@@ -15,9 +15,9 @@ import matplotlib.pyplot as plt
 from sklearn import preprocessing
 
 import bioseq2seq.inputters as inputters
-import bioseq2seq.decoders.ensemble
 from bioseq2seq.translate.beam_search import BeamSearch
 from bioseq2seq.translate.greedy_search import GreedySearch
+from bioseq2seq.translate.translation import Translation, TranslationBuilder
 from bioseq2seq.utils.misc import tile, set_random_seed, report_matrix
 from bioseq2seq.utils.alignment import extract_alignment, build_align_pharaoh
 from bioseq2seq.attention.attention_stats import SelfAttentionDistribution
@@ -73,7 +73,6 @@ class Translator(object):
         report_time (bool): Print/log total time/frequency.
         global_scorer (bioseq2seq.translate.GNMTGlobalScorer): Translation
             scoring/reranking object.
-        out_file (TextIO or codecs.StreamReaderWriter): Output file.
         report_score (bool) : Whether to report scores
         logger (logging.Logger or NoneType): Logger.
     """
@@ -84,7 +83,7 @@ class Translator(object):
             fields,
             src_reader,
             tgt_reader,
-            gpu=-1,
+            device="cpu",
             n_best=1,
             min_length=0,
             max_length=100,
@@ -102,7 +101,7 @@ class Translator(object):
             verbose=False,
             report_time=False,
             global_scorer = None,
-            out_file=None,
+            outfile=None,
             report_align=False,
             report_score=True,
             logger=None,
@@ -118,10 +117,8 @@ class Translator(object):
         self._tgt_unk_idx = self._tgt_vocab.stoi[tgt_field.unk_token]
         self._tgt_vocab_len = len(self._tgt_vocab)
 
-        self._gpu = gpu
-        self._use_cuda = gpu > -1
-        self._dev = torch.device("cuda", self._gpu) \
-            if self._use_cuda else torch.device("cpu")
+        self._dev = device
+        self._use_cuda = self._dev != "cpu"
 
         self.n_best = n_best
         self.max_length = max_length
@@ -154,7 +151,8 @@ class Translator(object):
                 not self.model.decoder.attentional:
             raise ValueError(
                 "Coverage penalty requires an attentional decoder.")
-        self.out_file = out_file
+
+        self.out_file = outfile
         self.report_align = report_align
         self.report_score = report_score
         self.logger = logger
@@ -200,7 +198,8 @@ class Translator(object):
             src_dir=None,
             batch_size=None,
             batch_type="sents",
-            attn_debug=False,
+            save_preds=False,
+            save_attn=False,
             align_debug=False,
             phrase_table=""):
         """Translate content of ``src`` and get gold scores from ``tgt``.
@@ -236,8 +235,6 @@ class Translator(object):
             filter_pred=self._filter_pred
         )
 
-        enc_params = [name for name,param in self.model.encoder.named_parameters()]
-
         data_iter = inputters.OrderedIterator(
             dataset=data,
             device=self._dev,
@@ -249,10 +246,8 @@ class Translator(object):
             shuffle=False
         )
 
-        xlation_builder = bioseq2seq.translate.TranslationBuilder(
-            data, self.fields, self.n_best, self.replace_unk, tgt,
-            self.phrase_table
-        )
+        xlation_builder = TranslationBuilder(data, self.fields, self.n_best,
+                                             self.replace_unk, tgt, self.phrase_table)
 
         # Statistics
         counter = count(1)
@@ -265,103 +260,58 @@ class Translator(object):
 
         start_time = time.time()
 
-        number = 0
-        attn_file = open("attentions.out",'w')
+        if save_attn:
+            attn_file = open("attentions.out",'w')
 
         for batch in data_iter:
 
             batch_data = self.translate_batch(
-                batch, data.src_vocabs, attn_debug
+                batch, data.src_vocabs, save_attn
             )
 
             translations = xlation_builder.from_batch(batch_data)
 
             for trans in translations:
+
                 all_scores += [trans.pred_scores[:self.n_best]]
                 pred_score_total += trans.pred_scores[0]
                 pred_words_total += len(trans.pred_sents[0])
 
                 rna = "".join(trans.src_raw)
-
-                print("length of seq {}".format(len(rna)))
-
                 transcript_name = names[trans.index]
 
                 bounds = cds[trans.index]
                 cds_bounds = None if bounds == "-1" else [int(x) for x in bounds.split("-")]
 
                 enc_attn = trans.self_attn
-                print("size of attn {}".format(enc_attn.shape))
                 enc_attn_state = SelfAttentionDistribution(transcript_name,enc_attn,rna,cds_bounds)
-
                 summary = enc_attn_state.summarize()
-                attn_file.write(summary+"\n")
+
+                if save_attn:
+                    attn_file.write(summary+"\n")
+                    attn_file.flush()
 
                 if tgt is not None:
                     gold_score_total += trans.gold_score
                     gold_words_total += len(trans.gold_sent) + 1
-                    all_golds.append(trans.gold_sent)
-                n_best_preds = ["".join(pred)
-                                for pred in trans.pred_sents[:self.n_best]]
-                if self.report_align:
-                    align_pharaohs = [build_align_pharaoh(align) for align
-                                      in trans.word_aligns[:self.n_best]]
-                    n_best_preds_align = [" ".join(align) for align
-                                          in align_pharaohs]
-                    n_best_preds= [pred + " ||| " + align
-                                    for pred, align in zip(
-                                        n_best_preds, n_best_preds_align)]
+                    all_golds.append("".join(trans.gold_sent))
+
+                n_best_preds = ["".join(pred) for pred in trans.pred_sents[:self.n_best]]
                 all_predictions += [n_best_preds]
 
+                if save_preds:
+                    self.out_file.write("ID: {}\n".format(transcript_name))
+                    self.out_file.write("RNA: {}\n".format(rna))
 
-                self.out_file.write("ID: {}\n".format(transcript_name))
-                self.out_file.write("RNA: {}\n".format(rna))
+                    for pred in n_best_preds:
+                        self.out_file.write("PRED: "+pred+"\n")
 
-                for pred in n_best_preds:
-                    self.out_file.write("PRED: "+pred+"\n")
-
-                self.out_file.write("GOLD: "+"".join(trans.gold_sent)+"\n\n")
-                self.out_file.flush()
-                attn_file.flush()
+                    self.out_file.write("GOLD: "+"".join(trans.gold_sent)+"\n\n")
+                    self.out_file.flush()
 
                 if self.verbose:
                     sent_number = next(counter)
                     output = trans.log(sent_number)
-                    if self.logger:
-                        self.logger.info(output)
-                    else:
-                        os.write(1, output.encode('utf-8'))
-
-                if attn_debug:
-                    preds = trans.pred_sents[0]
-                    preds.append('</s>')
-                    attns = trans.context_attn[0].tolist()
-                    if self.data_type == 'text':
-                        srcs = trans.src_raw
-                    else:
-                        srcs = [str(item) for item in range(len(attns[0]))]
-
-                    #self._visualize_attention_(transcript_name,preds,attns,srcs)
-                    # output = report_matrix(srcs, preds, attns)
-
-                    if self.logger:
-                        # self.logger.info(output)
-                        pass
-                    else:
-                        # os.write(1, output.encode('utf-8'))
-                        pass
-
-                if align_debug:
-                    if trans.gold_sent is not None:
-                        tgts = trans.gold_sent
-                    else:
-                        tgts = trans.pred_sents[0]
-                    align = trans.word_aligns[0].tolist()
-                    if self.data_type == 'text':
-                        srcs = trans.src_raw
-                    else:
-                        srcs = [str(item) for item in range(len(align[0]))]
-                    output = report_matrix(srcs, tgts, align)
                     if self.logger:
                         self.logger.info(output)
                     else:
@@ -378,7 +328,6 @@ class Translator(object):
                                          gold_words_total)
                 self._log(msg)
 
-
         if self.report_time:
             total_time = end_time - start_time
             self._log("Total translation time (s): %f" % total_time)
@@ -391,53 +340,20 @@ class Translator(object):
             import json
             json.dump(self.translator.beam_accum,
                       codecs.open(self.dump_beam, 'w', 'utf-8'))
+        if save_attn:
+            attn_file.close()
 
-        attn_file.close()
-
-        return all_predictions, all_golds, all_scores
-
-    def _visualize_attention_(self,name,preds,attns,srcs):
-
-        src_len = len(srcs)
-
-        format = "SRC_LEN: {}, PREDS_LEN: {}, ATTNS_LEN: {}, ATTNS[0]_LEN : {}"
-        print(format.format(len(srcs),len(preds),len(attns),len(attns[0])))
-
-        attns = [a[:src_len] for a in attns]
-        attns = np.asarray(attns)
-
-        normalized_entropy = - (np.log2(attns) * attns).sum(axis=1)
-
-        plt.plot(range(len(normalized_entropy)),normalized_entropy.tolist())
-        plt.ylabel("Attention Entropy (bits)")
-        plt.xlabel("Residue")
-        plt.title("Attention Entropy "+name)
-        plt.savefig("output/"+name+"context_entropy.pdf")
-        plt.close()
-
-        attns = preprocessing.scale(attns,axis = 1)
-
-        df = pd.DataFrame.from_records(attns)
-        ax = sns.heatmap(df,cmap="Blues")
-
-        plt.title(name)
-        plt.savefig("attn_heatmap/"+name+"context_heatmap.pdf")
-        plt.xlabel("Nucleotide")
-        plt.ylabel("Residue")
-        plt.title("Normalized Attention Heatmap "+name)
-        plt.close()
+        return all_predictions,all_golds,all_scores
 
     def _align_pad_prediction(self, predictions, bos, pad):
         """
         Padding predictions in batch and add BOS.
-
         Args:
             predictions (List[List[Tensor]]): `(batch, n_best,)`, for each src
                 sequence contain n_best tgt predictions all of which ended with
                 eos id.
             bos (int): bos index to be used.
             pad (int): pad index to be used.
-
         Return:
             batched_nbest_predict (torch.LongTensor): `(batch, n_best, tgt_l)`
         """
@@ -566,7 +482,7 @@ class Translator(object):
         )
 
         # Generator forward.
-        
+
         if "std" in dec_attn:
             attn = dec_attn["std"]
         else:
@@ -587,7 +503,6 @@ class Translator(object):
             batch: a batch of sentences, yield by data iterator.
             decode_strategy (DecodeStrategy): A decode strategy to use for
                 generate translation step by step.
-        
         Returns:
             results (dict): The translation results.
         """
@@ -598,7 +513,7 @@ class Translator(object):
 
         # (1) Run the encoder on the src.
         src, enc_states, memory_bank, src_lengths, enc_attn = self._run_encoder(batch)
-        print(enc_attn.shape)
+
         self.model.decoder.init_state(src, memory_bank, enc_states)
 
         results = {

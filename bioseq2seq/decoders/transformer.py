@@ -10,7 +10,6 @@ from bioseq2seq.modules import MultiHeadedAttention, AverageAttention
 from bioseq2seq.modules.position_ffn import PositionwiseFeedForward
 from bioseq2seq.utils.misc import sequence_mask
 
-
 class TransformerDecoderLayer(nn.Module):
     """
     Args:
@@ -94,7 +93,6 @@ class TransformerDecoderLayer(nn.Module):
 
         Returns:
             (FloatTensor, FloatTensor):
-
             * output ``(batch_size, 1, model_dim)``
             * attns ``(batch_size, head, 1, src_len)``
 

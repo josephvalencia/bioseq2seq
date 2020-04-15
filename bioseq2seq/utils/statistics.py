@@ -30,6 +30,7 @@ class Statistics(object):
         self.kmer_recall_best = None
         self.exact_match_best = None
         self.align_id_best = None
+        self.f1 = None
 
         # Structured metrics (TopN)
         self.kmer_precision_best_n = None
@@ -109,6 +110,8 @@ class Statistics(object):
         if 'exact_match_rate' in best_results:
             self.exact_match_best = best_results['exact_match_rate']
 
+        self.f1 = best_results["F1"]
+
         if best_n_results is not None:
 
             self.kmer_recall_best_n = best_results['avg_kmer_recall']
@@ -185,6 +188,9 @@ class Statistics(object):
         if self.align_id_best is not None:
             writer.add_scalar(prefix + "/alignid",self.align_id_best,step)
 
+        if self.f1 is not None:
+            writer.add_scalar(prefix + "/class_f1",self.f1,step)
+
         if self.kmer_recall_best_n is not None:
             writer.add_scalar(prefix + "/krecalltop4", self.kmer_recall_best, step)
 
@@ -196,6 +202,7 @@ class Statistics(object):
 
         if self.align_id_best_n is not None:
             writer.add_scalar(prefix + "/alignidtop4",self.align_id_best_n,step)
+
 
 
 

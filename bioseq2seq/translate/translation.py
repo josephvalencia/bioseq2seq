@@ -72,7 +72,6 @@ class TranslationBuilder(object):
                         translation_batch["gold_score"],
                         batch.indices.data),
                     key=lambda x: x[-1])))
-        print(self_attn[0].shape)
         if not any(align):  # when align is a empty nested list
             align = [None] * batch_size
 

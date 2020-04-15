@@ -1,6 +1,20 @@
 from Bio import SeqIO
-import sys,re
+import os,sys,re
+import shlex
 import pandas as pd
+import subprocess
+
+def download_GENCODE():
+
+    prefix = "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_33/"
+
+    downloads = ["annotation.gff3","lncRNA_transcripts.fa","pc_transcripts.fa","pc_translations.fa"]
+
+    for f in downloads:
+        remote = "gencode.v33.{}.gz".format(f)
+        cmd = shlex.split("wget {}{}".format(prefix,remote))
+        subprocess.run(cmd)
+        subprocess.run(shlex.split("gunzip "+remote))
 
 class TranslationTable:
 
@@ -14,11 +28,7 @@ class TranslationTable:
 
     def add_RNA(self,seq_record):
 
-        #id_fields = seq_record.id.split("|")
         tscript_name, cds = self.get_name_cds(seq_record.id)
-
-        print(tscript_name)
-        print(cds)
 
         if tscript_name not in self.table and tscript_name in self.coding:
             new_entry = {"RNA" : seq_record.seq, "TYPE" : "<PC>", "CDS": cds}
@@ -43,8 +53,8 @@ class TranslationTable:
     def to_csv(self,translation_file):
 
         table = self.table
-        linear = [ (k,table[k]["RNA"],table[k]["CDS"],table[k]["PROTEIN"]) for k in table.keys() ]
-        df = pd.DataFrame(linear,columns = ['ID','RNA','CDS','Protein'])
+        linear = [ (k,table[k]["RNA"],table[k]["CDS"],table[k]["TYPE"],table[k]["PROTEIN"]) for k in table.keys() ]
+        df = pd.DataFrame(linear,columns = ['ID','RNA','CDS','Type','Protein'])
         df = df.set_index('ID')
         df = df.sample(frac = 1.0, random_state = 65)
         df.to_csv(translation_file,sep = "\t")
@@ -125,7 +135,9 @@ def parse_GFF(gff):
         for line in inFile:
             if not line.startswith("#"):
                 fields = line.split("\t")
+
                 if fields[2] == "transcript":
+
                     count_transcript +=1
                     entry = {"chr" : fields[0],"database" : fields[1],"feature" : fields[2],"start" : fields[3],"end" : fields[4],"strand" : fields[6]}
                     info = fields[8].split(";")
@@ -161,6 +173,8 @@ def parse_GFF(gff):
 
 if __name__ =="__main__":
 
+    #download_GENCODE()
+
     mRNA_file = sys.argv[1]
     lncRNA_file = sys.argv[2]
     protein_file = sys.argv[3]
@@ -169,5 +183,5 @@ if __name__ =="__main__":
     mRNA,alt,noncoding = parse_GFF(annotation_file)
     coding = mRNA | alt
 
-    dataset_from_fasta_v1(mRNA_file,protein_file,lncRNA_file,coding,noncoding,"coding_nocoding.map")
+    dataset_from_fasta_v1(mRNA_file,protein_file,lncRNA_file,coding,noncoding,"coding_nocoding_enhanced.map")
     #dataset_from_fasta_v2(mRNA_file,protein_file,mRNA,"coding.map")

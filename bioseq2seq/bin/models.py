@@ -21,12 +21,12 @@ class Generator(nn.Module):
 
 def make_transformer_model(n=4,dim_model=128,dim_ff=2048, heads=8, dropout=0.1):
 
-    ''' construct Transformer encoder-decoder from hyperparameters '''
+    '''construct Transformer encoder-decoder from hyperparameters'''
 
     max_relative_positions = 10
     attention_dropout = 0.1
     NUM_INPUT_CLASSES = 6 # 4 nucleotides + <pad> + <unk>
-    NUM_OUTPUT_CLASSES = 27 # 20 amino acids + <pad> + <unk> + <sos> + <eos> + ? <LNC> <PC>
+    NUM_OUTPUT_CLASSES = 28 # 20 amino acids + <pad> + <unk> + <sos> + <eos> + ? <LNC> <PC>
 
     nucleotide_embeddings = Embeddings(word_vec_size = dim_model,
                                        word_vocab_size = NUM_INPUT_CLASSES,
