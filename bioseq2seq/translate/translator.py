@@ -10,6 +10,7 @@ from itertools import count, zip_longest
 import torch
 import seaborn as sns
 import numpy as np
+import tqdm
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
@@ -248,7 +249,6 @@ class Translator(object):
 
         xlation_builder = TranslationBuilder(data, self.fields, self.n_best,
                                              self.replace_unk, tgt, self.phrase_table)
-
         # Statistics
         counter = count(1)
         pred_score_total, pred_words_total = 0, 0
@@ -263,7 +263,7 @@ class Translator(object):
         if save_attn:
             attn_file = open("attentions.out",'w')
 
-        for batch in data_iter:
+        for batch in tqdm.tqdm(data_iter):
 
             batch_data = self.translate_batch(
                 batch, data.src_vocabs, save_attn

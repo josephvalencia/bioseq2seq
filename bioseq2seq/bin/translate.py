@@ -3,6 +3,7 @@ import argparse
 import pandas as pd
 import torch
 import random
+import time
 
 from bioseq2seq.inputters import TextDataReader,get_fields
 from bioseq2seq.inputters.text_dataset import TextMultiField
@@ -86,8 +87,6 @@ def translate_from_transformer_checkpt(args,device):
 
     # raw data
     ids = dev['ID'].tolist()
-
-
     protein = (dev['Type'] + dev['Protein']).tolist()
     rna = dev['RNA'].tolist()
     cds = dev['CDS'].tolist()
@@ -117,7 +116,6 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,n_best 
         args (argparse.Namespace | dict): config arguments
         device (torch.device | str): device for translation.
     """
-
     # global scorer for beam decoding
     beam_scorer = GNMTGlobalScorer(alpha = 1.0,
                                    beta = 0.0,
@@ -145,7 +143,9 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,n_best 
                                                       cds = cds,
                                                       batch_size = 8)
     outfile.close()
+
     return predictions,golds,scores
+
 if __name__ == "__main__":
 
     args = parse_args()

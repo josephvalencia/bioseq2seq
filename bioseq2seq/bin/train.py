@@ -26,13 +26,12 @@ def parse_args():
     parser = argparse.ArgumentParser()
     # required args
     parser.add_argument("--input",'--i',help = "File containing RNA to Protein dataset")
-
     # optional args
     parser.add_argument("--save-directory","--s", default = "checkpoints/", help = "Name of directory for saving model checkpoints")
     parser.add_argument("--log-directory",'--l',default = "runs/", help = "Name of directory for saving TensorBoard log files" )
     parser.add_argument("--learning-rate","--lr", type = float, default = 1e-3,help = "Optimizer learning rate")
     parser.add_argument("--max-epochs","--e", type = int, default = 100000,help = "Maximum number of training epochs" )
-    parser.add_argument("--report-every",'--r', type = int, default = 10, help = "Number of iterations before calculating statistics")
+    parser.add_argument("--report-every",'--r', type = int, default = 2500, help = "Number of iterations before calculating statistics")
     parser.add_argument("--num_gpus","--g", type = int, default = 1, help = "Number of GPUs to use on node")
     parser.add_argument("--accum_steps", type = int, default = 1, help = "Number of batches to accumulate gradients before update")
     parser.add_argument("--rank", type = int, default = 0, help = "Rank of node in multi-node training")

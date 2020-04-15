@@ -7,7 +7,7 @@ from sklearn.metrics import f1_score
 
 class Evaluator:
 
-    def __init__(self, k=15, best_of=1, full_align=False, exact_match=False):
+    def __init__(self, k=15, best_of = 1, full_align=False, exact_match=False):
 
         self.k = k
         self.best_of_n = best_of

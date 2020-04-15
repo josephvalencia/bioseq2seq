@@ -7,6 +7,7 @@ import torch
 import traceback
 import datetime
 import time
+import tqdm
 import bioseq2seq.utils
 from bioseq2seq.utils.logging import logger
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -240,7 +241,7 @@ class Trainer(object):
         with torch.no_grad():
             stats = bioseq2seq.utils.Statistics()
 
-            for batch in valid_iter:
+            for batch in tqdm.tqdm(valid_iter):
                 src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                                    else (batch.src, None)
                 tgt = batch.tgt
@@ -264,7 +265,7 @@ class Trainer(object):
 
         return stats
 
-    def validate_structured(self,valid_iter, valid_state, moving_average=None):
+    def validate_structured(self,valid_iter,valid_state,moving_average=None):
 
         """ Validate model.
             valid_iter: validate data iterator
@@ -291,22 +292,21 @@ class Trainer(object):
 
             for batch in valid_iter:
 
-                src, src_lengths = batch.src if isinstance(batch.src, tuple) \
-                                else (batch.src, None)
+                src, src_lengths = batch.src if isinstance(batch.src, tuple) else (batch.src, None)
                 tgt = batch.tgt
 
                 # F-prop through the model.
-                outputs, enc_attn, attns  = valid_model(src, tgt, src_lengths,
-                                            with_align=self.with_align)
+                outputs, enc_attn, attns  = valid_model(src, tgt, src_lengths,with_align=self.with_align)
                 # Compute loss.
                 _, batch_stats = self.valid_loss(batch, outputs, attns)
-
                 # Update statistics.
                 stats.update(batch_stats)
 
             # Perform beam-search decoding and compute structured metrics
-            translations,gold,scores = translate(valid_model, *valid_state)
-
+            s = time.time()
+            translations,gold,scores = translate(valid_model, *valid_state,beam_size=1,n_best=1)
+            e = time.time()
+            print("Decoding time: {}".format(e-s))
             top_results,top_n_results = self.evaluator.calculate_stats(translations,gold,full_align=True)
             print(top_results)
 
@@ -396,8 +396,6 @@ class Trainer(object):
                 if self.model.decoder.state is not None:
                     self.model.decoder.detach_state()
 
-        # in case of multi step gradient accumulation,
-        # update only after accum batchesk
 
     def _start_report_manager(self, start_time=None):
         """
