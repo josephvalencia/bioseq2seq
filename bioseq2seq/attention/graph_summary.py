@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import json
 import pprint
+import logomaker
 from matplotlib import pyplot as plt
 from collections import Counter
 from matplotlib.backends.backend_pdf import PdfPages
@@ -121,7 +122,12 @@ def load_JSON(saved_attn):
 
     with open(saved_attn) as inFile:
 
+        idx = 0
+
         for line in inFile:
+
+            if idx > 24: # just the first 25
+                break
 
             decoded = json.loads(line)
             tscript_id = decoded['ENSEMBL_ID']
@@ -136,10 +142,43 @@ def load_JSON(saved_attn):
             print(tscript_id)
 
             for layer in layers:
+                # sequence_logo(layer,tscript_id)
                 max_PDF(layer,cds_start,cds_end,tscript_id)
                 maxdist_PDF(layer,tscript_id)
                 maxdist_txt(layer,tscript_id,seq)
-                #entropy_PDF(layer,tscript_id)
+                # entropy_PDF(layer,tscript_id)
+            idx+=1
+
+def sequence_logo(layer,tscript_id):
+
+    layer_num = layer['layer']
+    heads = layer['heads']
+    filename = "output/{}/layer{}_max_logo".format(tscript_id,layer_num)
+
+    top = 10
+
+    with open(filename,'w') as outFile:
+
+        for head in heads:
+
+            head_name = "Head {}\n".format(head['head'])
+            outFile.write(head_name)
+            max_attns = head['max']
+
+            counts = Counter(max_attns).most_common(top)
+
+            triplets = [seq[i-1:i+2] for i,_ in counts]
+            triplet_counts = [x for _,x in Counter(triplets).most_common(top)]
+            total = sum(triplet_counts)
+            triplet_probs = [float(x)/total for x in triplet_counts]
+            triplet_entropy = -sum([np.log2(x)*x for x in triplet_probs])
+
+            for idx,count in counts:
+                triplet = seq[idx-1:idx+2]
+                outFile.write(" idx : {}, count : {} , triplet : {} \n".format(idx,count,triplet))
+
+            outFile.write(" H(codon) : {}\n".format(triplet_entropy))
+            outFile.write("\n")
 
 def max_PDF(layer,cds_start,cds_end,tscript_id):
 

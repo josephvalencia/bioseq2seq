@@ -229,6 +229,7 @@ class TransformerDecoder(DecoderBase):
         if step == 0:
             self._init_cache(memory_bank)
 
+
         tgt_words = tgt[:, :, 0].transpose(0, 1)
 
         emb = self.embeddings(tgt, step=step)
@@ -239,6 +240,7 @@ class TransformerDecoder(DecoderBase):
 
         pad_idx = self.embeddings.word_padding_idx
         src_lens = kwargs["memory_lengths"]
+
         src_max_len = self.state["src"].shape[0]
         src_pad_mask = ~sequence_mask(src_lens, src_max_len).unsqueeze(1)
         tgt_pad_mask = tgt_words.data.eq(pad_idx).unsqueeze(1)  # [B, 1, T_tgt]

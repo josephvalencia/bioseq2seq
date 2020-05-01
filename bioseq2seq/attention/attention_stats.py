@@ -4,7 +4,6 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 import json
-import pprint
 from matplotlib import pyplot as plt
 
 class SelfAttentionDistribution(object):
@@ -71,14 +70,12 @@ class SelfAttentionDistribution(object):
 
     def __center_of_attention__(self,attns,axis = 1):
         """ Finds index where 1/2 of cumulative weight is to the left and 1/2 to the right."""
-
         cumulative = torch.cumsum(attns,axis)
         mask = cumulative <= 0.5
         return mask.sum(axis = 1).detach().cpu().numpy()
 
     def __max_attention__(self,attns,axis=1):
         """ Finds index where maximum attention weight comes from."""
-
         max = torch.argmax(attns,dim=axis)
         return max.detach().cpu().numpy()
 

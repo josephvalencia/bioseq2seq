@@ -36,7 +36,7 @@ class TranslationTable:
             self.pc_count +=1
 
         elif tscript_name not in self.table and tscript_name in self.noncoding:
-            new_entry = {"RNA" : seq_record.seq,"TYPE" : "<NC>", "PROTEIN" : "?", "CDS" : cds}
+            new_entry = {"RNA" : seq_record.seq,"TYPE" : "<NC>", "PROTEIN" : "", "CDS" : cds}
             self.table[tscript_name] = new_entry
             self.alt_count +=1
 

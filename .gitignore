@@ -9,6 +9,7 @@ experiments/
 /comparison
 /stats
 /output/
+/coding_noncoding_dev_stats/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

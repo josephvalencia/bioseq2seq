@@ -37,10 +37,17 @@ class TranslationBuilder(object):
         tgt_field = dict(self.fields)["tgt"].base_field
         vocab = tgt_field.vocab
         tokens = []
+        
+        # print(" len vocab",len(vocab))
+        # print("VOCAB",vocab.stoi)
+        # print("REAL TYPE src_vocab {}".format(type(src_vocab)))
+
         for tok in pred:
+            # print("TOK",tok)
             if tok < len(vocab):
                 tokens.append(vocab.itos[tok])
             else:
+                break
                 tokens.append(src_vocab.itos[tok - len(vocab)])
             if tokens[-1] == tgt_field.eos_token:
                 tokens = tokens[:-1]
@@ -55,6 +62,7 @@ class TranslationBuilder(object):
                             for line in f:
                                 if line.startswith(src_raw[max_index.item()]):
                                     tokens[i] = line.split('|||')[1].strip()
+      
         return tokens
 
     def from_batch(self, translation_batch):
@@ -85,35 +93,44 @@ class TranslationBuilder(object):
             if self.has_tgt else None
 
         translations = []
+
+        # print(preds)
+        
+
         for b in range(batch_size):
             if self._has_text_src:
+             
                 src_vocab = self.data.src_vocabs[inds[b]] \
                     if self.data.src_vocabs else None
                 src_raw = self.data.examples[inds[b]].src[0]
             else:
                 src_vocab = None
                 src_raw = None
+            
+            # print("Type of src_vocab {}".format(type(src_vocab)))
+
             pred_sents = [self._build_target_tokens(
                 src[:, b] if src is not None else None,
                 src_vocab, src_raw,
                 preds[b][n], context_attn[b][n])
                 for n in range(self.n_best)]
+           
             gold_sent = None
             if tgt is not None:
                 gold_sent = self._build_target_tokens(
                     src[:, b] if src is not None else None,
                     src_vocab, src_raw,
                     tgt[1:, b] if tgt is not None else None, None)
+           
 
             translation = Translation(inds[b],
                 src[:, b] if src is not None else None,
-                                      src_raw, pred_sents, self_attn[0].permute(3,0,1,2), context_attn[b], pred_score[b],
+                                    src_raw, pred_sents, self_attn[0].permute(3,0,1,2), context_attn[b], pred_score[b],
                 gold_sent, gold_score[b], align[b]
             )
             translations.append(translation)
 
         return translations
-
 
 class Translation(object):
     """Container for a translated sentence.

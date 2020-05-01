@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.metrics import classification_report
 
-evaluator = Evaluator(best_of = 4,full_align=True,exact_match=True)
+evaluator = Evaluator(best_of = 4,full_align=False,exact_match=True)
 
 with open(sys.argv[1],"r") as inFile:
     lines = inFile.read().split("\n")
@@ -22,9 +22,7 @@ for i in range(0,len(lines)-8,8):
     all_golds.append(gold)
     all_preds.append(preds)
 
-binarized_preds = [0 if x[0] == "?" else 1 for x in all_preds]
-binarized_labels = [0 if x[0] == "?" else 1 for x in all_golds]
-
-print(classification_report(binarized_labels,binarized_preds))
-
 best_scores, best_n_scores = evaluator.calculate_stats(all_preds,all_golds,all_ids,log_all=True)
+
+print("best of 1 scores:",best_scores)
+print("best of 4 scores:",best_n_scores)

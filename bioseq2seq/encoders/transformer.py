@@ -117,7 +117,7 @@ class TransformerEncoder(EncoderBase):
         layer_attentions = []
 
         # Run the forward pass of every layer of the tranformer.
-        for layer in self.transformer:
+        for i,layer in enumerate(self.transformer):
             out,attn = layer(out, mask,attn_debug)
             layer_attentions.append(attn)
 

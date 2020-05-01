@@ -2,7 +2,6 @@
     This is the loadable seq2seq trainer library that is
     in charge of training details, loss compute, and statistics.
 """
-
 import torch
 import traceback
 import datetime
@@ -140,7 +139,8 @@ class Trainer(object):
               save_checkpoint_steps=5000,
               valid_iter=None,
               valid_steps=10000,
-              valid_state=None):
+              valid_state=None,
+              mode=None):
         """
         The main training loop by iterating over `train_iter` and possibly
         running validation on `valid_iter`.
@@ -169,7 +169,6 @@ class Trainer(object):
             effective_batch_size = sum([x.tgt.shape[1] for x in batches])
             step = self.optim.training_step
 
-            # UPDATE DROPOUT
             self._maybe_update_dropout(step)
 
             self._gradient_accumulation(i,
@@ -185,16 +184,21 @@ class Trainer(object):
                 report_stats)
 
             if valid_iter is not None and step % valid_steps == 0 and self.rank == 0:
-
-                # valid_stats = self.validate(valid_iter, moving_average=self.moving_average)
-                valid_stats = self.validate_structured(valid_iter,valid_state, moving_average=self.moving_average)
+                
+                if mode == "translate" or mode == "combined":
+                    print("Structured validation")
+                    valid_stats = self.validate_structured(valid_iter,valid_state,moving_average=self.moving_average)
+                else:
+                    print("Normal validation")
+                    valid_stats = self.validate(valid_iter, moving_average=self.moving_average)
+                
                 valid_stats = self._maybe_gather_stats(valid_stats)
 
                 self._report_step(self.optim.learning_rate(),
                                   step, valid_stats=valid_stats)
 
                 elapsed = time.time() - begin_time
-                #print("Elapsed time: {} minutes".format(elapsed/60.))
+                # print("Elapsed time: {} minutes".format(elapsed/60.))
 
                 # Run patience mechanism
                 if self.earlystopper is not None:
@@ -287,9 +291,9 @@ class Trainer(object):
         valid_model.eval()
 
         with torch.no_grad():
-
+ 
             stats = bioseq2seq.utils.Statistics()
-
+            
             for batch in valid_iter:
 
                 src, src_lengths = batch.src if isinstance(batch.src, tuple) else (batch.src, None)
@@ -301,12 +305,13 @@ class Trainer(object):
                 _, batch_stats = self.valid_loss(batch, outputs, attns)
                 # Update statistics.
                 stats.update(batch_stats)
-
+            
             # Perform beam-search decoding and compute structured metrics
             s = time.time()
             translations,gold,scores = translate(valid_model, *valid_state,beam_size=1,n_best=1)
             e = time.time()
             print("Decoding time: {}".format(e-s))
+            
             top_results,top_n_results = self.evaluator.calculate_stats(translations,gold,full_align=True)
             print(top_results)
 
@@ -362,7 +367,8 @@ class Trainer(object):
                     parallel_model = DDP(self.model,device_ids = [self.rank],output_device = self.rank)
                     outputs,enc_attn,attns = parallel_model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
                 else:
-                    outputs,enc_attn, attns = self.model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
+                    outputs,enc_attn,attns = self.model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
+                    print("outputs",outputs.shape)
 
                 bptt = True
 

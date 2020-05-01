@@ -84,6 +84,7 @@ class Translator(object):
             fields,
             src_reader,
             tgt_reader,
+            file_prefix,
             device="cpu",
             n_best=1,
             min_length=0,
@@ -102,7 +103,6 @@ class Translator(object):
             verbose=False,
             report_time=False,
             global_scorer = None,
-            outfile=None,
             report_align=False,
             report_score=True,
             logger=None,
@@ -153,7 +153,8 @@ class Translator(object):
             raise ValueError(
                 "Coverage penalty requires an attentional decoder.")
 
-        self.out_file = outfile
+        self.out_file = open(file_prefix+".preds",'w')
+        self.attn_file = open(file_prefix+".attns",'w')
         self.report_align = report_align
         self.report_score = report_score
         self.logger = logger
@@ -249,6 +250,8 @@ class Translator(object):
 
         xlation_builder = TranslationBuilder(data, self.fields, self.n_best,
                                              self.replace_unk, tgt, self.phrase_table)
+
+
         # Statistics
         counter = count(1)
         pred_score_total, pred_words_total = 0, 0
@@ -260,15 +263,13 @@ class Translator(object):
 
         start_time = time.time()
 
-        if save_attn:
-            attn_file = open("attentions.out",'w')
 
         for batch in tqdm.tqdm(data_iter):
-
+         
             batch_data = self.translate_batch(
                 batch, data.src_vocabs, save_attn
             )
-
+            
             translations = xlation_builder.from_batch(batch_data)
 
             for trans in translations:
@@ -280,16 +281,14 @@ class Translator(object):
                 rna = "".join(trans.src_raw)
                 transcript_name = names[trans.index]
 
-                bounds = cds[trans.index]
-                cds_bounds = None if bounds == "-1" else [int(x) for x in bounds.split("-")]
-
-                enc_attn = trans.self_attn
-                enc_attn_state = SelfAttentionDistribution(transcript_name,enc_attn,rna,cds_bounds)
-                summary = enc_attn_state.summarize()
-
                 if save_attn:
-                    attn_file.write(summary+"\n")
-                    attn_file.flush()
+                    bounds = cds[trans.index]
+                    cds_bounds = None if bounds == "-1" else [int(x) for x in bounds.split("-")]
+                    enc_attn = trans.self_attn
+                    enc_attn_state = SelfAttentionDistribution(transcript_name,enc_attn,rna,cds_bounds)
+                    summary = enc_attn_state.summarize()
+                    self.attn_file.write(summary+"\n")
+                    self.attn_file.flush()
 
                 if tgt is not None:
                     gold_score_total += trans.gold_score
@@ -340,8 +339,9 @@ class Translator(object):
             import json
             json.dump(self.translator.beam_accum,
                       codecs.open(self.dump_beam, 'w', 'utf-8'))
-        if save_attn:
-            attn_file.close()
+        
+        self.attn_file.close()
+        self.out_file.close()
 
         return all_predictions,all_golds,all_scores
 
@@ -516,6 +516,8 @@ class Translator(object):
 
         self.model.decoder.init_state(src, memory_bank, enc_states)
 
+        print("src lengths from translator {}".format(batch.src[1]))
+
         results = {
             "predictions": None,
             "scores": None,
@@ -536,6 +538,10 @@ class Translator(object):
         # (3) Begin decoding step by step:
         for step in range(decode_strategy.max_length):
             decoder_input = decode_strategy.current_predictions.view(1, -1, 1)
+
+            print("Decoder Input {} of shape {} @ step {}".format(decoder_input,decoder_input.shape,step))
+            if step == 10:
+                quit()
 
             log_probs, attn = self._decode_and_generate(
                 decoder_input,

@@ -23,6 +23,7 @@ from bioseq2seq.bin.models import make_transformer_model
 
 def parse_args():
     """Parse required and optional configuration arguments.""" 
+    
     parser = argparse.ArgumentParser()
     # required args
     parser.add_argument("--input",'--i',help = "File containing RNA to Protein dataset")
@@ -32,6 +33,7 @@ def parse_args():
     parser.add_argument("--learning-rate","--lr", type = float, default = 1e-3,help = "Optimizer learning rate")
     parser.add_argument("--max-epochs","--e", type = int, default = 100000,help = "Maximum number of training epochs" )
     parser.add_argument("--report-every",'--r', type = int, default = 2500, help = "Number of iterations before calculating statistics")
+    parser.add_argument("--mode", default = "combined", help = "Training mode. Classify for binary classification. Translate for full translation")
     parser.add_argument("--num_gpus","--g", type = int, default = 1, help = "Number of GPUs to use on node")
     parser.add_argument("--accum_steps", type = int, default = 1, help = "Number of batches to accumulate gradients before update")
     parser.add_argument("--rank", type = int, default = 0, help = "Rank of node in multi-node training")
@@ -59,7 +61,7 @@ def train_helper(rank,args,seq2seq,random_seed):
     random_state = random.getstate()
 
     # determined by GPU memory
-    max_tokens_in_batch = 6000
+    max_tokens_in_batch = 3000
 
     # raw GENCODE transcript data. cols = ['ID','RNA','PROTEIN']
     dataframe = pd.read_csv(args.input,sep="\t")
@@ -67,19 +69,17 @@ def train_helper(rank,args,seq2seq,random_seed):
     # obtain splits. Default 80/10/10. Filter below max_len_transcript
     df_train,df_test,df_val = train_test_val_split(dataframe,args.max_len_transcript,random_seed)
     # convert to torchtext.Dataset
-    train,test,val = dataset_from_df(df_train,df_test,df_val)
-
+    train,test,val = dataset_from_df(df_train.copy(),df_test.copy(),df_val.copy(),mode=args.mode)
+    
     device = "cpu"
 
     if args.num_gpus > 0: # GPU training
-
         # One CUDA device per process
         device = torch.device("cuda:{}".format(rank))
         torch.cuda.set_device(device)
         seq2seq.cuda()
 
     if args.num_gpus > 1: # multi-GPU training
-
         # provide unique data to each process
         splits = [1.0/args.num_gpus for _ in range(args.num_gpus)]
         train_partitions = partition(train,split_ratios = splits,random_state = random_state)
@@ -111,7 +111,7 @@ def train_helper(rank,args,seq2seq,random_seed):
 
     # concludes training if progress does not improve for |patience| epochs
     early_stopping = EarlyStopping(tolerance=args.patience)
-
+    
     report_manager = saver = valid_state = valid_iterator = None
 
     # only rank 0 device is responsible for saving models and reporting progress
@@ -127,23 +127,33 @@ def train_helper(rank,args,seq2seq,random_seed):
         if not os.path.isdir(save_path):
             print("Building directory ...")
             os.mkdir(save_path)
+       
+        valid_iterator = iterator_from_dataset(val,max_tokens_in_batch,device,train=False)
 
         saver = ModelSaver(base_path=save_path,
                            model=seq2seq,
                            model_opt=args,
-                           fields=train_iterator.fields,
+                           fields=valid_iterator.fields,
                            optim=optim)
 
-        valid_iterator = iterator_from_dataset(val,max_tokens_in_batch,device,train=False)
-
+        valid_state = None
+            
+        if args.mode == "combined":
+            protein = (df_val['Type']+df_val['Protein']).tolist()
+        elif args.mode == "translate":
+            df_val = df_val[df_val['Type'] == "<PC>"]
+            protein = df_val['Protein'].tolist()
+        elif args.mode == "classify":
+            protein = df_val['Type'].tolist()
+        
+        subset_len = 100
         # Translator builds its own iterator from unprocessed data
         valid_state = wrap_validation_state(fields=valid_iterator.fields,
-                                            rna=df_val['RNA'].tolist()[:1000],
-                                            protein=(df_val['Type']+df_val['Protein']).tolist()[:1000],
-                                            id=df_val['ID'].tolist()[:1000],
-                                            cds=df_val['CDS'].tolist()[:1000],
+                                            rna=df_val['RNA'].tolist()[:subset_len],
+                                            protein=protein[:subset_len],
+                                            id=df_val['ID'].tolist()[:subset_len],
+                                            cds=df_val['CDS'].tolist()[:subset_len],
                                             device=device)
-
     # controls training and validation
     trainer = Trainer(seq2seq,
                       train_loss=train_loss_computer,
@@ -155,22 +165,22 @@ def train_helper(rank,args,seq2seq,random_seed):
                       accum_count=[args.accum_steps],
                       report_manager=report_manager,
                       model_saver=saver)
-
+    
     # training loop
     trainer.train(train_iter=train_iterator,
                   train_steps=args.max_epochs,
                   save_checkpoint_steps=args.report_every,
                   valid_iter=valid_iterator,
                   valid_steps=args.report_every,
-                  valid_state=valid_state)
+                  valid_state=valid_state,
+                  mode=args.mode)
 
 def wrap_validation_state(fields,rna,protein,id,cds,device):
-
+    
     fields = make_vocab(fields,rna,protein)
     return fields,rna,protein,id,cds,device
 
 def restore_transformer_model(checkpoint):
-
     ''' Restore a Transformer model from .pt
     Args:
         checkpoint : path to .pt saved model
@@ -184,7 +194,6 @@ def restore_transformer_model(checkpoint):
     return model
 
 def train(args):
-
     # controls pseudorandom shuffling and partitioning of dataset
     seed = 65
 
@@ -207,7 +216,7 @@ def train(args):
     else:
         print("CPU training")
         train_helper(0,args,seq2seq,seed)
-
+        
     print("Training complete")
 
 if __name__ == "__main__":

@@ -7,105 +7,125 @@ from sklearn.metrics import f1_score
 
 class Evaluator:
 
-    def __init__(self, k=15, best_of = 1, full_align=False, exact_match=False):
-
+    def __init__(self, mode = "combined", k=8, best_of=1,exact_match=True, full_align=False, ):
+        
+        self.mode = mode
         self.k = k
-        self.best_of_n = best_of
         self.full_align = full_align
         self.exact_match = exact_match
+        
+        self.best_of_n = best_of
+        self.best_stats = defaultdict(float)
+        self.best_n_stats  = defaultdict(float) if best_of > 1 else None
 
-    def calculate_stats(self,preds,golds,names=None,log_all =False,full_align=False):
-
-        best_stats = defaultdict(int)
-        best_n_stats = defaultdict(int)
-
-        divide = lambda n,d : float(n) / d if d > 0 else 0.0
-        total_items = len(golds)
+    def calculate_stats(self,preds,golds,names=None,log_all=False):
 
         pred_labels,preds = self.separate_preds(preds)
         true_labels,golds = self.separate_gold(golds)
 
-        if self.best_of_n > 1: # report best of n and best of 1
-            idx = 0
-            for truth,candidates,gold in zip(true_labels,preds,golds):
+        total_items = len(golds)
 
-                if truth == 1: # only calculate translation stats for <PC>
+        if self.mode == "translate":
 
-                    if full_align:
-                        alignments = [self.emboss_needle("".join(c),gold) if c != "" and gold != "" else (0.0,1) for c in candidates]
-                        align_pcts = [divide(a,b) for a,b in alignments]
-                        pct_align_best = align_pcts[0]
+            for name,candidates,gold in zip(names,preds,golds):
+                if self.full_align:
+                    self.update_alignment(name,candidates,gold)
+                if self.exact_match:
+                    self.update_exact_match(name,candidates,gold)
+                if self.k > 1:
+                    self.update_kmer_stats(name,candidates,gold)
 
-                        best_stats['avg_align_id'] += pct_align_best
-                        best_n_loc = np.argmax(align_pcts)
-                        pct_align_best_n = align_pcts[best_n_loc]
-                        best_n_stats['avg_align_id'] += pct_align_best_n
+            print("TOTAL {}".format(len(golds)))
 
-                        if log_all and names is not None:
-                            msg = "NAME: {}\nBEST: {} PCT: {}\nBEST_N: {} PCT {}\nGOLD: {}\n"
-                            print(msg.format(names[idx],candidates[0],pct_align_best,candidates[best_n_loc],pct_align_best_n,gold))
-                        elif log_all:
-                            msg = "BEST: {} PCT: {}\nBEST_N: {} PCT {}\nGOLD: {}\n"
-                            print(msg.format(candidates[0],pct_align_best,candidates[best_n_loc],pct_align_best_n,gold))
+        elif self.mode == "combined":
 
-                    if self.exact_match:
-                        perfect_matches = [self.perfect_match(c,gold) for c in candidates]
-                        best_stats['exact_match_rate'] += perfect_matches[0]
-                        best_n_stats['exact_match_rate'] += max(perfect_matches)
+            pc_count = 0
 
-                    if self.k > 1:
-                        kmer_results = [self.kmer_overlap_scores(c,gold,self.k) if c != "" and gold != "" else (0.0,1,1) for c in candidates]
-
-                        tp,ref_len,query_len = kmer_results[0]
-                        best_stats['avg_kmer_recall'] += divide(tp,ref_len)
-                        best_stats['avg_kmer_precision'] += divide(tp,query_len)
-
-                        tp,ref_len,query_len = max(kmer_results, key = lambda x: divide(x[0],x[1]))
-                        best_n_stats['avg_kmer_recall'] += divide(tp,ref_len)
-
-                        tp,ref_len,query_len = max(kmer_results, key = lambda x: divide(x[0],x[2]))
-                        best_n_stats['avg_kmer_precision'] += divide(tp,query_len)
-
-                idx+=1
-
-            # normalize
-            for k in best_stats.keys():
-                best_stats[k] /= total_items
-
-            for k in best_n_stats.keys():
-                best_n_stats[k] /= total_items
-
-            best_preds = [x[0] for x in pred_labels]
-            best_stats['F1'] = f1_score(true_labels,best_preds,average='micro')
-
-            return best_stats,best_n_stats
-
-        else: # report only best of 1
-
-            for truth,candidate,gold in zip(true_labels,preds,golds):
-
+            for name,truth,candidates,gold in zip(names,true_labels,preds,golds):
                 if truth == 1:
-                    best = candidate[0]
-                    if full_align:
-                        best_match,best_total = self.emboss_needle(best,gold) if best != "" else (0.0,1.0)
-                        best_stats['avg_align_id'] += divide(best_match,best_total)
-                    if self.perfect_match:
-                        perfect_match = self.perfect_match(best,gold)
-                        best_stats['exact_match_rate'] += perfect_match
-                    if self.k >1:
-                        tp,ref_len,query_len = self.kmer_overlap_scores(best,gold,self.k) if best != "" else (0.0,1,1)
-                        best_stats['avg_kmer_recall'] += divide(tp,ref_len)
-                        best_stats['avg_kmer_precision'] += divide(tp,query_len)
-            # average
-            for k in best_stats.keys():
-                best_stats[k] /= total_items
+                    if self.full_align:
+                        self.update_alignment(name,candidates,gold)
+                    if self.exact_match:
+                        self.update_exact_match(name,candidates,gold)
+                    if self.k > 1:
+                        self.update_kmer_stats(name,candidates,gold)
+                    pc_count +=1
 
-            best_preds = [x[0] for x in pred_labels]
-            best_stats['F1'] = f1_score(true_labels,best_preds,average='micro')
+            print("PC_COUNT {} ,TOTAL {}".format(pc_count,len(golds)))
+                    
+        # normalize
+        for k in self.best_stats.keys():
+            self.best_stats[k] /= total_items
 
-            return (best_stats,None)
+        if not self.best_n_stats is None:
+            for k in self.best_n_stats.keys():
+                self.best_n_stats[k] /= total_items
+
+        if self.mode == "classify" or self.mode == "combined":
+            self.calculate_F1(true_labels,pred_labels)
+
+        return self.best_stats,self.best_n_stats
+
+    def calculate_F1(self,true_labels,pred_labels):
+        
+        best_preds = [x[0] for x in pred_labels]
+        f1 = f1_score(true_labels,best_preds,average='micro') 
+
+        self.best_stats['F1'] = f1
+    
+    def divide(self,num,denom):
+
+        if denom > 0:
+            return float(num)/ denom
+        else:
+            return 0.0
+
+    def update_alignment(self,name,candidates,gold):
+      
+        align = lambda a,b : self.emboss_needle(a,b) if a != "" and b != "" else (0.0,1)
+        alignments = [align("".join(c),gold) for c in candidates[:self.best_of_n]]
+        align_pcts = [self.divide(a,b) for a,b in alignments]
+
+        self.update_helper("avg_align_id",align_pcts)
+
+    def update_exact_match(self,name,candidates,gold):
+
+        perfect_matches = [self.perfect_match(c,gold) for c in candidates[:self.best_of_n]]
+        self.update_helper("exact_match_rate",perfect_matches)
+
+    def update_kmer_stats(self,name,candidates,gold):
+        
+        kmer_stats = lambda a,b: self.kmer_overlap_scores(a,b,self.k) if a != "" and b != "" else (0.0,1,1) 
+        kmer_results = [kmer_stats(c,gold) for c in candidates[:self.best_of_n]]
+
+        recalls = [self.divide(tp,ref_len) for tp,ref_len,query_len in kmer_results]
+        precisions = [self.divide(tp,query_len) for tp,ref_len,query_len in kmer_results]
+
+        self.update_helper("avg_kmer_recall",recalls,log=True,name=name,candidates=candidates,gold=gold)
+        self.update_helper("avg_kmer_precision",precisions)
+        
+    def update_helper(self,metric,scores, log = False,name=None,candidates=None,gold=None):
+
+        self.best_stats[metric] += scores[0]
+
+        if self.best_n_stats is None:
+
+            if log and name is not None and candidates is not None and gold is not None:
+                msg = "NAME: {} \nBEST: {} \n SCORE({}) : {} \nGOLD: {}\n"
+                print(msg.format(name, candidates[0],metric,scores[0],gold))
+        else:
+            max_loc = np.argmax(scores) 
+            max_score = scores[max_loc]
+            self.best_n_stats[metric] += max_score
+
+            if log and name is not None and candidates is not None and gold is not None:
+                msg = "NAME: {}\nBEST: {} SCORE({}): {}\nBEST_N: {} SCORE({}) {}\nGOLD: {}\n"
+                print(msg.format(name,candidates[0],metric,scores[0],candidates[max_loc],metric,scores[max_loc],gold))
+ 
 
     def __get_int_label__(self,label):
+        """ Convert text based classed label to integer label"""
+        
         if label == "<NC>":
             return 0
         elif label == "<PC>":
@@ -144,12 +164,10 @@ class Evaluator:
         proteins = []
 
         for best_n in original:
-
+            
             n_labels = []
             n_proteins = []
-
             for x in best_n:
-
                 label,protein = self.__decouple__(x)
                 n_labels.append(label)
                 n_proteins.append(protein)
@@ -188,7 +206,9 @@ class Evaluator:
         '''Calculate Needleman-Wunsch global alignment percentage identity using needle from EMBOSS package.
         See http://www.bioinformatics.nl/cgi-bin/emboss/help/needle '''
 
-        if seqa !="" and seqb !="":
+        disallowed = ['','?','<unk>']
+
+        if seqa not in disallowed and seqb not in disallowed:
 
             cmd_format = "/home/bb/valejose/EMBOSS-6.6.0/emboss/needle -asequence {} -bsequence {} -gapopen {} -gapextend {} -sprotein -brief -stdout -auto"
             cmd = cmd_format.format("asis::"+seqa,"asis::"+seqb,10,0.5)

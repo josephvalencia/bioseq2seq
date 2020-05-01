@@ -62,7 +62,7 @@ class BatchMaker(torchtext.data.Iterator):
                         yield b
 
             self.batches = pool(self.data(), self.random_shuffler)
-
+        
         else:
             self.batches = []
             for b in Batch(self.data(), self.batch_size,batch_size_fn):
@@ -138,18 +138,16 @@ def filter_by_length(translation_table,max_len,min_len=0):
 
     percentiles = [0.1 * x for x in range(1,10)]
 
-    #print("BEFORE")
-    #print(translation_table[['RNA_LEN','Protein_LEN']].describe(percentiles = percentiles))
-
     translation_table = translation_table[translation_table['RNA_LEN'] < max_len]
 
     if min_len > 0:
         translation_table =  translation_table[translation_table['RNA_LEN'] > min_len]
 
-    #print("AFTER")
-    #print(translation_table[['RNA_LEN','Protein_LEN']].describe(percentiles = percentiles))
-
     return translation_table[['ID','RNA','CDS','Type','Protein']]
+
+def basic_tokenize(original):
+
+    return [c for c in original]
 
 def src_tokenize(original):
     "Converts genome into list of nucleotides"
@@ -165,12 +163,11 @@ def tgt_tokenize(original):
         label = splits.group(1)
         protein = splits.group(2)
     else:
-        label = "NONE"
+        label = "<UNK>"
         protein = original
     return [label]+[c for c in protein]
 
 def train_test_val_split(translation_table,max_len,random_seed,splits =[0.8,0.1,0.1]):
-
     # keep entries with RNA length < max_len
     translation_table = filter_by_length(translation_table,max_len)
     # shuffle
@@ -222,36 +219,41 @@ def partition(dataset, split_ratios, random_state):
 
     return splits
 
-def dataset_from_df(train,test,dev):
+def dataset_from_df(train,test,dev,mode="combined", fields = None):
 
     # Fields define tensor attributes
-    RNA = Field(tokenize=src_tokenize,
-                use_vocab=True,
-                batch_first=False,
-                include_lengths=True)
+    if fields is None:
 
-    PROTEIN =  Field(tokenize=tgt_tokenize,
-                     use_vocab=True,
-                     batch_first=False,
-                     is_target=True,
-                     include_lengths=False,
-                     init_token="<sos>",
-                     eos_token="<eos>")
+        RNA = Field(tokenize=basic_tokenize,
+                    use_vocab=True,
+                    batch_first=False,
+                    include_lengths=True)
+
+        PROTEIN =  Field(tokenize=tgt_tokenize,
+                        use_vocab=True,
+                        batch_first=False,
+                        is_target=True,
+                        include_lengths=False,
+                        init_token="<sos>",
+                        eos_token="<eos>")
+
+    else:
+        RNA = fields.vocab['src']
+        PROTEIN = fields.vocab['tgt']
 
     # GENCODE ID is string not tensor
     ID = RawField()
-    mode = "translate"
 
     splits = []
-
+    
     for translation_table in [train,test,dev]:
-
         # map column name to batch attribute and Field object
-
         if mode == "classify":
             fields = {'ID':('id',ID),'RNA':('src', RNA),'Type':('tgt',PROTEIN)}
-
         elif mode == "translate":
+            translation_table = translation_table[translation_table['Type'] == "<PC>"]
+            fields = {'ID':('id',ID),'RNA':('src', RNA),'Protein':('tgt',PROTEIN)}
+        elif mode == "combined":
             translation_table['Protein'] = translation_table['Type']+translation_table['Protein']
             fields = {'ID':('id',ID),'RNA':('src', RNA),'Protein':('tgt',PROTEIN)}
 
@@ -273,9 +275,9 @@ def dataset_from_df(train,test,dev):
     # Fields have a shared vocab over all datasets
     PROTEIN.build_vocab(*splits)
     RNA.build_vocab(*splits)
-
-    # print(RNA.vocab.stoi)
-    # print(PROTEIN.vocab.stoi)
+    
+    print(RNA.vocab.stoi)
+    print(PROTEIN.vocab.stoi)
 
     return tuple(splits)
 

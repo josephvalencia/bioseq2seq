@@ -12,6 +12,9 @@ from bioseq2seq.bin.models import make_transformer_model
 
 from torchtext.data import RawField
 from bioseq2seq.bin.batcher import train_test_val_split
+from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition,train_test_val_split
+from bioseq2seq.bin.batcher import train_test_val_split
+
 
 def parse_args():
     """ Parse required and optional configuration arguments"""
@@ -23,10 +26,9 @@ def parse_args():
 
     # translate required args
     parser.add_argument("--input",help="File for translation")
-    parser.add_argument("--stats-output","--st",help = "Name of file for saving evaluation statistics")
-    parser.add_argument("--translation-output","--o",help = "Name of file for saving predicted translations")
+    parser.add_argument("--output_name","--o", default = "translation",help = "Name of file for saving predicted translations")
     parser.add_argument("--checkpoint", "--c",help="ONMT checkpoint (.pt)")
-
+    parser.add_argument("--mode",default = "translate",help="translate|classify|combined")
     # translate optional args
     parser.add_argument("--beam_size","--b",type = int, default = 8, help ="Beam size for decoding")
     parser.add_argument("--n_best", type = int, default = 4, help = "Number of beams to wait for")
@@ -74,6 +76,25 @@ def make_vocab(fields,src,tgt):
 
     return text_fields
 
+def arrange_data_by_mode(df, mode):
+
+    if args.mode == "translate":
+        # in translate-only mode, only protein coding are considered
+        df = df[df['Type'] == "<PC>"]
+        protein = df['Protein'].tolist()
+    elif args.mode == "combined":
+        # identify and translate coding, identify non coding
+        protein = (df['Type'] + df['Protein']).tolist()
+    elif args.mode == "classify":
+        # regular binary classifiation coding/noncoding
+        protein = df['Type'].tolist()
+
+    ids = df['ID'].tolist() 
+    rna = df['RNA'].tolist()
+    cds = df['CDS'].tolist()
+    
+    return protein,ids,rna,cds
+
 def translate_from_transformer_checkpt(args,device):
 
     random_seed = 65
@@ -85,14 +106,14 @@ def translate_from_transformer_checkpt(args,device):
     # replicate splits
     train,test,dev = train_test_val_split(data,1000,random_seed)
 
-    # raw data
-    ids = dev['ID'].tolist()
-    protein = (dev['Type'] + dev['Protein']).tolist()
-    rna = dev['RNA'].tolist()
-    cds = dev['CDS'].tolist()
+    #train,test,val = dataset_from_df(df_train.copy(),df_test.copy(),df_val.copy(),mode=args.mode)
+    protein,ids,rna,cds = arrange_data_by_mode(dev,args.mode)
 
     checkpoint = torch.load(args.checkpoint,map_location = device)
     saved_params = checkpoint['opt']
+
+    vocab = checkpoint['vocab']
+    print(vocab['tgt'].vocab.stoi)
 
     if not saved_params is None:
         model_name = ""
@@ -103,9 +124,11 @@ def translate_from_transformer_checkpt(args,device):
     model = restore_transformer_model(checkpoint,device)
     text_fields = make_vocab(checkpoint['vocab'],rna,protein)
 
-    translate(model,text_fields,rna,protein,ids,cds,device,beam_size=args.beam_size,n_best=args.n_best)
+    translate(model,text_fields,rna,protein,ids,cds,device,beam_size=args.beam_size,n_best=args.n_best,save_preds=True,save_attn=True)
 
-def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,n_best = 4 ):
+def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
+                    n_best = 4,save_preds=False,save_attn=False):
+    
     """ Translate raw data
     Args:
         model (bioseq2seq.translate.NMTModel): Encoder-Decoder + generator for translation
@@ -123,31 +146,31 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,n_best 
                                    coverage_penalty = "none")
 
     MAX_LEN = 500
-    outfile = open("translations.out",'w')
 
     translator = Translator(model,
                             device = device,
                             src_reader = TextDataReader(),
                             tgt_reader = TextDataReader(),
+                            file_prefix = args.output_name,
                             fields = text_fields,
                             beam_size = beam_size,
                             n_best = n_best,
                             global_scorer = beam_scorer,
                             verbose = False,
-                            outfile=outfile,
                             max_length = MAX_LEN)
 
     predictions, golds, scores = translator.translate(src = rna,
                                                       tgt = protein,
                                                       names = ids,
                                                       cds = cds,
-                                                      batch_size = 8)
-    outfile.close()
-
+                                                      batch_size = 8,
+                                                      save_attn = save_attn,
+                                                      save_preds = save_preds)
+    
     return predictions,golds,scores
 
 if __name__ == "__main__":
 
     args = parse_args()
-    machine = "cuda:0"
+    machine = "cuda"
     translate_from_transformer_checkpt(args,machine)
