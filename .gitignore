@@ -1,4 +1,7 @@
 # repo-specific stuff
+*.preds
+*.attns
+*.png
 *.out
 *.pt
 \#*#

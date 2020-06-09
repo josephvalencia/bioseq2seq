@@ -18,7 +18,7 @@ from bioseq2seq.translate import Translator
 from bioseq2seq.utils.loss import NMTLossCompute
 from bioseq2seq.bin.translate import make_vocab
 
-from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition,train_test_val_split
+from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition,train_test_val_split , filter_by_length
 from bioseq2seq.bin.models import make_transformer_model
 
 def parse_args():
@@ -61,10 +61,15 @@ def train_helper(rank,args,seq2seq,random_seed):
     random_state = random.getstate()
 
     # determined by GPU memory
-    max_tokens_in_batch = 3000
+    max_tokens_in_batch = 6000
 
     # raw GENCODE transcript data. cols = ['ID','RNA','PROTEIN']
-    dataframe = pd.read_csv(args.input,sep="\t")
+    if args.input.endswith(".gz"):
+        dataframe = pd.read_csv(args.input,sep="\t",compression = "gzip")
+        dataframe["CDS"] = [-1] * len(dataframe.index)
+    else:
+        dataframe = pd.read_csv(args.input,sep="\t")
+        dataframe["CDS"] = [-1] * len(dataframe.index)
 
     # obtain splits. Default 80/10/10. Filter below max_len_transcript
     df_train,df_test,df_val = train_test_val_split(dataframe,args.max_len_transcript,random_seed)
@@ -146,7 +151,7 @@ def train_helper(rank,args,seq2seq,random_seed):
         elif args.mode == "classify":
             protein = df_val['Type'].tolist()
         
-        subset_len = 100
+        subset_len = 250
         # Translator builds its own iterator from unprocessed data
         valid_state = wrap_validation_state(fields=valid_iterator.fields,
                                             rna=df_val['RNA'].tolist()[:subset_len],
@@ -194,6 +199,7 @@ def restore_transformer_model(checkpoint):
     return model
 
 def train(args):
+    
     # controls pseudorandom shuffling and partitioning of dataset
     seed = 65
 

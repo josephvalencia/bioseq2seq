@@ -389,6 +389,8 @@ class Translator(object):
         # (1) Encoder forward.
         src, enc_states, memory_bank, src_lengths, dec_attn = self._run_encoder(batch)
 
+
+
         # (2) Repeat src objects `n_best` times.
         # We use batch_size x n_best, get ``(src_len, batch * n_best, nfeat)``
         src = tile(src, n_best, dim=1)
@@ -477,6 +479,9 @@ class Translator(object):
         # and [src_len, batch, hidden] as memory_bank
         # in case of inference tgt_len = 1, batch = beam times batch_size
         # in case of Gold Scoring tgt_len = actual length, batch = 1 batch
+        #decoder_in = decoder_in.transpose(0,1)
+        #memory_bank = memory_bank.transpose(0,1)
+
         dec_out, dec_attn = self.model.decoder(
             decoder_in, memory_bank, memory_lengths=memory_lengths, step=step
         )
@@ -507,7 +512,6 @@ class Translator(object):
             results (dict): The translation results.
         """
         # (0) Prep the components of the search.
-
         parallel_paths = decode_strategy.parallel_paths  # beam_size
         batch_size = batch.batch_size
 
@@ -515,8 +519,6 @@ class Translator(object):
         src, enc_states, memory_bank, src_lengths, enc_attn = self._run_encoder(batch)
 
         self.model.decoder.init_state(src, memory_bank, enc_states)
-
-        print("src lengths from translator {}".format(batch.src[1]))
 
         results = {
             "predictions": None,
@@ -534,14 +536,10 @@ class Translator(object):
             decode_strategy.initialize(memory_bank, src_lengths, src_map)
         if fn_map_state is not None:
             self.model.decoder.map_state(fn_map_state)
-
+        
         # (3) Begin decoding step by step:
         for step in range(decode_strategy.max_length):
             decoder_input = decode_strategy.current_predictions.view(1, -1, 1)
-
-            print("Decoder Input {} of shape {} @ step {}".format(decoder_input,decoder_input.shape,step))
-            if step == 10:
-                quit()
 
             log_probs, attn = self._decode_and_generate(
                 decoder_input,

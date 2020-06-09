@@ -36,14 +36,14 @@ class TranslationTable:
             self.pc_count +=1
 
         elif tscript_name not in self.table and tscript_name in self.noncoding:
-            new_entry = {"RNA" : seq_record.seq,"TYPE" : "<NC>", "PROTEIN" : "", "CDS" : cds}
+            new_entry = {"RNA" : seq_record.seq,"TYPE" : "<NC>", "PROTEIN" : "?", "CDS" : cds}
             self.table[tscript_name] = new_entry
             self.alt_count +=1
 
     def add_protein(self,seq_record):
 
         id_fields = seq_record.id.split("|")
-        tscript_name = [x for x in id_fields if x.startswith("ENST")][0]
+        tscript_name = [x for x in id_fields if x.startswith("ENSMUST")][0]
 
         if tscript_name in self.table and "PROTEIN" not in self.table[tscript_name]:
             entry = self.table[tscript_name]
@@ -62,7 +62,7 @@ class TranslationTable:
     def get_name_cds(self,id):
 
         bounds = "-1"
-        name_pattern = re.compile("ENST(\d*).(\d*)")
+        name_pattern = re.compile("ENSMUST(\d*).(\d*)")
         cds_pattern = re.compile("CDS:(\d*-\d*)")
 
         cds = cds_pattern.search(id)

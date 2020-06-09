@@ -93,10 +93,7 @@ class TranslationBuilder(object):
             if self.has_tgt else None
 
         translations = []
-
-        # print(preds)
         
-
         for b in range(batch_size):
             if self._has_text_src:
              
@@ -107,8 +104,6 @@ class TranslationBuilder(object):
                 src_vocab = None
                 src_raw = None
             
-            # print("Type of src_vocab {}".format(type(src_vocab)))
-
             pred_sents = [self._build_target_tokens(
                 src[:, b] if src is not None else None,
                 src_vocab, src_raw,

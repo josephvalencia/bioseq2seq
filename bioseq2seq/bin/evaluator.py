@@ -18,7 +18,7 @@ class Evaluator:
         self.best_stats = defaultdict(float)
         self.best_n_stats  = defaultdict(float) if best_of > 1 else None
 
-    def calculate_stats(self,preds,golds,names=None,log_all=False):
+    def calculate_stats(self,preds,golds,names,log_all=False):
 
         pred_labels,preds = self.separate_preds(preds)
         true_labels,golds = self.separate_gold(golds)
@@ -40,6 +40,8 @@ class Evaluator:
         elif self.mode == "combined":
 
             pc_count = 0
+            print(true_labels)
+            print(names)
 
             for name,truth,candidates,gold in zip(names,true_labels,preds,golds):
                 if truth == 1:
@@ -62,7 +64,10 @@ class Evaluator:
                 self.best_n_stats[k] /= total_items
 
         if self.mode == "classify" or self.mode == "combined":
+            pc_count = len([x for x in true_labels if x ==1])
+            print("PC_COUNT {} ,TOTAL {}".format(pc_count,len(true_labels)))
             self.calculate_F1(true_labels,pred_labels)
+            
 
         return self.best_stats,self.best_n_stats
 

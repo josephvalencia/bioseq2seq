@@ -105,20 +105,24 @@ class TransformerEncoder(EncoderBase):
         self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
 
 
-    def forward(self, src, lengths=None, attn_debug = True):
+    def forward(self, src, lengths=None, attn_debug = True,grad_mode=False):
         """See :func:`EncoderBase.forward()`"""
-        self._check_args(src, lengths)
 
-        emb = self.embeddings(src)
+        # self._check_args(src,lengths)
+        emb = self.embeddings(src,grad_mode=grad_mode) 
 
-        out = emb.transpose(0, 1).contiguous()
+        if grad_mode:
+            out = emb.contiguous()
+        else:
+            out = emb.transpose(0,1).contiguous()
+
         mask = ~sequence_mask(lengths).unsqueeze(1)
 
         layer_attentions = []
 
         # Run the forward pass of every layer of the tranformer.
         for i,layer in enumerate(self.transformer):
-            out,attn = layer(out, mask,attn_debug)
+            out, attn = layer(out, mask, attn_debug)
             layer_attentions.append(attn)
 
         self_attns = torch.stack(layer_attentions,dim=4)

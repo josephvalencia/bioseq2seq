@@ -26,7 +26,6 @@ def batch_size_fn(new, count, sofar):
     tgt_elements = count * max_tgt_in_batch
 
     # return src_elements+tgt_elements
-
     return src_elements
 
 class BatchMaker(torchtext.data.Iterator):
@@ -87,7 +86,6 @@ class TransformerBatch(torchtext.data.Batch):
             '''Modify batch attributes to conform with OpenNMT architecture'''
 
             x,x_lens = getattr(self,'src')
-
             # add dummy dimension at axis = 2, src is a tuple
             self.src = torch.unsqueeze(x,2), x_lens
             self.tgt = torch.unsqueeze(getattr(self,'tgt'),2)
@@ -132,20 +130,31 @@ class TranslationIterator:
 
 def filter_by_length(translation_table,max_len,min_len=0):
     '''Filter dataframe to RNA within (min_len,max_len)'''
-
+    
     translation_table['RNA_LEN'] = [len(x) for x in translation_table['RNA'].values]
     translation_table['Protein_LEN'] = [len(x) for x in translation_table['Protein'].values]
 
     percentiles = [0.1 * x for x in range(1,10)]
+    
+    print("Before")
+    print("Coding",translation_table[translation_table['Type'] == "<PC>"].describe(percentiles=percentiles))
+    print("Noncoding",translation_table[translation_table['Type'] == "<NC>"].describe(percentiles=percentiles))
 
     translation_table = translation_table[translation_table['RNA_LEN'] < max_len]
+    print("After")
+    print("Coding",translation_table[translation_table['Type'] == "<PC>"].describe(percentiles=percentiles))
+    print("Noncoding",translation_table[translation_table['Type'] == "<NC>"].describe(percentiles=percentiles))
+
+    #types = translation_table['Type'].values
+    #pc_count = sum([1 for x in types if x == "<PC>"])
+    #print("Num pc : {}".format(pc_count))
 
     if min_len > 0:
         translation_table =  translation_table[translation_table['RNA_LEN'] > min_len]
+    
+    return translation_table[['ID','RNA', 'CDS', 'Type','Protein']]
 
-    return translation_table[['ID','RNA','CDS','Type','Protein']]
-
-def basic_tokenize(original):
+def tokenize(original):
 
     return [c for c in original]
 
@@ -224,7 +233,7 @@ def dataset_from_df(train,test,dev,mode="combined", fields = None):
     # Fields define tensor attributes
     if fields is None:
 
-        RNA = Field(tokenize=basic_tokenize,
+        RNA = Field(tokenize=src_tokenize,
                     use_vocab=True,
                     batch_first=False,
                     include_lengths=True)
@@ -275,9 +284,10 @@ def dataset_from_df(train,test,dev,mode="combined", fields = None):
     # Fields have a shared vocab over all datasets
     PROTEIN.build_vocab(*splits)
     RNA.build_vocab(*splits)
+
     
-    print(RNA.vocab.stoi)
-    print(PROTEIN.vocab.stoi)
+    print("RNA:",RNA.vocab.stoi)
+    print("Protein:",PROTEIN.vocab.stoi)
 
     return tuple(splits)
 

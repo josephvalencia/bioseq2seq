@@ -102,6 +102,7 @@ def translate_from_transformer_checkpt(args,device):
     state = random.getstate()
 
     data = pd.read_csv(args.input,sep="\t")
+    data["CDS"] = ["-1" for _ in range(data.shape[0])]
 
     # replicate splits
     train,test,dev = train_test_val_split(data,1000,random_seed)
@@ -114,6 +115,7 @@ def translate_from_transformer_checkpt(args,device):
 
     vocab = checkpoint['vocab']
     print(vocab['tgt'].vocab.stoi)
+    print(vocab['src'].vocab.stoi)
 
     if not saved_params is None:
         model_name = ""
@@ -124,10 +126,10 @@ def translate_from_transformer_checkpt(args,device):
     model = restore_transformer_model(checkpoint,device)
     text_fields = make_vocab(checkpoint['vocab'],rna,protein)
 
-    translate(model,text_fields,rna,protein,ids,cds,device,beam_size=args.beam_size,n_best=args.n_best,save_preds=True,save_attn=True)
+    translate(model,text_fields,rna,protein,ids,cds,device,beam_size=args.beam_size,n_best=args.n_best,save_preds=True,save_attn=True,file_prefix=args.output_name)
 
 def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
-                    n_best = 4,save_preds=False,save_attn=False):
+                    n_best = 4,save_preds=False,save_attn=False,file_prefix= "temp"):
     
     """ Translate raw data
     Args:
@@ -151,19 +153,19 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
                             device = device,
                             src_reader = TextDataReader(),
                             tgt_reader = TextDataReader(),
-                            file_prefix = args.output_name,
+                            file_prefix = file_prefix,
                             fields = text_fields,
                             beam_size = beam_size,
                             n_best = n_best,
                             global_scorer = beam_scorer,
-                            verbose = False,
+                            verbose = True,
                             max_length = MAX_LEN)
 
     predictions, golds, scores = translator.translate(src = rna,
                                                       tgt = protein,
                                                       names = ids,
                                                       cds = cds,
-                                                      batch_size = 8,
+                                                      batch_size = 4,
                                                       save_attn = save_attn,
                                                       save_preds = save_preds)
     
@@ -172,5 +174,5 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
 if __name__ == "__main__":
 
     args = parse_args()
-    machine = "cuda"
+    machine = "cuda:0"
     translate_from_transformer_checkpt(args,machine)

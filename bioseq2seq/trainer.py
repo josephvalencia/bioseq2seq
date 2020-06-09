@@ -185,7 +185,7 @@ class Trainer(object):
 
             if valid_iter is not None and step % valid_steps == 0 and self.rank == 0:
                 
-                if mode == "translate" or mode == "combined":
+                if mode == "translate" :#or mode == "combined":
                     print("Structured validation")
                     valid_stats = self.validate_structured(valid_iter,valid_state,moving_average=self.moving_average)
                 else:
@@ -198,7 +198,7 @@ class Trainer(object):
                                   step, valid_stats=valid_stats)
 
                 elapsed = time.time() - begin_time
-                # print("Elapsed time: {} minutes".format(elapsed/60.))
+                print("Elapsed time: {} minutes".format(elapsed/60.))
 
                 # Run patience mechanism
                 if self.earlystopper is not None:
@@ -308,11 +308,16 @@ class Trainer(object):
             
             # Perform beam-search decoding and compute structured metrics
             s = time.time()
-            translations,gold,scores = translate(valid_model, *valid_state,beam_size=1,n_best=1)
+            
+            torch.cuda.empty_cache()
+            translations,gold,scores = translate(valid_model,*valid_state,beam_size=1,n_best=1)
+            
+            print("TRANSLATIONS: ",translations)
+            print("GOLD",gold)
             e = time.time()
             print("Decoding time: {}".format(e-s))
             
-            top_results,top_n_results = self.evaluator.calculate_stats(translations,gold,full_align=True)
+            top_results,top_n_results = self.evaluator.calculate_stats(translations,gold,valid_state[3])
             print(top_results)
 
             stats.update_structured(top_results,top_n_results)
@@ -333,11 +338,11 @@ class Trainer(object):
 
         for k, batch in enumerate(true_batches):
 
-            true_batch_num = batch_num *self.accum_count + k
+            true_batch_num = batch_num * self.accum_count + k
 
             msg = "Entering batch {} with src shape {} and tgt shape {} from device {}"
             print(msg.format(true_batch_num,batch.src[0].shape,batch.tgt.shape,self.rank))
-
+            # print(batch.src,batch.tgt)
             target_size = batch.tgt.size(0)
 
             # Truncated BPTT: reminder not compatible with accum > 1
