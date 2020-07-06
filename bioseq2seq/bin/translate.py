@@ -114,6 +114,7 @@ def translate_from_transformer_checkpt(args,device):
     saved_params = checkpoint['opt']
 
     vocab = checkpoint['vocab']
+
     print(vocab['tgt'].vocab.stoi)
     print(vocab['src'].vocab.stoi)
 
@@ -124,6 +125,16 @@ def translate_from_transformer_checkpt(args,device):
             print(k,v)
 
     model = restore_transformer_model(checkpoint,device)
+
+    '''
+    for i in range(12):
+        test = torch.tensor([[[i]]]).cuda()
+        try:
+            emb = model.encoder.embeddings(test)
+            print(i,emb,torch.norm(emb))
+        except Exception:
+            print("who cares")'''
+
     text_fields = make_vocab(checkpoint['vocab'],rna,protein)
 
     translate(model,text_fields,rna,protein,ids,cds,device,beam_size=args.beam_size,n_best=args.n_best,save_preds=True,save_attn=True,file_prefix=args.output_name)
@@ -158,7 +169,7 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
                             beam_size = beam_size,
                             n_best = n_best,
                             global_scorer = beam_scorer,
-                            verbose = True,
+                            verbose = False,
                             max_length = MAX_LEN)
 
     predictions, golds, scores = translator.translate(src = rna,

@@ -38,12 +38,7 @@ class TranslationBuilder(object):
         vocab = tgt_field.vocab
         tokens = []
         
-        # print(" len vocab",len(vocab))
-        # print("VOCAB",vocab.stoi)
-        # print("REAL TYPE src_vocab {}".format(type(src_vocab)))
-
         for tok in pred:
-            # print("TOK",tok)
             if tok < len(vocab):
                 tokens.append(vocab.itos[tok])
             else:
@@ -52,6 +47,7 @@ class TranslationBuilder(object):
             if tokens[-1] == tgt_field.eos_token:
                 tokens = tokens[:-1]
                 break
+
         if self.replace_unk and attn is not None and src is not None:
             for i in range(len(tokens)):
                 if tokens[i] == tgt_field.unk_token:

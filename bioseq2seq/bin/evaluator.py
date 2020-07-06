@@ -4,6 +4,7 @@ import subprocess
 import numpy as np
 from collections import Counter, defaultdict
 from sklearn.metrics import f1_score
+from sklearn.metrics import confusion_matrix
 
 class Evaluator:
 
@@ -40,8 +41,6 @@ class Evaluator:
         elif self.mode == "combined":
 
             pc_count = 0
-            print(true_labels)
-            print(names)
 
             for name,truth,candidates,gold in zip(names,true_labels,preds,golds):
                 if truth == 1:
@@ -52,8 +51,6 @@ class Evaluator:
                     if self.k > 1:
                         self.update_kmer_stats(name,candidates,gold)
                     pc_count +=1
-
-            print("PC_COUNT {} ,TOTAL {}".format(pc_count,len(golds)))
                     
         # normalize
         for k in self.best_stats.keys():
@@ -67,6 +64,9 @@ class Evaluator:
             pc_count = len([x for x in true_labels if x ==1])
             print("PC_COUNT {} ,TOTAL {}".format(pc_count,len(true_labels)))
             self.calculate_F1(true_labels,pred_labels)
+
+            best_preds = [x[0] for x in pred_labels]
+            print(confusion_matrix(true_labels,best_preds))
             
 
         return self.best_stats,self.best_n_stats
@@ -90,7 +90,7 @@ class Evaluator:
         align = lambda a,b : self.emboss_needle(a,b) if a != "" and b != "" else (0.0,1)
         alignments = [align("".join(c),gold) for c in candidates[:self.best_of_n]]
         align_pcts = [self.divide(a,b) for a,b in alignments]
-
+        print("{} ,{}".format(name,align_pcts[0]))
         self.update_helper("avg_align_id",align_pcts)
 
     def update_exact_match(self,name,candidates,gold):
@@ -106,7 +106,9 @@ class Evaluator:
         recalls = [self.divide(tp,ref_len) for tp,ref_len,query_len in kmer_results]
         precisions = [self.divide(tp,query_len) for tp,ref_len,query_len in kmer_results]
 
-        self.update_helper("avg_kmer_recall",recalls,log=True,name=name,candidates=candidates,gold=gold)
+        print("{} ,{}".format(name,recalls[0]))
+
+        self.update_helper("avg_kmer_recall",recalls) # log=True,name=name,candidates=candidates,gold=gold
         self.update_helper("avg_kmer_precision",precisions)
         
     def update_helper(self,metric,scores, log = False,name=None,candidates=None,gold=None):

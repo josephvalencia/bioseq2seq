@@ -109,15 +109,17 @@ class TransformerEncoder(EncoderBase):
         """See :func:`EncoderBase.forward()`"""
 
         # self._check_args(src,lengths)
-        emb = self.embeddings(src,grad_mode=grad_mode) 
-
+        print("src:",src,src.shape)
+        emb = self.embeddings(src,grad_mode=grad_mode)
+        
         if grad_mode:
             out = emb.contiguous()
         else:
             out = emb.transpose(0,1).contiguous()
 
+        print("emb:",torch.norm(emb[-1,-1,:]),emb.shape)
+        
         mask = ~sequence_mask(lengths).unsqueeze(1)
-
         layer_attentions = []
 
         # Run the forward pass of every layer of the tranformer.

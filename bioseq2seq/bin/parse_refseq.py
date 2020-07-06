@@ -8,6 +8,7 @@ from Bio import SeqIO
 def match_rna2protein_ID(prefix):
 
     mRNA = set()
+    cds = {}
     protein2rna = {}
 
     with gzip.open(prefix+"feature_table.txt.gz",'rt') as inFile:
@@ -23,8 +24,25 @@ def match_rna2protein_ID(prefix):
                 protein = fields[11] # non-redundant_refseq
                 mRNA.add(rna)
                 protein2rna[protein] = rna
-                
+
     return mRNA,protein2rna
+
+
+def parse_CDS_from_genbank(path):
+
+    cds_storage = {}
+
+    genbank_file = path+"rna.gbff.gz"
+
+    with gzip.open(genbank_file,"rt") as inFile:
+        for rec in SeqIO.parse(inFile,"genbank"):
+            cds_feat = [x for x in rec.features if x.type == "CDS"]
+            
+            if len(cds_feat) > 0:
+                cds = cds_feat[0].location
+                cds_storage[rec.id] = "{}:{}".format(cds.start,cds.end)
+
+    return cds_storage
 
 def get_lncRNA_ID(prefix):
     
@@ -54,7 +72,7 @@ def analyze_noncode(name):
     
     return lengths
 
-def refseq_RNA(prefix,mRNA,lncRNA,prot2rna,table):
+def refseq_RNA(prefix,mRNA,lncRNA,cds,prot2rna,table):
 
     rna_fasta = prefix+"rna.fna.gz"
     prot_fasta = prefix+"protein.faa.gz"
@@ -62,25 +80,27 @@ def refseq_RNA(prefix,mRNA,lncRNA,prot2rna,table):
     lengths = []
     
     with gzip.open(rna_fasta,"rt") as inFile:
-        
         for seq_record in SeqIO.parse(inFile,"fasta"):
-
             tscript = seq_record.id
 
             if tscript.startswith("NM_") or tscript.startswith("XM_"):
                 if tscript in mRNA:
                     new_entry = {"RNA" : seq_record.seq, "TYPE" : "<PC>"}
+
+                    if tscript in cds:
+                        new_entry["CDS"] = cds[tscript]
+                    else:
+                        new_entry["CDS"] = -1
+
                     table[tscript] = new_entry
             
             elif tscript.startswith("NR_") or tscript.startswith("XR_"):                
                 if tscript in lncRNA:
-                    new_entry = {"RNA" : seq_record.seq, "TYPE" : "<NC>", "PROTEIN" : "?"}
+                    new_entry = {"RNA" : seq_record.seq, "TYPE" : "<NC>", "PROTEIN" : "?", "CDS" : "-1"}
                     table[tscript] = new_entry
                     
     with gzip.open(prot_fasta,"rt") as inFile:
-
         for seq_record in SeqIO.parse(inFile,"fasta"):
-
             prot = seq_record.id
 
             if prot in prot2rna:
@@ -107,11 +127,10 @@ def to_csv(table):
     linear = []
 
     for k in table.keys():
-
         if "PROTEIN" in table[k]:
-            linear.append((k,table[k]["RNA"],table[k]["TYPE"],table[k]["PROTEIN"])) 
+            linear.append((k,table[k]["RNA"],table[k]["TYPE"],table[k]["PROTEIN"],table[k]["CDS"])) 
 
-    df = pd.DataFrame(linear,columns = ['ID','RNA','Type','Protein'])
+    df = pd.DataFrame(linear,columns = ['ID','RNA','Type','Protein',"CDS"])
     df = df.set_index('ID')
     df = df.sample(frac = 1.0, random_state = 65)
     df.to_csv("combined.csv",sep = "\t")
@@ -137,15 +156,15 @@ if __name__ == "__main__":
 
     for name,prefix in species_names.items():
 
+        print("Processing {}".format(name))
         path = parent+prefix
-
+        cds = parse_CDS_from_genbank(path)
+        print("CDS")
         mRNA,protein2rna = match_rna2protein_ID(path)
+        print("mRNA")
         lncRNA = get_lncRNA_ID(path)
-
-        table = refseq_RNA(path,mRNA,lncRNA,protein2rna,table)
+        print("lncRNA")
+        table = refseq_RNA(path,mRNA,lncRNA,cds,protein2rna,table)
     
+    print("Finishing")
     to_csv(table)
-    '''
-    plt.title("lncRNA Lengths")
-    plt.legend(loc='upper right')
-    plt.savefig("lnc_lengths_hist.png") '''

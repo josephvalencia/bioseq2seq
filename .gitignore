@@ -3,6 +3,12 @@
 *.attns
 *.png
 *.out
+*.pdf
+*.self_attns
+*.enc_dec_attns
+*.csv
+*.txt
+*.attr
 *.pt
 \#*#
 .DS_Store

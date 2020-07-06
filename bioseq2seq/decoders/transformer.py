@@ -65,7 +65,9 @@ class TransformerDecoderLayer(nn.Module):
         """
         with_align = kwargs.pop('with_align', False)
         output, dec_attns, context_attns = self._forward(*args, **kwargs)
-        top_attn = context_attns[:, 0, :, :].contiguous()
+        
+        top_attn = context_attns.mean(dim=1)
+        #top_attn = context_attns[:, 0, :, :].contiguous()
         attn_align = None
         if with_align:
             if self.full_context_alignment:
@@ -136,6 +138,7 @@ class TransformerDecoderLayer(nn.Module):
                                        mask=src_pad_mask,
                                        layer_cache=layer_cache,
                                        attn_type="context")
+        
         output = self.feed_forward(self.drop(mid) + query)
 
         return output, dec_attns, context_attns
@@ -248,6 +251,7 @@ class TransformerDecoder(DecoderBase):
         tgt_pad_mask = tgt_words.data.eq(pad_idx).unsqueeze(1)  # [B, 1, T_tgt]
 
         with_align = kwargs.pop('with_align', False)
+        context_storage = []
 
         attn_aligns = []
         for i, layer in enumerate(self.transformer_layers):
@@ -261,13 +265,14 @@ class TransformerDecoder(DecoderBase):
                 layer_cache=layer_cache,
                 step=step,
                 with_align=with_align)
+            context_storage.append(context_attn)
             if attn_align is not None:
                 attn_aligns.append(attn_align)
 
         output = self.layer_norm(output)
         dec_outs = output.transpose(0, 1).contiguous()
-        attn = context_attn.transpose(0, 1).contiguous()
-
+        #attn = context_attn.transpose(0, 1).contiguous()
+        attn = context_storage[0].transpose(0,1).contiguous()
         attns = {"std": attn}
         if self._copy:
             attns["copy"] = attn

@@ -7,7 +7,7 @@ import json
 import pprint
 import logomaker
 from matplotlib import pyplot as plt
-from collections import Counter
+from collections import Counter, defaultdict
 from matplotlib.backends.backend_pdf import PdfPages
 
 def plot_entropy(entropy,tscript_name,head_name):
@@ -92,8 +92,7 @@ def plot_maxdist(max_attns,tscript_name,head_name):
 
 def plot_center(centers,cds_start,cds_end,tscript_name,head_name,line = False,no_diagonal = False):
     """ Plot nucleotide position vs center index of attention.
-        Args:
-    """
+        Args: """
     centers = np.asarray(centers)
     x = np.arange(centers.shape[0])
 
@@ -113,24 +112,17 @@ def plot_heatmap(tscript_name,head_name,attns):
 
     plt.xlabel("Key")
     plt.ylabel("Query")
-
-    plt.title("Attention Heatmap "+tscript_name+"."+head_name)
+    plt.title("Attention Heatmap"+tscript_name+"."+head_name)
     plt.savefig("output/"+tscript_name+"/"+head_name+"_heatmap.pdf")
     plt.close()
 
-def load_JSON(saved_attn):
+def pipeline(saved_attn):
 
     with open(saved_attn) as inFile:
-
-        idx = 0
-
         for line in inFile:
 
-            if idx > 24: # just the first 25
-                break
-
             decoded = json.loads(line)
-            tscript_id = decoded['ENSEMBL_ID']
+            tscript_id = decoded['TSCRIPT_ID']
             seq = decoded['seq']
             cds_start = decoded['CDS_START']
             cds_end = decoded['CDS_END']
@@ -138,17 +130,68 @@ def load_JSON(saved_attn):
 
             if not os.path.isdir("output/"+tscript_id+"/"):
                 os.mkdir("output/"+tscript_id+"/")
-
-            print(tscript_id)
-
-            for layer in layers:
-                # sequence_logo(layer,tscript_id)
+            
+            for n,layer in enumerate(layers):
                 max_PDF(layer,cds_start,cds_end,tscript_id)
                 maxdist_PDF(layer,tscript_id)
                 maxdist_txt(layer,tscript_id,seq)
-                # entropy_PDF(layer,tscript_id)
-            idx+=1
+                entropy_PDF(layer,tscript_id)
 
+
+def layer_entropy_heatmap(saved_attn):
+
+    activations = defaultdict(lambda: defaultdict(float))
+    total_nucs = 0
+
+    with open(saved_attn) as inFile:
+        for line in inFile:
+
+            decoded = json.loads(line)
+            tscript_id = decoded['TSCRIPT_ID']
+            seq = decoded['seq']
+            cds_start = decoded['CDS_START']
+            cds_end = decoded['CDS_END']
+            layers = decoded['layers']
+
+            if not os.path.isdir("output/"+tscript_id+"/"):
+                os.mkdir("output/"+tscript_id+"/")
+            
+            for n,layer in enumerate(layers):
+                
+                '''sequence_logo(layer,tscript_id)
+                max_PDF(layer,cds_start,cds_end,tscript_id)
+                maxdist_PDF(layer,tscript_id)
+                maxdist_txt(layer,tscript_id,seq)
+                entropy_PDF(layer,tscript_id)'''
+
+                layer_num = layer['layer']
+                heads = layer['heads']
+                h_len = 0
+
+                for h in range(8):
+                    entropy = heads[h]["h_x"]
+                    curr_entropy = np.asarray([float(x) for x in entropy])
+
+                    if np.any( np.isnan(curr_entropy)):
+                        print(tscript_id)
+
+                    h_len = len(curr_entropy)
+                    activations[n][h] += np.sum(curr_entropy)
+
+                total_nucs += h_len
+
+    for n,inside in activations.items():
+        for h,val in inside.items():
+            inside[h] = val / total_nucs
+    
+    df = pd.DataFrame.from_dict(activations)
+    sns.heatmap(df.transpose(),cmap="Blues")
+    plt.xlabel("Head")
+    plt.ylabel("Layer")
+    plt.title("Mean Entropy")
+    plt.savefig("attn_head_entropy_heatmap.pdf")
+    plt.close()
+    
 def sequence_logo(layer,tscript_id):
 
     layer_num = layer['layer']

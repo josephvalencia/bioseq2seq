@@ -5,10 +5,11 @@ import pandas as pd
 import random
 import time
 import numpy as np
+import json
 
-from captum.attr import InputXGradient, DeepLift, IntegratedGradients, Occlusion, LayerIntegratedGradients
+from captum.attr import LayerGradientXActivation, LayerDeepLift, LayerIntegratedGradients
 
-from bioseq2seq.inputters import TextDataReader,get_fields
+from bioseq2seq.inputters import TextDataReader , get_fields
 from bioseq2seq.translate.transparent_translator import TransparentTranslator
 from bioseq2seq.translate import GNMTGlobalScorer
 from bioseq2seq.bin.translate import make_vocab, restore_transformer_model
@@ -29,7 +30,8 @@ def parse_args():
     parser.add_argument("--stats-output","--st",help = "Name of file for saving evaluation statistics")
     parser.add_argument("--translation-output","--o",help = "Name of file for saving predicted translations")
     parser.add_argument("--checkpoint", "--c",help="ONMT checkpoint (.pt)")
-    parser.add_argument("--mode",default = "translate")
+    parser.add_argument("--mode",default = "combined")
+    parser.add_argument("--name",default = "temp")
 
     # translate optional args
     parser.add_argument("--beam_size","--b",type = int, default = 8, help ="Beam size for decoding")
@@ -50,7 +52,6 @@ def run_encoder(model,src,src_lengths,batch_size):
                             .long() \
                             .fill_(memory_bank.size(0))
 
-    print("Returning from run_encoder()")
     return src, enc_states, memory_bank, src_lengths,enc_attn
 
 def decode_and_generate(
@@ -60,11 +61,6 @@ def decode_and_generate(
             memory_lengths,
             step=None):
 
-        #print("decoder_in",decoder_in.shape)
-        #print("memory_bank",memory_bank.shape)
-        #print("memory_lengths",memory_lengths.shape)
-        #print("Entering decoder")
-        
         dec_out, dec_attn = model.decoder(decoder_in, memory_bank, memory_lengths=memory_lengths, step=step,grad_mode=True)
 
         if "std" in dec_attn:
@@ -73,8 +69,6 @@ def decode_and_generate(
             attn = None
         log_probs = model.generator(dec_out.squeeze(0))
 
-        # returns [(batch_size x beam_size) , vocab ] when 1 step
-        # print("Returning from decode_and_generate()")
         return log_probs, attn
 
 def prepare_input(src,batch_size,sos_token,pad_token,device):
@@ -85,12 +79,12 @@ def prepare_input(src,batch_size,sos_token,pad_token,device):
     return decoder_input,baseline
 
 def predict_first_token(src,src_lens,decoder_input,batch_size,model,device):
-
-    print("memory lengths: ",src_lens,src_lens.shape)
-    print(src.shape)
-    print(src_lens)
-
+    
     src = src.transpose(0,1)
+
+    #if src.size(1) ==1:
+    #    print(src[:,0,0])
+
     src, enc_states, memory_bank, src_lengths, enc_attn = run_encoder(model,src,src_lens,batch_size)
 
     model.decoder.init_state(src,memory_bank,enc_states)
@@ -104,7 +98,18 @@ def predict_first_token(src,src_lens,decoder_input,batch_size,model,device):
             step=0)
 
     classes = log_probs
-    print(classes,classes.requires_grad)
+
+    if classes.size(0) ==1:
+        probs = torch.exp(log_probs)
+        probs_list = probs.tolist()[0]
+
+        if src.sum().item() / torch.numel(src) == 1:
+            print("Baseline(anybase)")
+        
+        print("P(coding) = {} , P(noncoding) = {}".format(probs_list[24],probs_list[25]))
+        # pred_idx = torch.max(probs,dim = 1)
+        # print("Predicted class:",pred_idx)
+    
     return classes
 
 def collect_token_attribution(args,device):
@@ -122,48 +127,72 @@ def collect_token_attribution(args,device):
     model.eval()
     model.zero_grad()
 
+    vocab = checkpoint['vocab']
     # replicate splits
     df_train,df_test,df_dev = train_test_val_split(data,1000,random_seed)
-    train,test,dev = dataset_from_df(df_train.copy(),df_test.copy(),df_dev.copy(),mode=args.mode)
-    
+    train,test,dev = dataset_from_df(df_train.copy(),df_test.copy(),df_dev.copy(),mode=args.mode,saved_vocab=vocab)
+     
     max_tokens_in_batch = 1000
     num_gpus = 1
 
-    if num_gpus > 0: # GPU training
-        device = torch.device("cuda:{}".format(0))
-        torch.cuda.set_device(device)
-        model.cuda()
+    # GPU training
+    torch.cuda.set_device(device)
+    model.cuda()
     
-    train_iterator = iterator_from_dataset(train,max_tokens_in_batch,device,train=True)
+    val_iterator = iterator_from_dataset(dev,max_tokens_in_batch,device,train=False)
+    
     ig = LayerIntegratedGradients(predict_first_token, model.encoder.embeddings)
-
+    
     sos_token = checkpoint['vocab']['tgt'].vocab['<sos>']
     pad_token = checkpoint['vocab']['src'].vocab['<pad>']
-    
-    for i,batch in enumerate(train_iterator):
-        
-        src,src_lens = batch.src
-        src = src.transpose(0,1)
 
-        batch_size = batch.batch_size
+    savefile = args.name + ".attr"
 
-        decoder_input, baseline = prepare_input(src,batch_size,sos_token,pad_token,device)
+    target_pos = 0
 
-        attributions = ig.attribute(inputs=src,
-                        baselines = baseline,
-                        target = batch.tgt[0,:,:],
-                        internal_batch_size=6,
-                        additional_forward_args=(src_lens,decoder_input,batch_size,model,device))
-        
-        attributions = np.squeeze(attributions.detach().cpu().numpy(),axis=0)
+    with open(savefile,'w') as outFile:    
 
-        print(attributions.shape)
-        norm = np.linalg.norm(attributions,2,axis=1)
-        print("ATTRIBUTIONS: ",norm,attributions.shape)
-        quit()
+        for i,batch in enumerate(val_iterator):
 
+            ids = batch.id
+            src,src_lens = batch.src
+            src = src.transpose(0,1)
+            
+            # can only do one batch at a time
+            batch_size = batch.batch_size
+
+            for j in range(batch_size):
+                
+                curr_src = torch.unsqueeze(src[j,:,:],0)
+                decoder_input, baseline = prepare_input(curr_src,1,sos_token,pad_token,device)
+                
+                curr_tgt = batch.tgt[target_pos,j,:]
+                curr_tgt = torch.unsqueeze(curr_tgt,0)
+                curr_tgt = torch.unsqueeze(curr_tgt,2)
+
+                curr_src_lens = torch.max(src_lens)
+                curr_src_lens = torch.unsqueeze(curr_src_lens,0)
+                
+                print(ids[j])
+                
+                attributions = ig.attribute(inputs=curr_src,
+                                target=curr_tgt,
+                                baselines = baseline,
+                                internal_batch_size = 6,
+                                return_convergence_delta=False,
+                                additional_forward_args=(curr_src_lens,decoder_input,1,model,device))
+                
+                attributions = np.squeeze(attributions.detach().cpu().numpy(),axis=0)        
+                #attributions = np.linalg.norm(attributions,2,axis=1)
+                attributions = np.sum(attributions,axis=1)
+                attr = [round(x,3) for x in attributions.tolist()]
+                
+                entry = {"ID" : ids[j] , "attr" : attr}
+                summary = json.dumps(entry)
+                outFile.write(summary+"\n")
+            
 if __name__ == "__main__": 
 
     args = parse_args()
-    machine = "cuda"
+    machine = "cuda:3"
     collect_token_attribution(args,machine)

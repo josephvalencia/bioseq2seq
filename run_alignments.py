@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.metrics import classification_report
 
-evaluator = Evaluator(best_of = 4,full_align=False,exact_match=True)
+evaluator = Evaluator(best_of = 1,full_align=False,exact_match=True)
 
 with open(sys.argv[1],"r") as inFile:
     lines = inFile.read().split("\n")

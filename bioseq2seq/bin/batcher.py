@@ -136,18 +136,13 @@ def filter_by_length(translation_table,max_len,min_len=0):
 
     percentiles = [0.1 * x for x in range(1,10)]
     
-    print("Before")
-    print("Coding",translation_table[translation_table['Type'] == "<PC>"].describe(percentiles=percentiles))
-    print("Noncoding",translation_table[translation_table['Type'] == "<NC>"].describe(percentiles=percentiles))
-
+    #print("Before")
+    #print("Coding",translation_table[translation_table['Type'] == "<PC>"].describe(percentiles=percentiles))
+    #print("Noncoding",translation_table[translation_table['Type'] == "<NC>"].describe(percentiles=percentiles))
     translation_table = translation_table[translation_table['RNA_LEN'] < max_len]
-    print("After")
-    print("Coding",translation_table[translation_table['Type'] == "<PC>"].describe(percentiles=percentiles))
-    print("Noncoding",translation_table[translation_table['Type'] == "<NC>"].describe(percentiles=percentiles))
-
-    #types = translation_table['Type'].values
-    #pc_count = sum([1 for x in types if x == "<PC>"])
-    #print("Num pc : {}".format(pc_count))
+    #print("After")
+    #print("Coding",translation_table[translation_table['Type'] == "<PC>"].describe(percentiles=percentiles))
+    #print("Noncoding",translation_table[translation_table['Type'] == "<NC>"].describe(percentiles=percentiles))
 
     if min_len > 0:
         translation_table =  translation_table[translation_table['RNA_LEN'] > min_len]
@@ -222,16 +217,14 @@ def partition(dataset, split_ratios, random_state):
     indices.append(last_partition)
 
     data = tuple([dataset.examples[i] for i in index] for index in indices)
-
-    splits = tuple(Dataset(d, dataset.fields)
-                       for d in data )
+    splits = tuple(Dataset(d, dataset.fields) for d in data )
 
     return splits
 
-def dataset_from_df(train,test,dev,mode="combined", fields = None):
+def dataset_from_df(train,test,dev,mode="combined", saved_vocab = None):
 
     # Fields define tensor attributes
-    if fields is None:
+    if saved_vocab is None:
 
         RNA = Field(tokenize=src_tokenize,
                     use_vocab=True,
@@ -247,8 +240,8 @@ def dataset_from_df(train,test,dev,mode="combined", fields = None):
                         eos_token="<eos>")
 
     else:
-        RNA = fields.vocab['src']
-        PROTEIN = fields.vocab['tgt']
+        RNA = saved_vocab['src']
+        PROTEIN = saved_vocab['tgt']
 
     # GENCODE ID is string not tensor
     ID = RawField()
@@ -282,10 +275,10 @@ def dataset_from_df(train,test,dev,mode="combined", fields = None):
         splits.append(dataset)
 
     # Fields have a shared vocab over all datasets
-    PROTEIN.build_vocab(*splits)
-    RNA.build_vocab(*splits)
+    if saved_vocab is None:
+        PROTEIN.build_vocab(*splits)
+        RNA.build_vocab(*splits)
 
-    
     print("RNA:",RNA.vocab.stoi)
     print("Protein:",PROTEIN.vocab.stoi)
 
