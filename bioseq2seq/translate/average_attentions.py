@@ -5,22 +5,28 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy import stats
-import re
+import matplotlib.mlab as mlab
+from matplotlib.backends.backend_pdf import PdfPages
+from scipy import stats , signal
+import re,random
 
-def load_enc_dec_attn(cds_storage,attn_file,align_on="start",mode="attn",plt_std_error=False):
-
-    samples = []
+def load_enc_dec_attn(cds_storage,layer,head,align_on="start",plot_type="line",mode="attn",prefix=None,plt_std_error=False,plt_inset=False):
 
     domain = list(range(-634,999))
-
+    
+    samples = []
+    sample_ids = []
     before_lengths = []
     after_lengths = []
 
-    with open(attn_file) as inFile:
-        for l in inFile:
-            fields = json.loads(l)
+    attn_prefix = "layer{}".format(layer)
+    attn_prefix = attn_prefix +"head{}".format(head) if head != "mean" else attn_prefix + "mean"
+    attn_prefix = attn_prefix if prefix == None else prefix+"_"+attn_prefix
 
+    with open("large/"+attn_prefix+".enc_dec_attns") as inFile:
+        for l in inFile:
+
+            fields = json.loads(l)
             if mode == "attn":
                 tgt = "layer_0_pos_0"
                 id_field = "TSCRIPT_ID"
@@ -29,9 +35,9 @@ def load_enc_dec_attn(cds_storage,attn_file,align_on="start",mode="attn",plt_std
                 id_field = "ID" 
 
             id = fields[id_field]
-
+            sample_ids.append(id)
+            
             if id in cds_storage:
-                
                 cds = cds_storage[id]
                 if cds != "-1" :
                     splits = cds.split(":")
@@ -40,7 +46,8 @@ def load_enc_dec_attn(cds_storage,attn_file,align_on="start",mode="attn",plt_std
                     start,end = tuple([int(x) for x in splits])
                 
                     if mode == "attn":
-                        attn =  keep_nonzero(fields[tgt])
+                        #attn = keep_nonzero(fields[tgt])
+                        attn = [float(x) for x in fields[tgt]]
                     else:
                         attn = [float(x) for x in fields[tgt]]
 
@@ -52,41 +59,107 @@ def load_enc_dec_attn(cds_storage,attn_file,align_on="start",mode="attn",plt_std
                         after_lengths.append(len(attn) - end)
                     else:
                         raise ValueError("align_on must be 'start' or 'end'")
-
                     samples.append(attn)
- 
+
+    percentiles = [10 * x for x in range(11)]
+    after_percentiles = np.percentile(after_lengths,percentiles)
+    before_percentiles = np.percentile(before_lengths,percentiles)
+
     if align_on == "start":
         max_before = max(before_lengths)
-        domain = list(range(-max_before,999))
+        domain = np.asarray(list(range(-max_before,999)))
         samples = [align_on_start(attn,start,max_before) for attn,start in zip(samples,before_lengths)]
     else:
         max_after = max(after_lengths)
-        domain = list(range(-999,max_after))
+        domain = np.asarray(list(range(-999,max_after)))
         samples = [align_on_end(attn,end,max_after) for attn,end in zip(samples,before_lengths)]
 
-    samples = np.asarray(samples)
-
     # mean and standard error over samples
+    samples = np.asarray(samples)
     consensus = np.nanmean(samples,axis=0)
-   #mean_by_mod(consensus[max_before:max_before+400])
+    error = np.nanstd(samples,axis=0) # /np.sqrt(samples.shape[0])
+    #mean_by_mod(consensus[max_before:max_before+400],layer,head)
 
-    error = np.nanstd(samples,axis=0) / np.sqrt(samples.shape[0])
+    example_indexes = random.sample(range(len(samples)),4)
+    example_ids = [sample_ids[x] for x in example_indexes]
+    examples = samples[example_indexes,:]
 
-    #plt.stem(domain, consensus, 'k', color='#CC4F1B')
-    plt.stem(domain,consensus,use_line_collection=True)
+    if plot_type == "examples":
+        random.seed(30)
+        example_indexes = random.sample(range(len(samples)),4)
+        example_ids = [sample_ids[x] for x in example_indexes]
+        examples = samples[example_indexes,:]
+        filename = attn_prefix +"profile.pdf"
 
-    if plt_std_error:
-        plt.fill_between(domain, consensus-2*error, consensus+2*error,alpha=0.5, edgecolor='#CC4F1B', facecolor='#FF9848')
-    
-    #plt.xlim(50,100)
-    plt.xlim(-10,13)
-    plt.xticks(np.arange(-10,14))
-    plt.title("Attention Layer 3")
-    plt.xlabel("Relative Postition (CDS)")
-    plt.ylabel("Attention Score")
-    plt.tight_layout()
-    plt.savefig("attention_mean3_zoomed.pdf")
-    plt.close()
+        with PdfPages(filename) as pdf:
+            for i in range(len(example_indexes)):
+                ex = examples[i,:]
+                non_nan = ~np.isnan(ex)
+                ex_domain = domain[non_nan]
+                ex = ex[non_nan]
+                
+                plt.plot(ex_domain,ex,'k',color='#CC4F1B')
+                plt.plot(ex_domain,consensus[non_nan],'k',linestyle='dashed')
+                ax = plt.gca()
+
+                if plt_std_error:
+                    plt.fill_between(domain, consensus[non_nan]-2*error[non_nan], consensus[non_nan]+2*error[non_nan],alpha=0.5, edgecolor='#CC4F1B', facecolor='#FF9848')
+                
+                ax.set(xlabel = "Pos. Relative to CDS", ylabel = "Attention Score")
+                ax.set_title(sample_ids[i])
+      
+                if plt_inset:
+                    if head == 6 or head == 7:
+                        axins = ax.inset_axes([0.1, 0.6, 0.35, 0.35])
+                    else:
+                        axins = ax.inset_axes([0.6, 0.6, 0.35, 0.35])
+
+                    axins.stem(domain,consensus,use_line_collection=True,basefmt=" ",markerfacecolor='w')
+                    axins.set_xlim(-10,13)
+                    ax.indicate_inset_zoom(axins)
+
+                plt.tight_layout(rect=[0,0.03,1,0.95])
+                pdf.savefig()
+                plt.close()
+
+    elif plot_type == "stem" or plot_type =="line":
+        if plot_type == "stem":
+            markerline, stemlines, baseline  = plt.stem(domain,consensus,use_line_collection=True,basefmt=" ")
+            #markerline.set_markerfacecolor('none')
+        elif plot_type == "line":
+            plt.plot(domain,consensus,'k',color='#CC4F1B')
+            if plt_std_error:
+                plt.fill_between(domain,consensus-2*error,consensus+2*error,alpha=0.5,edgecolor='#CC4F1B',facecolor='#FF9848')
+       
+        plt.xlabel("Pos. Relative to CDS")
+        plt.ylabel("Attention Score")
+        title = "Layer {} Head {} Attention Profile".format(layer,head)
+        plt.title(title)
+        plt.tight_layout(rect=[0,0.03, 1, 0.95])
+        plt.savefig(attn_prefix +"profile.pdf")
+        plt.close()
+
+    elif plot_type == "spectrum":
+        data = consensus[max_before:max_before+300]
+        
+        ps = np.abs(np.fft.fft(data))**2
+        freq = np.fft.fftfreq(data.size)
+        idx = np.argsort(freq)
+        plt.plot(freq[idx],ps[idx])
+
+        '''freq,ps = signal.welch(data)
+        periods = 1.0 / freq
+        idx = np.argsort(periods)
+        plt.plot(periods[idx],ps[idx])
+        '''
+
+        plt.xlabel("Cycles/Nuc.")
+        plt.ylabel("Power")
+        title = "Layer {} Head {} Attention Power Spectrum".format(layer,head)
+        plt.title(title)
+        plt.tight_layout(rect=[0,0.03, 1, 0.95])
+        plt.savefig(attn_prefix +"spectrum.pdf")
+        plt.close()
 
 def getLongestORF(mRNA):
     ORF_start = -1
@@ -103,10 +176,9 @@ def getLongestORF(mRNA):
                         ORF_end = stopMatch.end()
                         longestORF = len(ORF)
                     break
-
     return ORF_start,ORF_end
 
-def mean_by_mod(attn):
+def mean_by_mod(attn,layer,head):
 
     idx = np.arange(attn.shape[0])
     zero = idx % 3 == 0
@@ -119,7 +191,9 @@ def mean_by_mod(attn):
     plt.xlabel("Pos. rel. to start mod 3")
     plt.ylabel("Mean Attention")
     plt.title("Attention by Frame")
-    plt.savefig("attention_frames_mean1.pdf")
+    outfile = "attention_frames_layer{}".format(layer)
+    outfile = outfile +"head{}".format(head) if head != "mean" else outfile + "mean"
+    plt.savefig(outfile+".pdf")
     plt.close()
 
 def load_CDS(combined_file,include_lnc=False):
@@ -150,16 +224,13 @@ def load_CDS(combined_file,include_lnc=False):
     return dict((x,y) for x,y in zip(ids_list,cds_list))
 
 def keep_nonzero(attn):
-
     nonzero = []
-
     for a in attn:
         f = float(a)
         if f == 0.0:
             break
         else:
             nonzero.append(f)
-
     return nonzero
 
 def align_on_start(attn,cds_start,max_start):
@@ -173,6 +244,9 @@ def align_on_start(attn,cds_start,max_start):
     prefix = [np.nan for x in range(left_remainder)]
     right_remainder = max_len - indices[-1] -1
     suffix = [np.nan for x in range(right_remainder)]
+    
+    min_information = -np.log2(1.0/len(attn))
+    #attn = [min_information / -np.log2(x) for x in attn]
 
     total = prefix +attn+ suffix
     return total
@@ -189,15 +263,29 @@ def align_on_end(attn,cds_end,max_end):
     right_remainder = max_end - indices[-1] -1
     suffix = [np.nan for x in range(right_remainder)]
 
-    total = prefix +attn + suffix
+    total = prefix + attn + suffix
     return total
 
 if __name__ == "__main__":
     
-    attn_file = sys.argv[1]
-    combined_file = sys.argv[2]
-    mode = sys.argv[3]
+    combined_file = sys.argv[1]
+    mode = sys.argv[2]
 
     cds_storage = load_CDS(combined_file)
-    load_enc_dec_attn(cds_storage,attn_file,align_on ="start",mode=mode)
-    
+
+    layer = 3
+    # layer 3 heads
+    for h in list(range(8)):
+        print("layer{}head{}".format(layer,h))
+        load_enc_dec_attn(cds_storage,layer,h,align_on ="start",mode=mode,plot_type="spectrum")
+    '''
+    # all layers mean
+    for layer in range(4):
+        print("layer{}mean".format(layer))
+        load_enc_dec_attn(cds_storage,layer,"mean",align_on="start",mode=mode,plot_type="line")
+    '''
+    '''
+    for h in range(8):
+        print("small_layertophead{}".format(h))
+        load_enc_dec_attn(cds_storage,"top",h,align_on="start",prefix= "small",mode=mode,plot_type="spectrum")
+    '''

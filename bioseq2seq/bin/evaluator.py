@@ -8,7 +8,7 @@ from sklearn.metrics import confusion_matrix
 
 class Evaluator:
 
-    def __init__(self, mode = "combined", k=8, best_of=1,exact_match=True, full_align=False, ):
+    def __init__(self, mode = "combined", k=8, best_of=1,exact_match=True, full_align=False):
         
         self.mode = mode
         self.k = k
@@ -25,6 +25,8 @@ class Evaluator:
         true_labels,golds = self.separate_gold(golds)
 
         total_items = len(golds)
+        pc_count = 0
+
 
         if self.mode == "translate":
 
@@ -37,10 +39,9 @@ class Evaluator:
                     self.update_kmer_stats(name,candidates,gold)
 
             print("TOTAL {}".format(len(golds)))
+        
 
         elif self.mode == "combined":
-
-            pc_count = 0
 
             for name,truth,candidates,gold in zip(names,true_labels,preds,golds):
                 if truth == 1:
@@ -54,7 +55,7 @@ class Evaluator:
                     
         # normalize
         for k in self.best_stats.keys():
-            self.best_stats[k] /= total_items
+            self.best_stats[k] /= pc_count
 
         if not self.best_n_stats is None:
             for k in self.best_n_stats.keys():
@@ -68,7 +69,6 @@ class Evaluator:
             best_preds = [x[0] for x in pred_labels]
             print(confusion_matrix(true_labels,best_preds))
             
-
         return self.best_stats,self.best_n_stats
 
     def calculate_F1(self,true_labels,pred_labels):
@@ -90,7 +90,6 @@ class Evaluator:
         align = lambda a,b : self.emboss_needle(a,b) if a != "" and b != "" else (0.0,1)
         alignments = [align("".join(c),gold) for c in candidates[:self.best_of_n]]
         align_pcts = [self.divide(a,b) for a,b in alignments]
-        print("{} ,{}".format(name,align_pcts[0]))
         self.update_helper("avg_align_id",align_pcts)
 
     def update_exact_match(self,name,candidates,gold):
@@ -105,8 +104,6 @@ class Evaluator:
 
         recalls = [self.divide(tp,ref_len) for tp,ref_len,query_len in kmer_results]
         precisions = [self.divide(tp,query_len) for tp,ref_len,query_len in kmer_results]
-
-        print("{} ,{}".format(name,recalls[0]))
 
         self.update_helper("avg_kmer_recall",recalls) # log=True,name=name,candidates=candidates,gold=gold
         self.update_helper("avg_kmer_precision",precisions)

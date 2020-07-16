@@ -35,7 +35,7 @@ def make_transformer_model(n=4,dim_model=128,dim_ff=2048, heads=8, dropout=0.1):
     nucleotide_embeddings = Embeddings(word_vec_size = dim_model,
                                        word_vocab_size = NUM_INPUT_CLASSES,
                                        word_padding_idx = 1,
-                                       position_encoding = True)
+                                       position_encoding = False)
 
     protein_embeddings = Embeddings(word_vec_size = dim_model,
                                     word_vocab_size = NUM_OUTPUT_CLASSES,
@@ -51,7 +51,7 @@ def make_transformer_model(n=4,dim_model=128,dim_ff=2048, heads=8, dropout=0.1):
                                        max_relative_positions = max_relative_positions,
                                        attention_dropout = attention_dropout)
 
-    decoder_stack = TransformerDecoder(num_layers = n,
+    decoder_stack = TransformerDecoder(num_layers = 2,
                                        d_model = dim_model,
                                        heads = heads,
                                        d_ff = dim_ff,

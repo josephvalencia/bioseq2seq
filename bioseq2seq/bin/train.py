@@ -66,10 +66,8 @@ def train_helper(rank,args,seq2seq,random_seed):
     # raw GENCODE transcript data. cols = ['ID','RNA','PROTEIN']
     if args.input.endswith(".gz"):
         dataframe = pd.read_csv(args.input,sep="\t",compression = "gzip")
-        dataframe["CDS"] = [-1] * len(dataframe.index)
     else:
         dataframe = pd.read_csv(args.input,sep="\t")
-        dataframe["CDS"] = [-1] * len(dataframe.index)
 
     # obtain splits. Default 80/10/10. Filter below max_len_transcript
     df_train,df_test,df_val = train_test_val_split(dataframe,args.max_len_transcript,random_seed)

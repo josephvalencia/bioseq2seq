@@ -112,7 +112,7 @@ class EncoderDecoderAttentionDistribution(AttentionDistribution):
     def plot_heatmap(self):
 
         first_pos = self.attn[0][:,:len(self.seq)].cpu().numpy()
-        name = self.tscript_name + "enc_dec_attn.png"
+        name = self.tscript_name + "enc_dec_attn.pdf"
 
         ax = sns.heatmap(np.transpose(first_pos),cmap="YlGnBu")
         plt.savefig(name)
@@ -128,7 +128,7 @@ class EncoderDecoderAttentionDistribution(AttentionDistribution):
         entropy = [round(x,3) for x in self.__attention_entropy__(first).tolist()]
         x = np.arange(len(entropy))
 
-        name = self.tscript_name+"enc_dec_attn_entropy.png"
+        name = self.tscript_name+"enc_dec_attn_entropy.pdf"
 
         plt.plot(x,entropy)
         plt.ylabel("Entropy (bits)")

@@ -11,17 +11,14 @@ import seaborn as sns
 from collections import Counter
 
 def plot_heatmap(name,array):
-
+    
     array = np.asarray(array)
     k_largest_inds = get_top_k(array)
-
     array = np.expand_dims(array,axis=0)
-
     #array = array / np.linalg.norm(array,ord=2)    
     #array = softmax(array,axis=0)
         
     ax = sns.heatmap(np.transpose(array),cmap="Reds")
-
     '''
         for idx in k_largest_inds:
         txt = "({},{})".format(idx,labels[idx])
@@ -55,13 +52,10 @@ def all_plots(mode = "attn"):
     
     saved_file = sys.argv[1]
     storage = {}
-
     txt_storage = []
 
     with open(saved_file) as inFile:
-        
         for l in inFile:
-
             fields = json.loads(l)
             id_field = "TSCRIPT_ID" if mode == "attn" else "ID"
             id = fields[id_field]
@@ -81,20 +75,17 @@ def all_plots(mode = "attn"):
     topk_file = mode+"_topk_idx.txt"
 
     with open(topk_file,'w') as outFile:
-
         for tscript,indices in txt_storage:
             index_str = ",".join([str(x) for x in indices])
             outFile.write("{},{}\n".format(tscript,index_str))
 
 def plot_attn_attr_corr():
-    
     storage = {}
     corrs = []
     count = 0
 
     attn_file = sys.argv[1]
     attr_file = sys.argv[2]
-
     attn_field = "layer_0_pos_0"
     
     print("Loading all attentions")
@@ -122,7 +113,6 @@ def plot_attn_attr_corr():
                     attr = attr[:len(attn)]
 
                 correlation = kendalltau(attr,attn)
-                #correlation = pearsonr(attr,attn)
                 print("count {}, ID {}, corr {}".format(count,id,correlation))
                 corrs.append(correlation[0])
 
@@ -141,15 +131,13 @@ def plot_attn_attr_corr():
 
     ax.text(0.65, 0.95, textstr, transform=ax.transAxes, fontsize=14,
         verticalalignment='top', bbox=props)
-
     ax.set(xlabel="Kendall tau", ylabel='Density')
 
-    plt.title("Enc-Dec mean[3] vs normed")
-    plt.savefig("mean3_normed_kendall_corrs.png")
+    plt.title("Enc-Dec vs normed")
+    plt.savefig("layer3head7_normed_kendall_corrs.png")
     plt.close()
 
 def top_k_to_substrings():
-
     top_k_csv = sys.argv[1]
     self_attn_file = sys.argv[2]
 

@@ -99,7 +99,7 @@ def plot_center(centers,cds_start,cds_end,tscript_name,head_name,line = False,no
     xlabel = "Nuc Index"
     ylabel = "Center Index"
     title = "Center of Attention" +tscript_name+"."+head_name
-    filename = "output/"+tscript_name+"/"+head_name+"_center.pdf"
+    filename = "self_output/"+tscript_name+"/"+head_name+"_center.pdf"
 
     plot(centers,cds_start,cds_end,xlabel,ylabel,title,filename)
 
@@ -113,7 +113,7 @@ def plot_heatmap(tscript_name,head_name,attns):
     plt.xlabel("Key")
     plt.ylabel("Query")
     plt.title("Attention Heatmap"+tscript_name+"."+head_name)
-    plt.savefig("output/"+tscript_name+"/"+head_name+"_heatmap.pdf")
+    plt.savefig("self_output/"+tscript_name+"/"+head_name+"_heatmap.pdf")
     plt.close()
 
 def pipeline(saved_attn):
@@ -127,9 +127,10 @@ def pipeline(saved_attn):
             cds_start = decoded['CDS_START']
             cds_end = decoded['CDS_END']
             layers = decoded['layers']
+            print(tscript_id)
 
-            if not os.path.isdir("output/"+tscript_id+"/"):
-                os.mkdir("output/"+tscript_id+"/")
+            if not os.path.isdir("self_output/"+tscript_id+"/"):
+                os.mkdir("self_output/"+tscript_id+"/")
             
             for n,layer in enumerate(layers):
                 max_PDF(layer,cds_start,cds_end,tscript_id)
@@ -153,8 +154,8 @@ def layer_entropy_heatmap(saved_attn):
             cds_end = decoded['CDS_END']
             layers = decoded['layers']
 
-            if not os.path.isdir("output/"+tscript_id+"/"):
-                os.mkdir("output/"+tscript_id+"/")
+            if not os.path.isdir("self_output/"+tscript_id+"/"):
+                os.mkdir("self_output/"+tscript_id+"/")
             
             for n,layer in enumerate(layers):
                 
@@ -196,7 +197,7 @@ def sequence_logo(layer,tscript_id):
 
     layer_num = layer['layer']
     heads = layer['heads']
-    filename = "output/{}/layer{}_max_logo".format(tscript_id,layer_num)
+    filename = "self_output/{}/layer{}_max_logo".format(tscript_id,layer_num)
 
     top = 10
 
@@ -218,16 +219,16 @@ def sequence_logo(layer,tscript_id):
 
             for idx,count in counts:
                 triplet = seq[idx-1:idx+2]
-                outFile.write(" idx : {}, count : {} , triplet : {} \n".format(idx,count,triplet))
+                outFile.write("idx : {}, count : {} , triplet : {} \n".format(idx,count,triplet))
 
-            outFile.write(" H(codon) : {}\n".format(triplet_entropy))
+            outFile.write("H(codon) : {}\n".format(triplet_entropy))
             outFile.write("\n")
 
 def max_PDF(layer,cds_start,cds_end,tscript_id):
 
     layer_num = layer['layer']
     heads = layer['heads']
-    filename = "output/{}/layer{}_max.pdf".format(tscript_id,layer_num)
+    filename = "self_output/{}/layer{}_max.pdf".format(tscript_id,layer_num)
 
     with PdfPages(filename) as pdf:
 
@@ -240,7 +241,7 @@ def maxdist_PDF(layer,tscript_id):
 
     layer_num = layer['layer']
     heads = layer['heads']
-    filename = "output/{}/layer{}_maxdist.pdf".format(tscript_id,layer_num)
+    filename = "self_output/{}/layer{}_maxdist.pdf".format(tscript_id,layer_num)
 
     with PdfPages(filename) as pdf:
 
@@ -254,7 +255,7 @@ def entropy_PDF(layer,tscript_id):
     layer_num = layer['layer']
     heads = layer['heads']
 
-    filename = "output/{}/layer{}_entropy.pdf".format(tscript_id,layer_num)
+    filename = "self_output/{}/layer{}_entropy.pdf".format(tscript_id,layer_num)
 
     with PdfPages(filename) as pdf:
 
@@ -310,7 +311,7 @@ def maxdist_txt(layer,tscript_id,seq):
 
     layer_num = layer['layer']
     heads = layer['heads']
-    filename = "output/{}/layer{}_maxpos.txt".format(tscript_id,layer_num)
+    filename = "self_output/{}/layer{}_maxpos.txt".format(tscript_id,layer_num)
 
     top = 10
 
@@ -339,4 +340,4 @@ def maxdist_txt(layer,tscript_id,seq):
 
 if __name__ == "__main__":
 
-    load_JSON(sys.argv[1])
+    pipeline(sys.argv[1])

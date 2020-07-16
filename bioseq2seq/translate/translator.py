@@ -264,7 +264,6 @@ class Translator(object):
 
         start_time = time.time()
 
-
         for batch in tqdm.tqdm(data_iter):
          
             batch_data = self.translate_batch(
@@ -281,7 +280,6 @@ class Translator(object):
 
                 rna = "".join(trans.src_raw)
                 transcript_name = names[trans.index]
-                print(transcript_name)
 
                 if save_attn:
 
@@ -291,16 +289,15 @@ class Translator(object):
                     # analyze encoder-decoder attention
                     enc_dec_attn = trans.context_attn 
 
-                    #if transcript_name.startswith("NM") or transcript_name.startswith("XM"):
                     enc_dec_attn_state = EncoderDecoderAttentionDistribution(transcript_name,enc_dec_attn,rna,cds_bounds)
                     summary = enc_dec_attn_state.summarize()
                     self.enc_dec_attn_file.write(summary+"\n")
 
                     # analyze self attention
-                    self_attn = trans.self_attn
+                    '''self_attn = trans.self_attn
                     self_attn_state = SelfAttentionDistribution(transcript_name,self_attn,rna,cds_bounds)
                     summary = self_attn_state.summarize()        
-                    self.self_attn_file.write(summary+"\n")
+                    self.self_attn_file.write(summary+"\n")'''
                     
                     self.self_attn_file.flush()
                     self.enc_dec_attn_file.flush()

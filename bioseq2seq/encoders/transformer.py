@@ -109,7 +109,7 @@ class TransformerEncoder(EncoderBase):
         """See :func:`EncoderBase.forward()`"""
 
         # self._check_args(src,lengths)
-        print("src:",src,src.shape)
+        #print("src:",src,src.shape)
         emb = self.embeddings(src,grad_mode=grad_mode)
         
         if grad_mode:
@@ -117,7 +117,7 @@ class TransformerEncoder(EncoderBase):
         else:
             out = emb.transpose(0,1).contiguous()
 
-        print("emb:",torch.norm(emb[-1,-1,:]),emb.shape)
+        #print("emb:",torch.norm(emb[-1,-1,:]),emb.shape)
         
         mask = ~sequence_mask(lengths).unsqueeze(1)
         layer_attentions = []

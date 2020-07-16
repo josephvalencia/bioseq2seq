@@ -107,14 +107,12 @@ def translate_from_transformer_checkpt(args,device):
     # replicate splits
     train,test,dev = train_test_val_split(data,1000,random_seed)
 
-    #train,test,val = dataset_from_df(df_train.copy(),df_test.copy(),df_val.copy(),mode=args.mode)
     protein,ids,rna,cds = arrange_data_by_mode(dev,args.mode)
 
     checkpoint = torch.load(args.checkpoint,map_location = device)
     saved_params = checkpoint['opt']
 
     vocab = checkpoint['vocab']
-
     print(vocab['tgt'].vocab.stoi)
     print(vocab['src'].vocab.stoi)
 
@@ -125,7 +123,7 @@ def translate_from_transformer_checkpt(args,device):
             print(k,v)
 
     model = restore_transformer_model(checkpoint,device)
-
+    
     '''
     for i in range(12):
         test = torch.tensor([[[i]]]).cuda()
@@ -133,10 +131,10 @@ def translate_from_transformer_checkpt(args,device):
             emb = model.encoder.embeddings(test)
             print(i,emb,torch.norm(emb))
         except Exception:
-            print("who cares")'''
+            print("who cares")
+    '''
 
     text_fields = make_vocab(checkpoint['vocab'],rna,protein)
-
     translate(model,text_fields,rna,protein,ids,cds,device,beam_size=args.beam_size,n_best=args.n_best,save_preds=True,save_attn=True,file_prefix=args.output_name)
 
 def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,

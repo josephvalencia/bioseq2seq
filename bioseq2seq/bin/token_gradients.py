@@ -7,11 +7,13 @@ import time
 import numpy as np
 import json
 
-from captum.attr import LayerGradientXActivation, LayerDeepLift, LayerIntegratedGradients
+from captum.attr import LayerIntegratedGradients, IntegratedGradients
+from captum.attr import configure_interpretable_embedding_layer, remove_interpretable_embedding_layer
 
 from bioseq2seq.inputters import TextDataReader , get_fields
 from bioseq2seq.translate.transparent_translator import TransparentTranslator
 from bioseq2seq.translate import GNMTGlobalScorer
+from bioseq2seq.modules import PositionalEncoding
 from bioseq2seq.bin.translate import make_vocab, restore_transformer_model
 from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition,train_test_val_split
 from bioseq2seq.bin.batcher import train_test_val_split
@@ -42,7 +44,7 @@ def parse_args():
 
 def run_encoder(model,src,src_lengths,batch_size):
 
-    enc_states, memory_bank, src_lengths, enc_attn = model.encoder(src,src_lengths,grad_mode=True)
+    enc_states, memory_bank, src_lengths, enc_attn = model.encoder(src,src_lengths,grad_mode=False)
 
     if src_lengths is None:
         assert not isinstance(memory_bank, tuple), \
@@ -78,13 +80,20 @@ def prepare_input(src,batch_size,sos_token,pad_token,device):
 
     return decoder_input,baseline
 
+def prepare_input_embed(emb,positional,src,batch_size,sos_token,device):
+
+    decoder_input = sos_token * torch.ones(size=(1,batch_size,1),dtype = torch.long).to(device)
+    
+    src_size = list(src.size())
+    baseline_emb = torch.zeros(size=(src_size[0],src_size[1],128),dtype=torch.float).to(device)
+    baseline_emb = positional(baseline_emb)
+
+    input_emb = emb.indices_to_embeddings(src)
+    return decoder_input,baseline_emb,input_emb
+
 def predict_first_token(src,src_lens,decoder_input,batch_size,model,device):
     
     src = src.transpose(0,1)
-
-    #if src.size(1) ==1:
-    #    print(src[:,0,0])
-
     src, enc_states, memory_bank, src_lengths, enc_attn = run_encoder(model,src,src_lens,batch_size)
 
     model.decoder.init_state(src,memory_bank,enc_states)
@@ -98,7 +107,15 @@ def predict_first_token(src,src_lens,decoder_input,batch_size,model,device):
             step=0)
 
     classes = log_probs
+    probs = torch.exp(log_probs)
+    probs_list = probs.tolist()
 
+
+    '''
+    for i,p in enumerate(probs_list):
+        print(" {}, P(coding) = {} , P(noncoding) = {}".format(i,p[24],p[25]))
+
+    
     if classes.size(0) ==1:
         probs = torch.exp(log_probs)
         probs_list = probs.tolist()[0]
@@ -108,7 +125,7 @@ def predict_first_token(src,src_lens,decoder_input,batch_size,model,device):
         
         print("P(coding) = {} , P(noncoding) = {}".format(probs_list[24],probs_list[25]))
         # pred_idx = torch.max(probs,dim = 1)
-        # print("Predicted class:",pred_idx)
+        # print("Predicted class:",pred_idx)'''
     
     return classes
 
@@ -128,6 +145,15 @@ def collect_token_attribution(args,device):
     model.zero_grad()
 
     vocab = checkpoint['vocab']
+
+    '''
+    stoi = vocab['src'].vocab.stoi
+    for tok, idx in stoi.items():
+        print(tok,idx)
+        input = torch.LongTensor([[[idx]]]).cuda()
+        embed_vec = model.encoder.embeddings(input)
+        print(embed_vec)
+    '''
     # replicate splits
     df_train,df_test,df_dev = train_test_val_split(data,1000,random_seed)
     train,test,dev = dataset_from_df(df_train.copy(),df_test.copy(),df_dev.copy(),mode=args.mode,saved_vocab=vocab)
@@ -141,8 +167,13 @@ def collect_token_attribution(args,device):
     
     val_iterator = iterator_from_dataset(dev,max_tokens_in_batch,device,train=False)
     
-    ig = LayerIntegratedGradients(predict_first_token, model.encoder.embeddings)
+    ig = IntegratedGradients(predict_first_token)
+    #ig = LayerIntegratedGradients(predict_first_token, model.encoder.embeddings)
+    positional = PositionalEncoding(0.1,128,10).cuda()
     
+    interpretable_emb = configure_interpretable_embedding_layer(model,'encoder.embeddings')
+    
+    print(checkpoint['vocab']['src'].vocab.stoi)
     sos_token = checkpoint['vocab']['tgt'].vocab['<sos>']
     pad_token = checkpoint['vocab']['src'].vocab['<pad>']
 
@@ -164,35 +195,50 @@ def collect_token_attribution(args,device):
             for j in range(batch_size):
                 
                 curr_src = torch.unsqueeze(src[j,:,:],0)
-                decoder_input, baseline = prepare_input(curr_src,1,sos_token,pad_token,device)
                 
+                #decoder_input, baseline = prepare_input(curr_src,1,sos_token,pad_token,device)
+                decoder_input, baseline_embed,curr_src_embed, = prepare_input_embed(interpretable_emb,positional,curr_src,1,sos_token,device)
                 curr_tgt = batch.tgt[target_pos,j,:]
                 curr_tgt = torch.unsqueeze(curr_tgt,0)
                 curr_tgt = torch.unsqueeze(curr_tgt,2)
 
                 curr_src_lens = torch.max(src_lens)
                 curr_src_lens = torch.unsqueeze(curr_src_lens,0)
-                
-                print(ids[j])
-                
+
+                pred_classes = predict_first_token(curr_src_embed,curr_src_lens,decoder_input,1,model,device)
+                pred, answer_idx  = pred_classes.data.cpu().max(dim=1)
+               
+                '''
                 attributions = ig.attribute(inputs=curr_src,
                                 target=curr_tgt,
                                 baselines = baseline,
-                                internal_batch_size = 6,
+                                internal_batch_size = 3,
                                 return_convergence_delta=False,
                                 additional_forward_args=(curr_src_lens,decoder_input,1,model,device))
+                '''
                 
+                attributions = ig.attribute(inputs=curr_src_embed,
+                                            target=answer_idx,
+                                            baselines=baseline_embed,
+                                            internal_batch_size=2,
+                                            return_convergence_delta=False,
+                                            additional_forward_args = (curr_src_lens,decoder_input,1,model,device))
+
                 attributions = np.squeeze(attributions.detach().cpu().numpy(),axis=0)        
-                #attributions = np.linalg.norm(attributions,2,axis=1)
-                attributions = np.sum(attributions,axis=1)
+                
+                attributions = np.linalg.norm(attributions,2,axis=1)
+                #attributions = np.sum(attributions,axis=1)
+                
                 attr = [round(x,3) for x in attributions.tolist()]
                 
                 entry = {"ID" : ids[j] , "attr" : attr}
                 summary = json.dumps(entry)
                 outFile.write(summary+"\n")
-            
+
+    remove_interpretable_embedding_layer(model,interpretable_emb)
+
 if __name__ == "__main__": 
 
     args = parse_args()
-    machine = "cuda:3"
+    machine = "cuda:0"
     collect_token_attribution(args,machine)

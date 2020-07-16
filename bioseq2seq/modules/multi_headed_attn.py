@@ -2,6 +2,8 @@
 import math
 import torch
 import torch.nn as nn
+import torchsparseattn as sparse
+from .sparse_activations import Sparsemax
 
 from bioseq2seq.utils.misc import generate_relative_positions_matrix,\
                             relative_matmul
@@ -63,7 +65,11 @@ class MultiHeadedAttention(nn.Module):
                                        head_count * self.dim_per_head)
         self.linear_query = nn.Linear(model_dim,
                                       head_count * self.dim_per_head)
+        
         self.softmax = nn.Softmax(dim=-1)
+        #self.softmax = sparse.Fusedmax(alpha=0.1)
+        #self.softmax = Sparsemax()
+
         self.dropout = nn.Dropout(dropout)
         self.final_linear = nn.Linear(model_dim, model_dim)
 
@@ -199,6 +205,8 @@ class MultiHeadedAttention(nn.Module):
             scores = scores.masked_fill(mask, -1e18)
 
         # 3) Apply attention dropout and compute context vectors.
+        #print(scores.shape)
+        lengths = torch.Tensor([*scores.shape])
         attn = self.softmax(scores).to(query.dtype)
         drop_attn = self.dropout(attn)
 
