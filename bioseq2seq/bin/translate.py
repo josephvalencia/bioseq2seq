@@ -9,6 +9,7 @@ from bioseq2seq.inputters import TextDataReader,get_fields
 from bioseq2seq.inputters.text_dataset import TextMultiField
 from bioseq2seq.translate import Translator, GNMTGlobalScorer
 from bioseq2seq.bin.models import make_transformer_model
+from bioseq2seq.modules.embeddings import PositionalEncoding
 
 from torchtext.data import RawField
 from bioseq2seq.bin.batcher import train_test_val_split
@@ -44,7 +45,7 @@ def restore_transformer_model(checkpoint,machine):
     Returns:
         restored model'''
 
-    model = make_transformer_model()
+    model = make_transformer_model(n_enc=6,n_dec=6,model_dim=256,max_rel_pos=8)
     model.load_state_dict(checkpoint['model'],strict=False)
     model.generator.load_state_dict(checkpoint['generator'])
     model.to(device = machine)
@@ -95,7 +96,7 @@ def arrange_data_by_mode(df, mode):
     
     return protein,ids,rna,cds
 
-def translate_from_transformer_checkpt(args,device):
+def translate_from_transformer_checkpt(args,device,use_splits=False):
 
     random_seed = 65
     random.seed(random_seed)
@@ -103,11 +104,14 @@ def translate_from_transformer_checkpt(args,device):
 
     data = pd.read_csv(args.input,sep="\t")
     data["CDS"] = ["-1" for _ in range(data.shape[0])]
+    #data["RNA"] = [x[:1000] for x in data['RNA'].tolist()]
 
     # replicate splits
-    train,test,dev = train_test_val_split(data,1000,random_seed)
-
-    protein,ids,rna,cds = arrange_data_by_mode(dev,args.mode)
+    if use_splits:
+        train,test,dev = train_test_val_split(data,1000,random_seed)
+        protein,ids,rna,cds = arrange_data_by_mode(dev,args.mode)
+    else:
+        protein,ids,rna,cds = arrange_data_by_mode(data,args.mode)
 
     checkpoint = torch.load(args.checkpoint,map_location = device)
     saved_params = checkpoint['opt']
@@ -156,7 +160,13 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
                                    length_penalty = "avg" ,
                                    coverage_penalty = "none")
 
-    MAX_LEN = 500
+    MAX_LEN = 10000
+
+    # hack to expand positional encoding
+    '''new_pe  = PositionalEncoding(0.1,128,max_len=30000)
+    new_embedding = torch.nn.Sequential(*list(model.encoder.embeddings.make_embedding.children())[:-1])
+    new_embedding.add_module('pe',new_pe)
+    model.encoder.embeddings.make_embedding = new_embedding'''
 
     translator = Translator(model,
                             device = device,
@@ -184,4 +194,4 @@ if __name__ == "__main__":
 
     args = parse_args()
     machine = "cuda:0"
-    translate_from_transformer_checkpt(args,machine)
+    translate_from_transformer_checkpt(args,machine,use_splits=True)

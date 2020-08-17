@@ -294,10 +294,10 @@ class Translator(object):
                     self.enc_dec_attn_file.write(summary+"\n")
 
                     # analyze self attention
-                    '''self_attn = trans.self_attn
+                    self_attn = trans.self_attn
                     self_attn_state = SelfAttentionDistribution(transcript_name,self_attn,rna,cds_bounds)
                     summary = self_attn_state.summarize()        
-                    self.self_attn_file.write(summary+"\n")'''
+                    self.self_attn_file.write(summary+"\n")
                     
                     self.self_attn_file.flush()
                     self.enc_dec_attn_file.flush()

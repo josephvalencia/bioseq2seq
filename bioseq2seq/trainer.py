@@ -104,6 +104,7 @@ class Trainer(object):
         batches = []
         normalization = 0
         self.accum_count = self._accum_count(self.optim.training_step)
+        print("accum_count in _accum_batches() {}".format(self.accum_count))
         for batch in iterator:
             batches.append(batch)
             if self.norm_method == "tokens":
@@ -190,7 +191,7 @@ class Trainer(object):
                     valid_stats = self.validate_structured(valid_iter,valid_state,moving_average=self.moving_average)
                 else:
                     print("Normal validation")
-                    valid_stats = self.validate(valid_iter, moving_average=self.moving_average)
+                    valid_stats = self.validate(valid_iter,moving_average=self.moving_average)
                 
                 valid_stats = self._maybe_gather_stats(valid_stats)
 
@@ -401,12 +402,17 @@ class Trainer(object):
 
                 if self.accum_count == 1:
                     self.optim.step()
+                    print("Optimizing, accum_count {}".format(self.accum_count))
 
                 # If truncated, don't backprop fully.
-
                 if self.model.decoder.state is not None:
                     self.model.decoder.detach_state()
-
+            
+        # in case of multi-step gradient accumulation,
+        #update only after accum batches
+        if self.accum_count > 1:
+            print("Optimizing, batch_num {}".format(batch_num))
+            self.optim.step()
 
     def _start_report_manager(self, start_time=None):
         """

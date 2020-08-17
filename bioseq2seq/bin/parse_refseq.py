@@ -72,6 +72,22 @@ def analyze_noncode(name):
     
     return lengths
 
+def parse_SARSCov2(genome):
+
+    entries = []
+    
+    with open(genome,'r') as inFile:
+        for rec in SeqIO.parse(inFile,"fasta"):
+            entries.append((rec.id,rec.seq))
+
+    with open("../Fa/SARSCov2_test.csv",'w') as outFile:
+        header = "ID\tRNA\tProtein\tType\tCDS\n"
+        outFile.write(header)
+        for id,seq in entries:
+            line = "{}\t{}\t?\t<PC>\t-1\n".format(id,seq)
+            outFile.write(line)
+
+
 def refseq_RNA(prefix,mRNA,lncRNA,cds,prot2rna,table):
 
     rna_fasta = prefix+"rna.fna.gz"
@@ -137,6 +153,7 @@ def to_csv(table):
 
 if __name__ == "__main__":
 
+    '''
     parent = "../../../Fa/refseq/"
 
     species_names = {"gorilla":"gorilla_gorilla/GCF_008122165.1_Kamilah_GGO_v0_",
@@ -168,3 +185,7 @@ if __name__ == "__main__":
     
     print("Finishing")
     to_csv(table)
+
+    '''
+    covid_genome_path = "/nfs0/BB/Hendrix_Lab/CoV/FASTA/SARSCoV2_genome.fasta"
+    parse_SARSCov2(covid_genome_path)

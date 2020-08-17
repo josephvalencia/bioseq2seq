@@ -23,7 +23,12 @@ def load_enc_dec_attn(cds_storage,layer,head,align_on="start",plot_type="line",m
     attn_prefix = attn_prefix +"head{}".format(head) if head != "mean" else attn_prefix + "mean"
     attn_prefix = attn_prefix if prefix == None else prefix+"_"+attn_prefix
 
-    with open("large/"+attn_prefix+".enc_dec_attns") as inFile:
+    if mode == "attr":
+        saved_file = "large/"+attn_prefix+".attr"
+    else:
+        saved_file = "large/"+attn_prefix+".enc_dec_attns"
+
+    with open(saved_file) as inFile:
         for l in inFile:
 
             fields = json.loads(l)
@@ -37,7 +42,7 @@ def load_enc_dec_attn(cds_storage,layer,head,align_on="start",plot_type="line",m
             id = fields[id_field]
             sample_ids.append(id)
             
-            if id in cds_storage:
+            if id in cds_storage:# and (id.startswith("XR_") or id.startswith("NR_")):
                 cds = cds_storage[id]
                 if cds != "-1" :
                     splits = cds.split(":")
@@ -75,14 +80,11 @@ def load_enc_dec_attn(cds_storage,layer,head,align_on="start",plot_type="line",m
         samples = [align_on_end(attn,end,max_after) for attn,end in zip(samples,before_lengths)]
 
     # mean and standard error over samples
-    samples = np.asarray(samples)
-    consensus = np.nanmean(samples,axis=0)
-    error = np.nanstd(samples,axis=0) # /np.sqrt(samples.shape[0])
-    #mean_by_mod(consensus[max_before:max_before+400],layer,head)
 
-    example_indexes = random.sample(range(len(samples)),4)
-    example_ids = [sample_ids[x] for x in example_indexes]
-    examples = samples[example_indexes,:]
+    samples = np.asarray(samples)
+    #consensus = np.nanmean(samples,axis=0)
+    error = np.nanstd(samples,axis=0) # / np.sqrt(samples.shape[0])
+    mean_by_mod(samples[max_before:max_before+400],layer,head)
 
     if plot_type == "examples":
         random.seed(30)
@@ -136,23 +138,17 @@ def load_enc_dec_attn(cds_storage,layer,head,align_on="start",plot_type="line",m
         title = "Layer {} Head {} Attention Profile".format(layer,head)
         plt.title(title)
         plt.tight_layout(rect=[0,0.03, 1, 0.95])
-        plt.savefig(attn_prefix +"profile.pdf")
+        plt.savefig(attn_prefix +"codingprofile.pdf")
         plt.close()
 
     elif plot_type == "spectrum":
         data = consensus[max_before:max_before+300]
-        
-        ps = np.abs(np.fft.fft(data))**2
-        freq = np.fft.fftfreq(data.size)
-        idx = np.argsort(freq)
-        plt.plot(freq[idx],ps[idx])
 
-        '''freq,ps = signal.welch(data)
+        freq,ps = signal.welch(data)
         periods = 1.0 / freq
         idx = np.argsort(periods)
         plt.plot(periods[idx],ps[idx])
-        '''
-
+        
         plt.xlabel("Cycles/Nuc.")
         plt.ylabel("Power")
         title = "Layer {} Head {} Attention Power Spectrum".format(layer,head)
@@ -201,6 +197,7 @@ def load_CDS(combined_file,include_lnc=False):
     print("parsing",combined_file)
 
     df = pd.read_csv(combined_file,sep="\t")
+    
     df['RNA_LEN'] = [len(x) for x in df['RNA'].values.tolist()]
     df = df[df['RNA_LEN'] < 1000]
     
@@ -217,7 +214,7 @@ def load_CDS(combined_file,include_lnc=False):
                 temp.append(curr)
             else:
                 start,end = getLongestORF(rna_list[i])
-                fake_cds = "*{}:{}".format(start,end)
+                fake_cds = "{}:{}".format(start,end)
                 temp.append(fake_cds)
         cds_list = temp
 
@@ -271,20 +268,22 @@ if __name__ == "__main__":
     combined_file = sys.argv[1]
     mode = sys.argv[2]
 
-    cds_storage = load_CDS(combined_file)
-
+    cds_storage = load_CDS(combined_file,include_lnc=False)
+    load_enc_dec_attn(cds_storage,"covid","random",align_on="start",mode=mode,plot_type="line")
+    
+    '''
     layer = 3
+
     # layer 3 heads
     for h in list(range(8)):
         print("layer{}head{}".format(layer,h))
         load_enc_dec_attn(cds_storage,layer,h,align_on ="start",mode=mode,plot_type="spectrum")
-    '''
+    
     # all layers mean
     for layer in range(4):
         print("layer{}mean".format(layer))
         load_enc_dec_attn(cds_storage,layer,"mean",align_on="start",mode=mode,plot_type="line")
-    '''
-    '''
+    
     for h in range(8):
         print("small_layertophead{}".format(h))
         load_enc_dec_attn(cds_storage,"top",h,align_on="start",prefix= "small",mode=mode,plot_type="spectrum")

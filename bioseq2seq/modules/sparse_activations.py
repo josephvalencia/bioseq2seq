@@ -4,10 +4,11 @@ An implementation of sparsemax (Martins & Astudillo, 2016). See
 
 By Ben Peters and Vlad Niculae
 """
-
+import warnings
 import torch
 from torch.autograd import Function
 import torch.nn as nn
+import torchsparseattn as sparse
 
 
 def _make_ix_like(input, dim=0):
@@ -84,7 +85,8 @@ class Sparsemax(nn.Module):
         super(Sparsemax, self).__init__()
 
     def forward(self, input):
-        return sparsemax(input, self.dim)
+        original_device = input.device
+        return sparsemax(input.cpu(), self.dim).to(original_device)
 
 
 class LogSparsemax(nn.Module):
@@ -95,3 +97,30 @@ class LogSparsemax(nn.Module):
 
     def forward(self, input):
         return torch.log(sparsemax(input, self.dim))
+        
+class Fusedmax(nn.Module):
+
+    """ Fusedmax clusters vectors into contiguous clusters of equal weight
+
+    Vlad Niculae and Mathieu Blondel.
+    A Regularized Framework for Sparse and Structured Neural Attention
+    In: Proceedings of NIPS, 2017. https://arxiv.org/abs/1705.07704"""
+
+    def __init__(self,alpha=1):
+        self.fused = sparse.FusedProxFunction(alpha=alpha)
+        super(Fusedmax, self).__init__()
+    
+    def forward(self,input):
+        
+        original_size = input.shape
+        original_device = input.device
+        
+        flat = input.view(-1,input.size(-1)).cpu() # convert n-D tensor to 2-D
+        lengths = torch.tensor([flat.size(-1)]*flat.size(0)).to(original_device)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore") # ignore warning about deprecated support for non-static autograd function
+            result = self.fused(flat,lengths) # perform
+
+        result = result.view(*original_size).to(original_device) # return to original shape and device
+        return sparsemax(result,-1)

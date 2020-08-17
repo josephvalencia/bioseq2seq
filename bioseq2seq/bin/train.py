@@ -4,6 +4,7 @@ import argparse
 import pandas as pd
 import random
 import torch
+from math import log, floor
 
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
@@ -32,15 +33,20 @@ def parse_args():
     parser.add_argument("--log-directory",'--l',default = "runs/", help = "Name of directory for saving TensorBoard log files" )
     parser.add_argument("--learning-rate","--lr", type = float, default = 1e-3,help = "Optimizer learning rate")
     parser.add_argument("--max-epochs","--e", type = int, default = 100000,help = "Maximum number of training epochs" )
-    parser.add_argument("--report-every",'--r', type = int, default = 2500, help = "Number of iterations before calculating statistics")
+    parser.add_argument("--report-every",'--r', type = int, default = 750, help = "Number of iterations before calculating statistics")
     parser.add_argument("--mode", default = "combined", help = "Training mode. Classify for binary classification. Translate for full translation")
     parser.add_argument("--num_gpus","--g", type = int, default = 1, help = "Number of GPUs to use on node")
-    parser.add_argument("--accum_steps", type = int, default = 1, help = "Number of batches to accumulate gradients before update")
+    parser.add_argument("--accum_steps", type = int, default = 8, help = "Number of batches to accumulate gradients before update")
+    parser.add_argument("--max_tokens",type = int , default = 3000, help = "Max number of tokens in training batch")
     parser.add_argument("--rank", type = int, default = 0, help = "Rank of node in multi-node training")
     parser.add_argument("--max_len_transcript", type = int, default = 1000, help = "Maximum length of transcript")
     parser.add_argument("--patience", type = int, default = 15, help = "Maximum epochs without improvement")
     parser.add_argument("--address",default =  "127.0.0.1",help = "IP address for master process in distributed training")
     parser.add_argument("--port",default = "6000",help = "Port for master process in distributed training")
+    parser.add_argument("--n_enc_layers",type=int,default = 6,help= "Number of encoder layers")
+    parser.add_argument("--n_dec_layers",type=int,default = 6,help="Number of decoder layers")
+    parser.add_argument("--model_dim",type=int,default = 256,help ="Size of hidden context embeddings")
+    parser.add_argument("--max_rel_pos",type=int,default = 8,help="Max value of relative position embedding")
 
     # optional flags
     parser.add_argument("--checkpoint", "--c", help = "Name of .pt model to initialize training")
@@ -61,7 +67,7 @@ def train_helper(rank,args,seq2seq,random_seed):
     random_state = random.getstate()
 
     # determined by GPU memory
-    max_tokens_in_batch = 6000
+    max_tokens_in_batch = args.max_tokens
 
     # raw GENCODE transcript data. cols = ['ID','RNA','PROTEIN']
     if args.input.endswith(".gz"):
@@ -196,6 +202,12 @@ def restore_transformer_model(checkpoint):
     model.generator.load_state_dict(checkpoint['generator'])
     return model
 
+def human_format(number):
+    units = ['','K','M','G','T','P']
+    k = 1000.0
+    magnitude = int(floor(log(number, k)))
+    return '%.2f%s' % (number / k**magnitude, units[magnitude])
+
 def train(args):
     
     # controls pseudorandom shuffling and partitioning of dataset
@@ -205,10 +217,14 @@ def train(args):
         checkpoint = torch.load(args.checkpoint,map_location = "cpu")
         seq2seq = restore_transformer_model(checkpoint)
     else:
-        seq2seq = make_transformer_model()
+        seq2seq = make_transformer_model(n_enc = args.n_enc_layers,
+                                            n_dec = args.n_dec_layers,
+                                            model_dim = args.model_dim,
+                                            max_rel_pos = args.max_rel_pos)
 
     num_params = sum(p.numel() for p in seq2seq.parameters() if p.requires_grad)
-    print("# trainable parameters = {}".format(num_params))
+
+    print("# trainable parameters = {}".format(human_format(num_params)))
 
     if args.num_gpus > 1:
         print("Multi-GPU training")

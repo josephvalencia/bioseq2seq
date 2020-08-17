@@ -67,7 +67,7 @@ class TransformerDecoderLayer(nn.Module):
         output, dec_attns, context_attns = self._forward(*args, **kwargs)
         
         #top_attn = context_attns.mean(dim=1)
-        top_attn = context_attns[:, 4, :, :].contiguous()
+        top_attn = context_attns[:, 7, :, :].contiguous()
         attn_align = None
         if with_align:
             if self.full_context_alignment:
@@ -272,7 +272,7 @@ class TransformerDecoder(DecoderBase):
         output = self.layer_norm(output)
         dec_outs = output.transpose(0, 1).contiguous()
         #attn = context_attn.transpose(0, 1).contiguous()
-        attn = context_storage[-1].transpose(0,1).contiguous()
+        attn = context_storage[0].transpose(0,1).contiguous()
         attns = {"std": attn}
         if self._copy:
             attns["copy"] = attn

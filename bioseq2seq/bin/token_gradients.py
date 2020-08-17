@@ -6,6 +6,8 @@ import random
 import time
 import numpy as np
 import json
+import math
+import scipy
 
 from captum.attr import LayerIntegratedGradients, IntegratedGradients
 from captum.attr import configure_interpretable_embedding_layer, remove_interpretable_embedding_layer
@@ -110,12 +112,13 @@ def predict_first_token(src,src_lens,decoder_input,batch_size,model,device):
     probs = torch.exp(log_probs)
     probs_list = probs.tolist()
 
-
     '''
-    for i,p in enumerate(probs_list):
-        print(" {}, P(coding) = {} , P(noncoding) = {}".format(i,p[24],p[25]))
-
+    for p in probs_list:
+        print("P(coding) = {} , P(noncoding) = {}".format(p[24],p[25]))
+        entropy = scipy.stats.entropy(np.asarray(p),base=2)
+        print("h_x",entropy)'''
     
+    '''
     if classes.size(0) ==1:
         probs = torch.exp(log_probs)
         probs_list = probs.tolist()[0]
@@ -125,7 +128,8 @@ def predict_first_token(src,src_lens,decoder_input,batch_size,model,device):
         
         print("P(coding) = {} , P(noncoding) = {}".format(probs_list[24],probs_list[25]))
         # pred_idx = torch.max(probs,dim = 1)
-        # print("Predicted class:",pred_idx)'''
+        # print("Predicted class:",pred_idx)
+    '''
     
     return classes
 
@@ -167,8 +171,8 @@ def collect_token_attribution(args,device):
     
     val_iterator = iterator_from_dataset(dev,max_tokens_in_batch,device,train=False)
     
-    ig = IntegratedGradients(predict_first_token)
     #ig = LayerIntegratedGradients(predict_first_token, model.encoder.embeddings)
+    ig = IntegratedGradients(predict_first_token)
     positional = PositionalEncoding(0.1,128,10).cuda()
     
     interpretable_emb = configure_interpretable_embedding_layer(model,'encoder.embeddings')
@@ -186,7 +190,7 @@ def collect_token_attribution(args,device):
         for i,batch in enumerate(val_iterator):
 
             ids = batch.id
-            src,src_lens = batch.src
+            src, src_lens = batch.src
             src = src.transpose(0,1)
             
             # can only do one batch at a time
@@ -197,7 +201,8 @@ def collect_token_attribution(args,device):
                 curr_src = torch.unsqueeze(src[j,:,:],0)
                 
                 #decoder_input, baseline = prepare_input(curr_src,1,sos_token,pad_token,device)
-                decoder_input, baseline_embed,curr_src_embed, = prepare_input_embed(interpretable_emb,positional,curr_src,1,sos_token,device)
+                decoder_input, baseline_embed, curr_src_embed, = prepare_input_embed(interpretable_emb,positional,curr_src,1,sos_token,device)
+                
                 curr_tgt = batch.tgt[target_pos,j,:]
                 curr_tgt = torch.unsqueeze(curr_tgt,0)
                 curr_tgt = torch.unsqueeze(curr_tgt,2)
@@ -206,7 +211,7 @@ def collect_token_attribution(args,device):
                 curr_src_lens = torch.unsqueeze(curr_src_lens,0)
 
                 pred_classes = predict_first_token(curr_src_embed,curr_src_lens,decoder_input,1,model,device)
-                pred, answer_idx  = pred_classes.data.cpu().max(dim=1)
+                pred,answer_idx = pred_classes.data.cpu().max(dim=1)
                
                 '''
                 attributions = ig.attribute(inputs=curr_src,
@@ -216,7 +221,8 @@ def collect_token_attribution(args,device):
                                 return_convergence_delta=False,
                                 additional_forward_args=(curr_src_lens,decoder_input,1,model,device))
                 '''
-                
+                print(ids[j])
+            
                 attributions = ig.attribute(inputs=curr_src_embed,
                                             target=answer_idx,
                                             baselines=baseline_embed,
@@ -224,8 +230,7 @@ def collect_token_attribution(args,device):
                                             return_convergence_delta=False,
                                             additional_forward_args = (curr_src_lens,decoder_input,1,model,device))
 
-                attributions = np.squeeze(attributions.detach().cpu().numpy(),axis=0)        
-                
+                attributions = np.squeeze(attributions.detach().cpu().numpy(),axis=0)
                 attributions = np.linalg.norm(attributions,2,axis=1)
                 #attributions = np.sum(attributions,axis=1)
                 
