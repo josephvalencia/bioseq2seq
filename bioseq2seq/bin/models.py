@@ -27,6 +27,9 @@ def make_transformer_model(n_enc=4,n_dec=4,model_dim=128,dim_ff=2048, heads=8, d
 
     NUM_INPUT_CLASSES = 19
     NUM_OUTPUT_CLASSES = 29
+    
+    #NUM_INPUT_CLASSES = 6
+    #NUM_OUTPUT_CLASSES = 28
 
     nucleotide_embeddings = Embeddings(word_vec_size = model_dim,
                                        word_vocab_size = NUM_INPUT_CLASSES,

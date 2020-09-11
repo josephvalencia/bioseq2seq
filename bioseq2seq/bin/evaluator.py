@@ -23,10 +23,9 @@ class Evaluator:
 
         pred_labels,preds = self.separate_preds(preds)
         true_labels,golds = self.separate_gold(golds)
-
+  
         total_items = len(golds)
         pc_count = 0
-
 
         if self.mode == "translate":
 
@@ -74,7 +73,7 @@ class Evaluator:
     def calculate_F1(self,true_labels,pred_labels):
         
         best_preds = [x[0] for x in pred_labels]
-        f1 = f1_score(true_labels,best_preds,average='micro') 
+        f1 = f1_score(true_labels,best_preds) 
 
         self.best_stats['F1'] = f1
     
@@ -126,7 +125,6 @@ class Evaluator:
                 msg = "NAME: {}\nBEST: {} SCORE({}): {}\nBEST_N: {} SCORE({}) {}\nGOLD: {}\n"
                 print(msg.format(name,candidates[0],metric,scores[0],candidates[max_loc],metric,scores[max_loc],gold))
  
-
     def __get_int_label__(self,label):
         """ Convert text based classed label to integer label"""
         
@@ -135,7 +133,7 @@ class Evaluator:
         elif label == "<PC>":
             return 1
         else:
-            return 2
+            return 0
 
     def __decouple__(self,combined):
 
@@ -145,7 +143,7 @@ class Evaluator:
             label = self.__get_int_label__(splits.group(1))
             protein = splits.group(2)
         else:
-            label = 2
+            label = 0
             protein = combined
 
         return label,protein

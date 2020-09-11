@@ -27,11 +27,9 @@ def match_rna2protein_ID(prefix):
 
     return mRNA,protein2rna
 
-
 def parse_CDS_from_genbank(path):
 
     cds_storage = {}
-
     genbank_file = path+"rna.gbff.gz"
 
     with gzip.open(genbank_file,"rt") as inFile:
@@ -49,9 +47,7 @@ def get_lncRNA_ID(prefix):
     lnc = set()
 
     with gzip.open(prefix+"feature_table.txt.gz",'rt') as inFile:
-
         lines = inFile.readlines()
-
         for l in lines:
             fields = l.split()
             if fields[0] == "ncRNA" and fields[1] == "lncRNA":
@@ -86,7 +82,6 @@ def parse_SARSCov2(genome):
         for id,seq in entries:
             line = "{}\t{}\t?\t<PC>\t-1\n".format(id,seq)
             outFile.write(line)
-
 
 def refseq_RNA(prefix,mRNA,lncRNA,cds,prot2rna,table):
 

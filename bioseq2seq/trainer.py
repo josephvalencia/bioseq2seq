@@ -402,7 +402,6 @@ class Trainer(object):
 
                 if self.accum_count == 1:
                     self.optim.step()
-                    print("Optimizing, accum_count {}".format(self.accum_count))
 
                 # If truncated, don't backprop fully.
                 if self.model.decoder.state is not None:
@@ -411,7 +410,6 @@ class Trainer(object):
         # in case of multi-step gradient accumulation,
         #update only after accum batches
         if self.accum_count > 1:
-            print("Optimizing, batch_num {}".format(batch_num))
             self.optim.step()
 
     def _start_report_manager(self, start_time=None):

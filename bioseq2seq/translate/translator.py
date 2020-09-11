@@ -21,7 +21,7 @@ from bioseq2seq.translate.greedy_search import GreedySearch
 from bioseq2seq.translate.translation import Translation, TranslationBuilder
 from bioseq2seq.utils.misc import tile, set_random_seed, report_matrix
 from bioseq2seq.utils.alignment import extract_alignment, build_align_pharaoh
-from bioseq2seq.attention.attention_stats import SelfAttentionDistribution, EncoderDecoderAttentionDistribution
+from bioseq2seq.interpretation.attention_stats import SelfAttentionDistribution, EncoderDecoderAttentionDistribution
 
 def max_tok_len(new, count, sofar):
     """

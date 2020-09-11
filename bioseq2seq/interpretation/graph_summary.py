@@ -85,7 +85,7 @@ def plot_max(max_attns,cds_start,cds_end,tscript_name,head_name,line = False,no_
 def plot_maxdist(max_attns,tscript_name,head_name):
 
     distance = max_attns - np.arange(max_attns.shape[0])
-    sns.distplot(distance,bins= 2 * max_attns.shape[0],kde=False)
+    sns.distplot(distance,bins=2*max_attns.shape[0],kde=False)
     plt.xlabel("Distance to Max")
     plt.ylabel("Count")
     plt.title(head_name)
@@ -93,6 +93,7 @@ def plot_maxdist(max_attns,tscript_name,head_name):
 def plot_center(centers,cds_start,cds_end,tscript_name,head_name,line = False,no_diagonal = False):
     """ Plot nucleotide position vs center index of attention.
         Args: """
+    
     centers = np.asarray(centers)
     x = np.arange(centers.shape[0])
 
@@ -173,7 +174,7 @@ def layer_entropy_heatmap(saved_attn):
                     entropy = heads[h]["h_x"]
                     curr_entropy = np.asarray([float(x) for x in entropy])
 
-                    if np.any( np.isnan(curr_entropy)):
+                    if np.any(np.isnan(curr_entropy)):
                         print(tscript_id)
 
                     h_len = len(curr_entropy)

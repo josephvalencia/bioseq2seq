@@ -37,7 +37,7 @@ def parse_args():
 
     return parser.parse_args()
 
-def restore_transformer_model(checkpoint,machine):
+def restore_transformer_model(checkpoint,machine,opts):
     ''' Restore a Transformer model from .pt
     Args:
         checkpoint : path to .pt saved model
@@ -45,7 +45,8 @@ def restore_transformer_model(checkpoint,machine):
     Returns:
         restored model'''
 
-    model = make_transformer_model(n_enc=6,n_dec=6,model_dim=256,max_rel_pos=8)
+    #model = make_transformer_model(n_enc=opts.n_enc_layers,n_dec=opts.n_dec_layers,model_dim=opts.model_dim,max_rel_pos=opts.max_rel_pos)
+    model = make_transformer_model(n_enc=4,n_dec=4,model_dim=128,max_rel_pos=10)
     model.load_state_dict(checkpoint['model'],strict=False)
     model.generator.load_state_dict(checkpoint['generator'])
     model.to(device = machine)
@@ -114,19 +115,19 @@ def translate_from_transformer_checkpt(args,device,use_splits=False):
         protein,ids,rna,cds = arrange_data_by_mode(data,args.mode)
 
     checkpoint = torch.load(args.checkpoint,map_location = device)
-    saved_params = checkpoint['opt']
+    options = checkpoint['opt']
 
     vocab = checkpoint['vocab']
-    print(vocab['tgt'].vocab.stoi)
+    print(vocab['tgt'].vocab.stoi)  
     print(vocab['src'].vocab.stoi)
 
-    if not saved_params is None:
+    if not options is None:
         model_name = ""
         print("----------- Saved Parameters for ------------ {}".format("SAVED MODEL"))
-        for k,v in vars(saved_params).items():
+        for k,v in vars(options).items():
             print(k,v)
-
-    model = restore_transformer_model(checkpoint,device)
+ 
+    model = restore_transformer_model(checkpoint,device,options)
     
     '''
     for i in range(12):
@@ -163,11 +164,12 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
     MAX_LEN = 10000
 
     # hack to expand positional encoding
-    '''new_pe  = PositionalEncoding(0.1,128,max_len=30000)
+    '''
+    new_pe  = PositionalEncoding(0.1,128,max_len=30000)
     new_embedding = torch.nn.Sequential(*list(model.encoder.embeddings.make_embedding.children())[:-1])
     new_embedding.add_module('pe',new_pe)
-    model.encoder.embeddings.make_embedding = new_embedding'''
-
+    model.encoder.embeddings.make_embedding = new_embedding
+    '''
     translator = Translator(model,
                             device = device,
                             src_reader = TextDataReader(),

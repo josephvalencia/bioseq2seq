@@ -149,7 +149,7 @@ def filter_by_length(translation_table,max_len,min_len=0):
     
     return translation_table[['ID','RNA', 'CDS', 'Type','Protein']]
 
-def tokenize(original):
+def basic_tokenize(original):
 
     return [c for c in original]
 
@@ -279,8 +279,8 @@ def dataset_from_df(train,test,dev,mode="combined", saved_vocab = None):
         PROTEIN.build_vocab(*splits)
         RNA.build_vocab(*splits)
 
-    print("RNA:",RNA.vocab.stoi)
-    print("Protein:",PROTEIN.vocab.stoi)
+    #print("RNA:",RNA.vocab.stoi)
+    #print("Protein:",PROTEIN.vocab.stoi)
 
     return tuple(splits)
 

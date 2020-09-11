@@ -189,7 +189,7 @@ def wrap_validation_state(fields,rna,protein,id,cds,device):
     fields = make_vocab(fields,rna,protein)
     return fields,rna,protein,id,cds,device
 
-def restore_transformer_model(checkpoint):
+def restore_transformer_model(checkpoint,args):
     ''' Restore a Transformer model from .pt
     Args:
         checkpoint : path to .pt saved model
@@ -197,7 +197,7 @@ def restore_transformer_model(checkpoint):
     Returns:
         restored model'''
 
-    model = make_transformer_model()
+    model = make_transformer_model(n_enc=args.n_enc_layers,n_dec=args.n_dec_layers,model_dim=args.model_dim,max_rel_pos=args.max_rel_pos)
     model.load_state_dict(checkpoint['model'],strict = False)
     model.generator.load_state_dict(checkpoint['generator'])
     return model
@@ -215,7 +215,7 @@ def train(args):
 
     if not args.checkpoint is None:
         checkpoint = torch.load(args.checkpoint,map_location = "cpu")
-        seq2seq = restore_transformer_model(checkpoint)
+        seq2seq = restore_transformer_model(checkpoint,args)
     else:
         seq2seq = make_transformer_model(n_enc = args.n_enc_layers,
                                             n_dec = args.n_dec_layers,

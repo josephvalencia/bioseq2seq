@@ -18,6 +18,8 @@ experiments/
 /comparison
 /stats
 /output/
+/motifs/
+/medium/
 /coding_noncoding_dev_stats/
 # Byte-compiled / optimized / DLL files
 __pycache__/
