@@ -39,6 +39,8 @@ def parse_CDS_from_genbank(path):
             if len(cds_feat) > 0:
                 cds = cds_feat[0].location
                 cds_storage[rec.id] = "{}:{}".format(cds.start,cds.end)
+                print(cds.start,cds.end)
+
 
     return cds_storage
 
@@ -148,7 +150,6 @@ def to_csv(table):
 
 if __name__ == "__main__":
 
-    '''
     parent = "../../../Fa/refseq/"
 
     species_names = {"gorilla":"gorilla_gorilla/GCF_008122165.1_Kamilah_GGO_v0_",
@@ -181,6 +182,5 @@ if __name__ == "__main__":
     print("Finishing")
     to_csv(table)
 
-    '''
     covid_genome_path = "/nfs0/BB/Hendrix_Lab/CoV/FASTA/SARSCoV2_genome.fasta"
     parse_SARSCov2(covid_genome_path)

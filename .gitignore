@@ -20,6 +20,7 @@ experiments/
 /output/
 /motifs/
 /medium/
+/results/
 /coding_noncoding_dev_stats/
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -88,7 +88,8 @@ class FeatureAttributor:
         self.pad_token = pad_token
         self.vocab = vocab
         self.average = None
-        
+        self.nucleotide = None
+
         self.positional = PositionalEncoding(0,128,10).to(self.device)
         self.interpretable_emb = configure_interpretable_embedding_layer(self.model,'encoder.embeddings')
         self.predictor = PredictionWrapper(self.model)
@@ -126,6 +127,24 @@ class FeatureAttributor:
         summary = torch.unsqueeze(summary,dim=0)
         self.average = summary
 
+    def precompute_nucleotide(self,nuc):
+      
+      i = self.vocab[nuc]
+      test = torch.tensor([[[i]]]).to(self.device)
+      emb = self.interpretable_emb.indices_to_embeddings(test)
+      self.nucleotide = emb
+    
+    def nucleotide_embed(self,src,batch_size):
+
+      decoder_input = self.sos_token * torch.ones(size=(batch_size,1,1),dtype=torch.long).to(self.device)
+
+      src_size = list(src.size())
+      baseline_emb = self.nucleotide.repeat(*src_size)
+      baseline_emb = self.positional(baseline_emb)
+      input_emb = self.interpretable_emb.indices_to_embeddings(src)
+
+      return decoder_input,baseline_emb,input_emb
+
     def average_embed(self,src,batch_size):
     
         decoder_input = self.sos_token * torch.ones(size=(batch_size,1,1),dtype=torch.long).to(self.device)
@@ -142,6 +161,7 @@ class FeatureAttributor:
         dl = DeepLift(self.predictor)
 
         self.precompute_average()
+        self.precompute_nucleotide(nuc='A')
 
         with open(savefile,'w') as outFile:
             for batch in tqdm.tqdm(val_iterator):
@@ -151,9 +171,10 @@ class FeatureAttributor:
                 src = src.transpose(0,1)
                 batch_size = batch.batch_size
                 
-                decoder_input, baseline_embed, src_embed = self.average_embed(src,batch_size)
-                #decoder_input, baseline_embed, src_embed = self.zero_embed(src,batch_size)
-                
+                #decoder_input, baseline_embed, src_embed = self.average_embed(src,batch_size)
+                decoder_input, baseline_embed, src_embed = self.zero_embed(src,batch_size)
+                #decoder_input, baseline_embed, src_embed = self.nucleotide_embed(src,batch_size)
+
                 pred_classes = self.predictor(src_embed,src_lens,decoder_input,batch_size)
                 pred,answer_idx = pred_classes.data.max(dim=-1)
 
@@ -166,7 +187,6 @@ class FeatureAttributor:
                 attributions = attributions.detach().cpu().numpy()
 
                 for j in range(batch_size):
-                    
                     curr_attributions = attributions[j,:,:]
 
                     if reduction == "sum":
@@ -220,7 +240,6 @@ class FeatureAttributor:
                                                 additional_forward_args = (curr_src_lens,decoder_input,1))
                                         
                     attributions = np.squeeze(attributions.detach().cpu().numpy(),axis=0)
-                    print("ID: {}, base: {}, delta {}".format(ids[j],baseline_embed,convergence_delta))
 
                     if reduction == "sum":
                         attributions = np.sum(attributions,axis=1)
@@ -233,7 +252,7 @@ class FeatureAttributor:
                     saved_src = "".join([self.vocab.itos[x] for x in saved_src])
                     saved_base = np.squeeze(baseline_embed.detach().cpu().numpy(),axis=0)[0].tolist()
                     
-                    entry = {"ID" : ids[j] , "attr" : attr, "src" : saved_src, "baseline":saved_base}
+                    entry = {"ID" : ids[j] , "attr" : attr, "src" : saved_src, "baseline" : saved_base}
 
                     summary = json.dumps(entry)
                     outFile.write(summary+"\n")
@@ -250,7 +269,7 @@ def parse_args():
     parser.add_argument("--input",help="File for translation")
     parser.add_argument("--checkpoint", "--c",help ="ONMT checkpoint (.pt)")
     parser.add_argument("--inference_mode",default ="combined")
-    parser.add_argument("--attribution_mode",default="deeplift")
+    parser.add_argument("--attribution_mode",default="ig")
     parser.add_argument("--name",default = "temp")
 
     return parser.parse_args()
@@ -269,8 +288,8 @@ def run_attribution(args,device):
     options = checkpoint['opt']
     vocab = checkpoint['vocab']
 
-    sos_token = checkpoint['vocab']['tgt'].vocab['<sos>']
-    pad_token = checkpoint['vocab']['src'].vocab['<pad>']
+    sos_token = vocab['tgt'].vocab['<sos>']
+    pad_token = vocab['src'].vocab['<pad>']
 
     model = restore_transformer_model(checkpoint,device,options)
     
@@ -286,7 +305,7 @@ def run_attribution(args,device):
     attributor = FeatureAttributor(model,device,sos_token,pad_token,vocab['src'].vocab)
 
     savefile = args.name + ".attr"
-    reduction = "sum"
+    reduction = "norm"
     target_pos = 0
 
     if args.attribution_mode == "ig":

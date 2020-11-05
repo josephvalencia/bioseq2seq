@@ -93,46 +93,29 @@ class SelfAttentionDistribution(AttentionDistribution):
 
 class EncoderDecoderAttentionDistribution(AttentionDistribution):
 
-    def __init__(self,tscript_name,enc_dec_attn,seq,cds):
+    def __init__(self,tscript_name,enc_dec_attn,seq,cds,attn_save_layer):
         
+        self.attn_save_layer = attn_save_layer
         super().__init__(tscript_name,enc_dec_attn,seq,cds)
 
-    def summarize(self,position = 0,layers = [0]):
+    def summarize(self):
 
-        layers = list(range(len(self.attn))) if layers is None else layers
         entry = {"TSCRIPT_ID": self.tscript_name}
+        attn = self.attn[0].detach().cpu()
+        heads = attn.shape[1]
 
-        for l in layers:
-            enc_dec = self.attn[l][position,:len(self.seq)].detach().cpu().tolist()
-            field = "layer_{}_pos_{}".format(l,position)
-            entry[field] = enc_dec
-
+        for h in range(heads):
+            field = "layer{}head{}".format(self.attn_save_layer,h)
+            slice = attn[0,h,0,:len(self.seq)]
+            entry[field] = slice.tolist()
+        
+        #entry['attn'] = attn[0,:len(self.seq)].tolist()
         return json.dumps(entry)
 
     def plot_heatmap(self):
 
         first_pos = self.attn[0][:,:len(self.seq)].cpu().numpy()
         name = self.tscript_name + "enc_dec_attn.pdf"
-
         ax = sns.heatmap(np.transpose(first_pos),cmap="YlGnBu")
-        plt.savefig(name)
-        plt.close()
-
-    def plot_entropy(self):
-        
-        """ Plot nucleotide position vs Shannon entropy of attention.
-            Args:
-        """
-
-        first = self.attn[0][:,:len(self.seq)]
-        entropy = [round(x,3) for x in self.__attention_entropy__(first).tolist()]
-        x = np.arange(len(entropy))
-
-        name = self.tscript_name+"enc_dec_attn_entropy.pdf"
-
-        plt.plot(x,entropy)
-        plt.ylabel("Entropy (bits)")
-        plt.xlabel("Nucleotide")
-        plt.title("Enc-Dec Attention Entropy")
         plt.savefig(name)
         plt.close()

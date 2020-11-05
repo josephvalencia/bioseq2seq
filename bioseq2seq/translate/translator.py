@@ -91,6 +91,7 @@ class Translator(object):
             max_length=100,
             ratio=0.,
             beam_size=30,
+            attn_save_layer=-1,
             random_sampling_topk=1,
             random_sampling_temp=1,
             stepwise_penalty=None,
@@ -125,6 +126,7 @@ class Translator(object):
         self.max_length = max_length
 
         self.beam_size = beam_size
+        self.attn_save_layer = attn_save_layer
         self.random_sampling_temp = random_sampling_temp
         self.sample_from_topk = random_sampling_topk
 
@@ -265,11 +267,9 @@ class Translator(object):
         start_time = time.time()
 
         for batch in tqdm.tqdm(data_iter):
-         
             batch_data = self.translate_batch(
                 batch, data.src_vocabs, save_attn
             )
-            
             translations = xlation_builder.from_batch(batch_data)
 
             for trans in translations:
@@ -287,21 +287,19 @@ class Translator(object):
                     cds_bounds = None if bounds == "-1" else [int(x) for x in bounds.split(":")]
 
                     # analyze encoder-decoder attention
-                    enc_dec_attn = trans.context_attn 
-
-                    enc_dec_attn_state = EncoderDecoderAttentionDistribution(transcript_name,enc_dec_attn,rna,cds_bounds)
+                    enc_dec_attn = trans.context_attn
+                    enc_dec_attn_state = EncoderDecoderAttentionDistribution(transcript_name,enc_dec_attn,rna,cds_bounds,attn_save_layer = self.attn_save_layer)
                     summary = enc_dec_attn_state.summarize()
                     self.enc_dec_attn_file.write(summary+"\n")
-
+                    '''
                     # analyze self attention
                     self_attn = trans.self_attn
                     self_attn_state = SelfAttentionDistribution(transcript_name,self_attn,rna,cds_bounds)
-                    summary = self_attn_state.summarize()        
+                    summary = self_attn_state.summarize()
                     self.self_attn_file.write(summary+"\n")
-                    
                     self.self_attn_file.flush()
                     self.enc_dec_attn_file.flush()
-
+                    ''' 
                 if tgt is not None:
                     gold_score_total += trans.gold_score
                     gold_words_total += len(trans.gold_sent) + 1
@@ -461,6 +459,7 @@ class Translator(object):
                     exclusion_tokens=self._exclusion_idxs,
                     stepwise_penalty=self.stepwise_penalty,
                     ratio=self.ratio)
+
             return self._translate_batch_with_strategy(batch,decode_strategy)
 
     def _run_encoder(self, batch):
@@ -490,13 +489,11 @@ class Translator(object):
         # and [src_len, batch, hidden] as memory_bank
         # in case of inference tgt_len = 1, batch = beam times batch_size
         # in case of Gold Scoring tgt_len = actual length, batch = 1 batch
-        
         dec_out, dec_attn = self.model.decoder(
-            decoder_in, memory_bank, memory_lengths=memory_lengths, step=step
+            decoder_in, memory_bank, memory_lengths=memory_lengths,step=step,attn_save_layer=self.attn_save_layer
         )
 
         # Generator forward.
-
         if "std" in dec_attn:
             attn = dec_attn["std"]
         else:
@@ -555,7 +552,6 @@ class Translator(object):
                 batch,
                 memory_lengths=memory_lengths,
                 step=step)
-
             decode_strategy.advance(log_probs, attn)
             any_finished = decode_strategy.is_finished.any()
             if any_finished:

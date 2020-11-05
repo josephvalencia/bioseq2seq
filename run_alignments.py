@@ -5,9 +5,15 @@ import matplotlib.pyplot as plt
 
 from sklearn.metrics import classification_report
 
-evaluator = Evaluator(best_of = 1,full_align=False,exact_match=True)
+pred_file = sys.argv[1]
+mode = sys.argv[2]
 
-with open(sys.argv[1],"r") as inFile:
+if mode == "classify":
+    evaluator = Evaluator(mode=mode,best_of=1,k=0,full_align=False,exact_match=False)
+elif mode == "combined":
+    evaluator = Evaluator(mode=mode,best_of=1,k=8,full_align=True,exact_match=True)
+
+with open(pred_file,"r") as inFile:
     lines = inFile.read().split("\n")
 all_ids = []
 all_golds = []
@@ -24,5 +30,11 @@ for i in range(0,len(lines)-8,8):
 
 best_scores, best_n_scores = evaluator.calculate_stats(all_preds,all_golds,all_ids,log_all=True)
 
-print("best of 1 scores:",best_scores)
-print("best of 4 scores:",best_n_scores)
+for k,v in best_scores.items():
+    vals = np.asarray(v)
+    if  vals.size > 1:
+        mean = np.mean(vals)
+        std = np.std(vals)
+        print("{} -  mean : {} std : {}".format(k,mean,std))
+    else:
+        print("{} - {}".format(k,vals))

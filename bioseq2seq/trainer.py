@@ -104,7 +104,7 @@ class Trainer(object):
         batches = []
         normalization = 0
         self.accum_count = self._accum_count(self.optim.training_step)
-        print("accum_count in _accum_batches() {}".format(self.accum_count))
+        
         for batch in iterator:
             batches.append(batch)
             if self.norm_method == "tokens":
@@ -186,7 +186,7 @@ class Trainer(object):
 
             if valid_iter is not None and step % valid_steps == 0 and self.rank == 0:
                 
-                if mode == "translate" :#or mode == "combined":
+                if mode == "translate" : # or mode == "combined":
                     print("Structured validation")
                     valid_stats = self.validate_structured(valid_iter,valid_state,moving_average=self.moving_average)
                 else:
@@ -255,7 +255,7 @@ class Trainer(object):
                 outputs, enc_attn, attns = valid_model(src, tgt, src_lengths,
                                              with_align=self.with_align)
                 # Compute loss.
-                _, batch_stats = self.valid_loss(batch, outputs, attns)
+                _, batch_stats = self.valid_loss(batch,outputs,attns)
 
                 # Update statistics.
                 stats.update(batch_stats)
@@ -343,7 +343,7 @@ class Trainer(object):
 
             msg = "Entering batch {} with src shape {} and tgt shape {} from device {}"
             print(msg.format(true_batch_num,batch.src[0].shape,batch.tgt.shape,self.rank))
-            # print(batch.src,batch.tgt)
+            
             target_size = batch.tgt.size(0)
 
             # Truncated BPTT: reminder not compatible with accum > 1
@@ -374,7 +374,6 @@ class Trainer(object):
                     outputs,enc_attn,attns = parallel_model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
                 else:
                     outputs,enc_attn,attns = self.model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
-                    print("outputs",outputs.shape)
 
                 bptt = True
 

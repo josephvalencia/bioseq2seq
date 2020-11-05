@@ -20,7 +20,7 @@ from bioseq2seq.utils.loss import NMTLossCompute
 from bioseq2seq.bin.translate import make_vocab
 
 from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition,train_test_val_split , filter_by_length
-from bioseq2seq.bin.models import make_transformer_model
+from bioseq2seq.bin.models import make_transformer_seq2seq , make_transformer_classifier
 
 def parse_args():
     """Parse required and optional configuration arguments.""" 
@@ -77,9 +77,9 @@ def train_helper(rank,args,seq2seq,random_seed):
 
     # obtain splits. Default 80/10/10. Filter below max_len_transcript
     df_train,df_test,df_val = train_test_val_split(dataframe,args.max_len_transcript,random_seed)
+    #df_val['ID'].to_csv("validation_temp.csv",index=False)
     # convert to torchtext.Dataset
     train,test,val = dataset_from_df(df_train.copy(),df_test.copy(),df_val.copy(),mode=args.mode)
-    
     device = "cpu"
 
     if args.num_gpus > 0: # GPU training
@@ -125,11 +125,9 @@ def train_helper(rank,args,seq2seq,random_seed):
 
     # only rank 0 device is responsible for saving models and reporting progress
     if args.num_gpus == 1 or rank == 0:
-
         # controls metric and time reporting
         report_manager = ReportMgr(report_every=args.report_every,
                                    tensorboard_writer=SummaryWriter())
-
         # controls saving model checkpoints
         save_path =  args.save_directory + datetime.now().strftime('%b%d_%H-%M-%S')+"/"
 
@@ -152,7 +150,7 @@ def train_helper(rank,args,seq2seq,random_seed):
         elif args.mode == "translate":
             df_val = df_val[df_val['Type'] == "<PC>"]
             protein = df_val['Protein'].tolist()
-        elif args.mode == "classify":
+        elif args.mode == "ED_classify" or args.mode == "D_classify":
             protein = df_val['Type'].tolist()
         
         subset_len = 250
@@ -163,26 +161,27 @@ def train_helper(rank,args,seq2seq,random_seed):
                                             id=df_val['ID'].tolist()[:subset_len],
                                             cds=df_val['CDS'].tolist()[:subset_len],
                                             device=device)
+    print(args.mode)
+
     # controls training and validation
     trainer = Trainer(seq2seq,
-                      train_loss=train_loss_computer,
-                      earlystopper=early_stopping,
-                      valid_loss=val_loss_computer,
-                      optim=optim,
-                      rank=rank,
-                      gpus=args.num_gpus,
-                      accum_count=[args.accum_steps],
-                      report_manager=report_manager,
-                      model_saver=saver)
-    
+                    train_loss=train_loss_computer,
+                    earlystopper=early_stopping,
+                    valid_loss=val_loss_computer,
+                    optim=optim,
+                    rank=rank,
+                    gpus=args.num_gpus,
+                    accum_count=[args.accum_steps],
+                    report_manager=report_manager,
+                    model_saver=saver)
     # training loop
     trainer.train(train_iter=train_iterator,
-                  train_steps=args.max_epochs,
-                  save_checkpoint_steps=args.report_every,
-                  valid_iter=valid_iterator,
-                  valid_steps=args.report_every,
-                  valid_state=valid_state,
-                  mode=args.mode)
+                train_steps=args.max_epochs,
+                save_checkpoint_steps=args.report_every,
+                valid_iter=valid_iterator,
+                valid_steps=args.report_every,
+                valid_state=valid_state,
+                mode=args.mode)
 
 def wrap_validation_state(fields,rna,protein,id,cds,device):
     
@@ -197,7 +196,7 @@ def restore_transformer_model(checkpoint,args):
     Returns:
         restored model'''
 
-    model = make_transformer_model(n_enc=args.n_enc_layers,n_dec=args.n_dec_layers,model_dim=args.model_dim,max_rel_pos=args.max_rel_pos)
+    model = make_transformer_seq2seq(n_enc=args.n_enc_layers,n_dec=args.n_dec_layers,model_dim=args.model_dim,max_rel_pos=args.max_rel_pos)
     model.load_state_dict(checkpoint['model'],strict = False)
     model.generator.load_state_dict(checkpoint['generator'])
     return model
@@ -217,7 +216,7 @@ def train(args):
         checkpoint = torch.load(args.checkpoint,map_location = "cpu")
         seq2seq = restore_transformer_model(checkpoint,args)
     else:
-        seq2seq = make_transformer_model(n_enc = args.n_enc_layers,
+        seq2seq = make_transformer_seq2seq(n_enc = args.n_enc_layers,
                                             n_dec = args.n_dec_layers,
                                             model_dim = args.model_dim,
                                             max_rel_pos = args.max_rel_pos)

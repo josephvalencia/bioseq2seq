@@ -8,7 +8,7 @@ import time
 from bioseq2seq.inputters import TextDataReader,get_fields
 from bioseq2seq.inputters.text_dataset import TextMultiField
 from bioseq2seq.translate import Translator, GNMTGlobalScorer
-from bioseq2seq.bin.models import make_transformer_model
+from bioseq2seq.bin.models import make_transformer_seq2seq
 from bioseq2seq.modules.embeddings import PositionalEncoding
 
 from torchtext.data import RawField
@@ -34,7 +34,8 @@ def parse_args():
     parser.add_argument("--beam_size","--b",type = int, default = 8, help ="Beam size for decoding")
     parser.add_argument("--n_best", type = int, default = 4, help = "Number of beams to wait for")
     parser.add_argument("--alpha","--a",type = float, default = 1.0)
-
+    parser.add_argument("--attn_save_layer", type = int,default=0)
+    
     return parser.parse_args()
 
 def restore_transformer_model(checkpoint,machine,opts):
@@ -46,11 +47,10 @@ def restore_transformer_model(checkpoint,machine,opts):
         restored model'''
 
     #model = make_transformer_model(n_enc=opts.n_enc_layers,n_dec=opts.n_dec_layers,model_dim=opts.model_dim,max_rel_pos=opts.max_rel_pos)
-    model = make_transformer_model(n_enc=4,n_dec=4,model_dim=128,max_rel_pos=10)
+    model = make_transformer_seq2seq(n_enc=4,n_dec=4,model_dim=128,max_rel_pos=10)
     model.load_state_dict(checkpoint['model'],strict=False)
     model.generator.load_state_dict(checkpoint['generator'])
     model.to(device = machine)
-
     return model
 
 def make_vocab(fields,src,tgt):
@@ -87,7 +87,7 @@ def arrange_data_by_mode(df, mode):
     elif args.mode == "combined":
         # identify and translate coding, identify non coding
         protein = (df['Type'] + df['Protein']).tolist()
-    elif args.mode == "classify":
+    elif args.mode == "ED_classify":
         # regular binary classifiation coding/noncoding
         protein = df['Type'].tolist()
 
@@ -105,7 +105,6 @@ def translate_from_transformer_checkpt(args,device,use_splits=False):
 
     data = pd.read_csv(args.input,sep="\t")
     data["CDS"] = ["-1" for _ in range(data.shape[0])]
-    #data["RNA"] = [x[:1000] for x in data['RNA'].tolist()]
 
     # replicate splits
     if use_splits:
@@ -118,7 +117,7 @@ def translate_from_transformer_checkpt(args,device,use_splits=False):
     options = checkpoint['opt']
 
     vocab = checkpoint['vocab']
-    print(vocab['tgt'].vocab.stoi)  
+    print(vocab['tgt'].vocab.stoi)
     print(vocab['src'].vocab.stoi)
 
     if not options is None:
@@ -128,23 +127,15 @@ def translate_from_transformer_checkpt(args,device,use_splits=False):
             print(k,v)
  
     model = restore_transformer_model(checkpoint,device,options)
-    
-    '''
-    for i in range(12):
-        test = torch.tensor([[[i]]]).cuda()
-        try:
-            emb = model.encoder.embeddings(test)
-            print(i,emb,torch.norm(emb))
-        except Exception:
-            print("who cares")
-    '''
+    model.eval()
 
     text_fields = make_vocab(checkpoint['vocab'],rna,protein)
-    translate(model,text_fields,rna,protein,ids,cds,device,beam_size=args.beam_size,n_best=args.n_best,save_preds=True,save_attn=True,file_prefix=args.output_name)
+    translate(model,text_fields,rna,protein,ids,cds,device,beam_size=args.beam_size,
+            n_best=args.n_best,save_preds=True,save_attn=True,
+            attn_save_layer=args.attn_save_layer,file_prefix=args.output_name)
 
 def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
-                    n_best = 4,save_preds=False,save_attn=False,file_prefix= "temp"):
-    
+                    n_best = 4,save_preds=False,save_attn=False,attn_save_layer=3,file_prefix= "temp"):
     """ Translate raw data
     Args:
         model (bioseq2seq.translate.NMTModel): Encoder-Decoder + generator for translation
@@ -158,16 +149,17 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
     # global scorer for beam decoding
     beam_scorer = GNMTGlobalScorer(alpha = 1.0,
                                    beta = 0.0,
-                                   length_penalty = "avg" ,
+                                   length_penalty = "avg",
                                    coverage_penalty = "none")
 
-    MAX_LEN = 10000
+    MAX_LEN = 333
 
     # hack to expand positional encoding
     '''
-    new_pe  = PositionalEncoding(0.1,128,max_len=30000)
+    new_pe  = PositionalEncoding(0.0,128,max_len=MAX_LEN)
     new_embedding = torch.nn.Sequential(*list(model.encoder.embeddings.make_embedding.children())[:-1])
     new_embedding.add_module('pe',new_pe)
+    new_embedding.to(device)
     model.encoder.embeddings.make_embedding = new_embedding
     '''
     translator = Translator(model,
@@ -180,20 +172,20 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
                             n_best = n_best,
                             global_scorer = beam_scorer,
                             verbose = False,
+                            attn_save_layer=attn_save_layer,
                             max_length = MAX_LEN)
 
     predictions, golds, scores = translator.translate(src = rna,
                                                       tgt = protein,
                                                       names = ids,
                                                       cds = cds,
-                                                      batch_size = 4,
+                                                      batch_size = 2,
                                                       save_attn = save_attn,
                                                       save_preds = save_preds)
-    
     return predictions,golds,scores
 
 if __name__ == "__main__":
 
     args = parse_args()
-    machine = "cuda:0"
+    machine = "cuda"
     translate_from_transformer_checkpt(args,machine,use_splits=True)

@@ -127,10 +127,7 @@ class LossComputeBase(nn.Module):
         """
         pred = scores.max(1)[1]
         non_padding = target.ne(self.padding_idx)
-        #print("PRED: ",pred)
-        #print("TGT:",target)
         num_correct = pred.eq(target).masked_select(non_padding).sum().item()
-        #print("CORRECT: ",num_correct)
         num_non_padding = non_padding.sum().item()
         return bioseq2seq.utils.Statistics(loss.item(), num_non_padding, num_correct)
 

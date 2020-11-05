@@ -160,11 +160,11 @@ def layer_entropy_heatmap(saved_attn):
             
             for n,layer in enumerate(layers):
                 
-                '''sequence_logo(layer,tscript_id)
+                sequence_logo(layer,tscript_id)
                 max_PDF(layer,cds_start,cds_end,tscript_id)
                 maxdist_PDF(layer,tscript_id)
                 maxdist_txt(layer,tscript_id,seq)
-                entropy_PDF(layer,tscript_id)'''
+                entropy_PDF(layer,tscript_id)
 
                 layer_num = layer['layer']
                 heads = layer['heads']
@@ -193,37 +193,6 @@ def layer_entropy_heatmap(saved_attn):
     plt.title("Mean Entropy")
     plt.savefig("attn_head_entropy_heatmap.pdf")
     plt.close()
-    
-def sequence_logo(layer,tscript_id):
-
-    layer_num = layer['layer']
-    heads = layer['heads']
-    filename = "self_output/{}/layer{}_max_logo".format(tscript_id,layer_num)
-
-    top = 10
-
-    with open(filename,'w') as outFile:
-
-        for head in heads:
-
-            head_name = "Head {}\n".format(head['head'])
-            outFile.write(head_name)
-            max_attns = head['max']
-
-            counts = Counter(max_attns).most_common(top)
-
-            triplets = [seq[i-1:i+2] for i,_ in counts]
-            triplet_counts = [x for _,x in Counter(triplets).most_common(top)]
-            total = sum(triplet_counts)
-            triplet_probs = [float(x)/total for x in triplet_counts]
-            triplet_entropy = -sum([np.log2(x)*x for x in triplet_probs])
-
-            for idx,count in counts:
-                triplet = seq[idx-1:idx+2]
-                outFile.write("idx : {}, count : {} , triplet : {} \n".format(idx,count,triplet))
-
-            outFile.write("H(codon) : {}\n".format(triplet_entropy))
-            outFile.write("\n")
 
 def max_PDF(layer,cds_start,cds_end,tscript_id):
 
@@ -232,7 +201,6 @@ def max_PDF(layer,cds_start,cds_end,tscript_id):
     filename = "self_output/{}/layer{}_max.pdf".format(tscript_id,layer_num)
 
     with PdfPages(filename) as pdf:
-
         for shard in [heads[:4],heads[4:]]:
             plot_layer_max(layer_num,shard,cds_start,cds_end,tscript_id)
             pdf.savefig()
@@ -245,7 +213,6 @@ def maxdist_PDF(layer,tscript_id):
     filename = "self_output/{}/layer{}_maxdist.pdf".format(tscript_id,layer_num)
 
     with PdfPages(filename) as pdf:
-
         for shard in [heads[:4],heads[4:]]:
             plot_layer_maxdist(layer_num,shard,tscript_id)
             pdf.savefig()
@@ -259,7 +226,6 @@ def entropy_PDF(layer,tscript_id):
     filename = "self_output/{}/layer{}_entropy.pdf".format(tscript_id,layer_num)
 
     with PdfPages(filename) as pdf:
-
         for shard in [heads[:4],heads[4:]]:
             plot_layer_entropy(layer_num,shard,tscript_id)
             pdf.savefig()
@@ -270,7 +236,6 @@ def plot_layer_max(layer_num,heads,cds_start,cds_end,tscript_id):
     top = 10
 
     for i,head in enumerate(heads):
-
         head_name = "Head {}".format(head['head'])
         max_attns = head['max']
         plt.subplot(2,2,i+1)
@@ -285,7 +250,6 @@ def plot_layer_maxdist(layer_num,heads,tscript_id):
     top = 10
 
     for i,head in enumerate(heads):
-
         head_name = "Head {}".format(head['head'])
         max_attns = head['max']
         plt.subplot(2,2,i+1)

@@ -195,7 +195,10 @@ class BeamSearch(DecodeStrategy):
             [self.alive_seq.index_select(0, self.select_indices),
              self.topk_ids.view(_B * self.beam_size, 1)], -1)
         if self.return_attention or self._cov_pen:
-            current_attn = attn.index_select(1, self.select_indices)
+            
+            current_attn = attn.index_select(3,self.select_indices)
+            #current_attn = attn.index_select(1, self.select_indices)
+            
             if step == 1:
                 self.alive_attn = current_attn
                 # update global state (step == 1)
@@ -203,9 +206,12 @@ class BeamSearch(DecodeStrategy):
                     self._prev_penalty = torch.zeros_like(self.topk_log_probs)
                     self._coverage = current_attn
             else:
-                self.alive_attn = self.alive_attn.index_select(
-                    1, self.select_indices)
-                self.alive_attn = torch.cat([self.alive_attn, current_attn], 0)
+                #self.alive_attn = self.alive_attn.index_select(1,self.select_indices)
+                self.alive_attn = self.alive_attn.index_select(3, self.select_indices)
+                
+                #self.alive_attn = torch.cat([self.alive_attn, current_attn], 0)
+                self.alive_attn = torch.cat([self.alive_attn,current_attn],2)
+                
                 # update global state (step > 1)
                 if self._cov_pen:
                     self._coverage = self._coverage.index_select(
@@ -235,9 +241,14 @@ class BeamSearch(DecodeStrategy):
         self.is_finished = self.is_finished.to('cpu')
         self.top_beam_finished |= self.is_finished[:, 0].eq(1)
         predictions = self.alive_seq.view(_B_old, self.beam_size, step)
+        ''' 
         attention = (
             self.alive_attn.view(
                 step - 1, _B_old, self.beam_size, self.alive_attn.size(-1))
+            if self.alive_attn is not None else None)
+        '''
+        num_layers = 1
+        attention = (self.alive_attn.view(num_layers,8,step - 1, _B_old, self.beam_size, self.alive_attn.size(-1))
             if self.alive_attn is not None else None)
         non_finished_batch = []
         for i in range(self.is_finished.size(0)):  # Batch level
@@ -249,11 +260,19 @@ class BeamSearch(DecodeStrategy):
                     s = self.topk_scores[i, j] / (step + 1)
                     if self.best_scores[b] < s:
                         self.best_scores[b] = s
+                '''
                 self.hypotheses[b].append((
                     self.topk_scores[i, j],
                     predictions[i, j, 1:],  # Ignore start_token.
                     attention[:, i, j, :self.memory_lengths[i]]
                     if attention is not None else None))
+                '''
+                self.hypotheses[b].append((
+                    self.topk_scores[i, j],
+                    predictions[i, j, 1:],  # Ignore start_token.
+                    attention[:,:,:, i, j, :self.memory_lengths[i]]
+                    if attention is not None else None))
+            
             # End condition is the top beam finished and we can return
             # n_best hypotheses.
             if self.ratio > 0:
@@ -295,10 +314,16 @@ class BeamSearch(DecodeStrategy):
             .view(-1, self.alive_seq.size(-1))
         self.topk_scores = self.topk_scores.index_select(0, non_finished)
         self.topk_ids = self.topk_ids.index_select(0, non_finished)
+        
         if self.alive_attn is not None:
             inp_seq_len = self.alive_attn.size(-1)
+            ''' 
             self.alive_attn = attention.index_select(1, non_finished) \
                 .view(step - 1, _B_new * self.beam_size, inp_seq_len)
+            '''
+            self.alive_attn = attention.index_select(3, non_finished) \
+                .view(num_layers,8,step - 1, _B_new * self.beam_size, inp_seq_len)
+            
             if self._cov_pen:
                 self._coverage = self._coverage \
                     .view(1, _B_old, self.beam_size, inp_seq_len) \

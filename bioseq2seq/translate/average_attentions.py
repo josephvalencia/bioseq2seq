@@ -10,23 +10,12 @@ from matplotlib.backends.backend_pdf import PdfPages
 from scipy import stats , signal
 import re,random
 
-def load_enc_dec_attn(cds_storage,layer,head,align_on="start",plot_type="line",mode="attn",prefix=None,plt_std_error=False,plt_inset=False):
+def load_enc_dec_attn(cds_storage,saved_file,align_on="start",plot_type="line",mode="attn",prefix=None,plt_std_error=False,plt_inset=False):
 
-    domain = list(range(-634,999))
-    
     samples = []
     sample_ids = []
     before_lengths = []
     after_lengths = []
-
-    attn_prefix = "layer{}".format(layer)
-    attn_prefix = attn_prefix +"head{}".format(head) if head != "mean" else attn_prefix + "mean"
-    attn_prefix = attn_prefix if prefix == None else prefix+"_"+attn_prefix
-
-    if mode == "attr":
-        saved_file = "large/"+attn_prefix+".attr"
-    else:
-        saved_file = "large/"+attn_prefix+".enc_dec_attns"
 
     with open(saved_file) as inFile:
         for l in inFile:
@@ -51,7 +40,7 @@ def load_enc_dec_attn(cds_storage,layer,head,align_on="start",plot_type="line",m
                     start,end = tuple([int(x) for x in splits])
                 
                     if mode == "attn":
-                        #attn = keep_nonzero(fields[tgt])
+                        attn = keep_nonzero(fields[tgt])
                         attn = [float(x) for x in fields[tgt]]
                     else:
                         attn = [float(x) for x in fields[tgt]]
@@ -79,12 +68,13 @@ def load_enc_dec_attn(cds_storage,layer,head,align_on="start",plot_type="line",m
         domain = np.asarray(list(range(-999,max_after)))
         samples = [align_on_end(attn,end,max_after) for attn,end in zip(samples,before_lengths)]
 
-    # mean and standard error over samples
+    attn_prefix = saved_file.split('.')[0]
 
+    # mean and standard error over samples
     samples = np.asarray(samples)
-    #consensus = np.nanmean(samples,axis=0)
+    consensus = np.nanmean(samples,axis=0)
     error = np.nanstd(samples,axis=0) # / np.sqrt(samples.shape[0])
-    mean_by_mod(samples[max_before:max_before+400],layer,head)
+    value_by_mod(consensus[max_before:max_before+400],saved_file)
 
     if plot_type == "examples":
         random.seed(30)
@@ -97,11 +87,11 @@ def load_enc_dec_attn(cds_storage,layer,head,align_on="start",plot_type="line",m
             for i in range(len(example_indexes)):
                 ex = examples[i,:]
                 non_nan = ~np.isnan(ex)
-                ex_domain = domain[non_nan]
-                ex = ex[non_nan]
+                #ex_domain = domain[non_nan]
+                #ex = ex[non_nan]
                 
-                plt.plot(ex_domain,ex,'k',color='#CC4F1B')
-                plt.plot(ex_domain,consensus[non_nan],'k',linestyle='dashed')
+                plt.plot(domain,ex,'k',color='#CC4F1B')
+                plt.plot(domain,consensus,'k',linestyle='dashed')
                 ax = plt.gca()
 
                 if plt_std_error:
@@ -135,26 +125,27 @@ def load_enc_dec_attn(cds_storage,layer,head,align_on="start",plot_type="line",m
        
         plt.xlabel("Pos. Relative to CDS")
         plt.ylabel("Attention Score")
-        title = "Layer {} Head {} Attention Profile".format(layer,head)
+        prefix = saved_file.split(".")[0]
+        title = "{} Attention Profile".format(prefix)
         plt.title(title)
         plt.tight_layout(rect=[0,0.03, 1, 0.95])
-        plt.savefig(attn_prefix +"codingprofile.pdf")
+        plt.savefig(prefix +"codingprofile.pdf")
         plt.close()
 
     elif plot_type == "spectrum":
         data = consensus[max_before:max_before+300]
 
         freq,ps = signal.welch(data)
-        periods = 1.0 / freq
-        idx = np.argsort(periods)
-        plt.plot(periods[idx],ps[idx])
+        #periods = 1.0 / freq
+        #idx = np.argsort(freq)
+        plt.plot(freq,ps)
         
         plt.xlabel("Cycles/Nuc.")
         plt.ylabel("Power")
         title = "Layer {} Head {} Attention Power Spectrum".format(layer,head)
         plt.title(title)
         plt.tight_layout(rect=[0,0.03, 1, 0.95])
-        plt.savefig(attn_prefix +"spectrum.pdf")
+        plt.savefig(attn_prefix +"spectrum_periods.pdf")
         plt.close()
 
 def getLongestORF(mRNA):
@@ -174,22 +165,48 @@ def getLongestORF(mRNA):
                     break
     return ORF_start,ORF_end
 
-def mean_by_mod(attn,layer,head):
+def value_by_mod(attn,savefile):
 
     idx = np.arange(attn.shape[0])
     zero = idx % 3 == 0
     one = idx % 3 == 1
     two = idx % 3 == 2
 
-    means = [np.nanmean(attn[mask]) for mask in [zero,one,two]]
+    storage = []
+    for frame,mask in enumerate([zero,one,two]):
+       slice = attn[mask]
+       slice = slice[~np.isnan(slice)]
+       print("frame {} , sum {}".format(frame,slice.sum()))
+       for val in slice.tolist():
+           entry = {"frame" : frame,"val" : val}
+           storage.append(entry)
 
-    sns.barplot(x=[0,1,2],y=means)
+    df = pd.DataFrame(storage)
+
+    result = stats.f_oneway(df['val'][df['frame'] == 0],df['val'][df['frame'] == 1],df['val'][df['frame'] == 2])
+
+    means = [np.nanmean(attn[mask]) for mask in [zero,one,two]]
+    
+    textstr = '\n'.join((
+    r'$F-statistic=%.3f$' % (result.statistic, ),
+    r'$p-val=%.3f$' % (result.pvalue, )))
+
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+
+    #ax = sns.violinplot(x="frame",y="val",data=df)
+    ax = sns.barplot(x="frame",y="val",data=df)
+    #ax = sns.barplot(x=[0,1,2],y=means) 
+    
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    ax.text(0.65, 0.95, textstr, transform=ax.transAxes, fontsize=14,
+        verticalalignment='top', bbox=props)
+    
     plt.xlabel("Pos. rel. to start mod 3")
-    plt.ylabel("Mean Attention")
+    plt.ylabel("Attention")
     plt.title("Attention by Frame")
-    outfile = "attention_frames_layer{}".format(layer)
-    outfile = outfile +"head{}".format(head) if head != "mean" else outfile + "mean"
-    plt.savefig(outfile+".pdf")
+    prefix = savefile.split(".")[0]
+    outfile = prefix+"attn_frames.pdf"
+    plt.savefig(outfile)
     plt.close()
 
 def load_CDS(combined_file,include_lnc=False):
@@ -211,6 +228,8 @@ def load_CDS(combined_file,include_lnc=False):
         for i in range(len(cds_list)):
             curr = cds_list[i]
             if curr != "-1":
+                start,end = getLongestORF(rna_list[i])
+                fake_cds = "{}:{}".format(start,end)
                 temp.append(curr)
             else:
                 start,end = getLongestORF(rna_list[i])
@@ -269,22 +288,9 @@ if __name__ == "__main__":
     mode = sys.argv[2]
 
     cds_storage = load_CDS(combined_file,include_lnc=False)
-    load_enc_dec_attn(cds_storage,"covid","random",align_on="start",mode=mode,plot_type="line")
+    #load_enc_dec_attn(cds_storage,"classify.enc_dec_attns",align_on="start",mode=mode,plot_type="line") 
     
-    '''
-    layer = 3
-
-    # layer 3 heads
     for h in list(range(8)):
-        print("layer{}head{}".format(layer,h))
-        load_enc_dec_attn(cds_storage,layer,h,align_on ="start",mode=mode,plot_type="spectrum")
-    
-    # all layers mean
-    for layer in range(4):
-        print("layer{}mean".format(layer))
-        load_enc_dec_attn(cds_storage,layer,"mean",align_on="start",mode=mode,plot_type="line")
-    
-    for h in range(8):
-        print("small_layertophead{}".format(h))
-        load_enc_dec_attn(cds_storage,"top",h,align_on="start",prefix= "small",mode=mode,plot_type="spectrum")
-    '''
+        layer = "medium/layer3head{}.enc_dec_attns".format(h)
+        print(layer)
+        load_enc_dec_attn(cds_storage,layer,align_on ="start",mode=mode,plot_type="examples")

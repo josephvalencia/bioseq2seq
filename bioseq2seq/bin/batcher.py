@@ -135,14 +135,7 @@ def filter_by_length(translation_table,max_len,min_len=0):
     translation_table['Protein_LEN'] = [len(x) for x in translation_table['Protein'].values]
 
     percentiles = [0.1 * x for x in range(1,10)]
-    
-    #print("Before")
-    #print("Coding",translation_table[translation_table['Type'] == "<PC>"].describe(percentiles=percentiles))
-    #print("Noncoding",translation_table[translation_table['Type'] == "<NC>"].describe(percentiles=percentiles))
     translation_table = translation_table[translation_table['RNA_LEN'] < max_len]
-    #print("After")
-    #print("Coding",translation_table[translation_table['Type'] == "<PC>"].describe(percentiles=percentiles))
-    #print("Noncoding",translation_table[translation_table['Type'] == "<NC>"].describe(percentiles=percentiles))
 
     if min_len > 0:
         translation_table =  translation_table[translation_table['RNA_LEN'] > min_len]
@@ -172,6 +165,7 @@ def tgt_tokenize(original):
     return [label]+[c for c in protein]
 
 def train_test_val_split(translation_table,max_len,random_seed,splits =[0.8,0.1,0.1]):
+    
     # keep entries with RNA length < max_len
     translation_table = filter_by_length(translation_table,max_len)
     # shuffle
@@ -221,7 +215,7 @@ def partition(dataset, split_ratios, random_state):
 
     return splits
 
-def dataset_from_df(train,test,dev,mode="combined", saved_vocab = None):
+def dataset_from_df(train,test,dev,mode="combined",saved_vocab = None):
 
     # Fields define tensor attributes
     if saved_vocab is None:
@@ -231,33 +225,34 @@ def dataset_from_df(train,test,dev,mode="combined", saved_vocab = None):
                     batch_first=False,
                     include_lengths=True)
 
+        init = None if mode == "D_classify" else "<sos>"
+        eos = None if mode == "D_classify" else "<eos>"
+
         PROTEIN =  Field(tokenize=tgt_tokenize,
                         use_vocab=True,
                         batch_first=False,
                         is_target=True,
                         include_lengths=False,
-                        init_token="<sos>",
-                        eos_token="<eos>")
-
+                        init_token=init,
+                        eos_token=eos)
     else:
         RNA = saved_vocab['src']
         PROTEIN = saved_vocab['tgt']
 
     # GENCODE ID is string not tensor
     ID = RawField()
-
     splits = []
     
     for translation_table in [train,test,dev]:
         # map column name to batch attribute and Field object
-        if mode == "classify":
-            fields = {'ID':('id',ID),'RNA':('src', RNA),'Type':('tgt',PROTEIN)}
+        if mode == "ED_classify" or mode == "D_classify":
+            fields = {'ID':('id', ID),'RNA':('src', RNA),'Type':('tgt', PROTEIN)}
         elif mode == "translate":
             translation_table = translation_table[translation_table['Type'] == "<PC>"]
-            fields = {'ID':('id',ID),'RNA':('src', RNA),'Protein':('tgt',PROTEIN)}
+            fields = {'ID':('id', ID),'RNA':('src', RNA),'Protein':('tgt', PROTEIN)}
         elif mode == "combined":
             translation_table['Protein'] = translation_table['Type']+translation_table['Protein']
-            fields = {'ID':('id',ID),'RNA':('src', RNA),'Protein':('tgt',PROTEIN)}
+            fields = {'ID':('id', ID),'RNA':('src', RNA),'Protein':('tgt', PROTEIN)}
 
         # [{col:value}]
         reader = translation_table.to_dict(orient='records')
