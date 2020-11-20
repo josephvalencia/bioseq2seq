@@ -67,13 +67,14 @@ class TranslationBuilder(object):
                len(translation_batch["predictions"]))
         batch_size = batch.batch_size
 
-        preds, pred_score, self_attn, context_attn, align, gold_score, indices = list(zip(
+        preds, pred_score, self_attn, context_attn, align, gold_score, coding_probs, indices = list(zip(
             *sorted(zip(translation_batch["predictions"],
                         translation_batch["scores"],
                         translation_batch["self_attention"],
                         translation_batch["context_attention"],
                         translation_batch["alignment"],
                         translation_batch["gold_score"],
+                        translation_batch["coding_probs"],
                         batch.indices.data),
                     key=lambda x: x[-1])))
         if not any(align):  # when align is a empty nested list
@@ -117,7 +118,7 @@ class TranslationBuilder(object):
             translation = Translation(inds[b],
                 src[:, b] if src is not None else None,
                                     src_raw, pred_sents, self_attn[0].permute(3,0,1,2), context_attn[b], pred_score[b],
-                gold_sent, gold_score[b], align[b]
+                gold_sent, gold_score[b], align[b], coding_probs[b]
             )
             translations.append(translation)
 
@@ -141,10 +142,10 @@ class Translation(object):
     """
 
     __slots__ = ["index","src", "src_raw", "pred_sents", "self_attn", "context_attn", "pred_scores",
-                 "gold_sent", "gold_score", "word_aligns"]
+                 "gold_sent", "gold_score", "word_aligns","coding_prob"]
 
     def __init__(self,index, src, src_raw, pred_sents,self_attn,
-                 context_attn, pred_scores, tgt_sent, gold_score, word_aligns):
+                 context_attn, pred_scores, tgt_sent, gold_score, word_aligns,coding_prob):
         self.index = index
         self.src = src
         self.src_raw = src_raw
@@ -155,6 +156,8 @@ class Translation(object):
         self.gold_sent = tgt_sent
         self.gold_score = gold_score
         self.word_aligns = word_aligns
+        self.coding_prob = coding_prob
+
 
     def log(self, sent_number):
         """

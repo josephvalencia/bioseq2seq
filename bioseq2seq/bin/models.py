@@ -31,7 +31,7 @@ class Classifier(nn.Module):
         
         enc_state, memory_bank, lengths, enc_self_attn = self.encoder(src,lengths)
         pooled = memory_bank.mean(dim=0)
-        
+
         logits = self.generator(pooled)
         return logits
 

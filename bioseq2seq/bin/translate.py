@@ -181,7 +181,8 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
                                                       cds = cds,
                                                       batch_size = 2,
                                                       save_attn = save_attn,
-                                                      save_preds = save_preds)
+                                                      save_preds = save_preds,
+                                                      save_scores = True)
     return predictions,golds,scores
 
 if __name__ == "__main__":

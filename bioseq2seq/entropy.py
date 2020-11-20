@@ -59,15 +59,17 @@ if __name__ == "__main__":
     dataframe = pd.read_csv(data_file,sep="\t",compression = "gzip")
     df_train,df_test,df_val = train_test_val_split(dataframe,1000,65)
     df_val = df_val.set_index("ID")
-    
+   
+    print("ED_classifier\n")
     for l in range(4):
-        layer = "best_ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns"
+        layer = "results/best_ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns"
         for h in range(8):
             tgt_head = "layer{}head{}".format(l,h)
             calculate_entropy(layer,df_val,tgt_head,"attn")
-    
+   
+    print("______________________________________\n seq2seq\n") 
     for l in range(4):
-        layer = "best_seq2seq/best_seq2seq_layer"+str(l)+".enc_dec_attns"
+        layer = "results/best_seq2seq/best_seq2seq_layer"+str(l)+".enc_dec_attns"
         for h in range(8):
             tgt_head = "layer{}head{}".format(l,h)
             calculate_entropy(layer,df_val,tgt_head,"attn")

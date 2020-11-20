@@ -140,6 +140,7 @@ def filter_by_length(translation_table,max_len,min_len=0):
     if min_len > 0:
         translation_table =  translation_table[translation_table['RNA_LEN'] > min_len]
     
+    print("total number =",len(translation_table)) 
     return translation_table[['ID','RNA', 'CDS', 'Type','Protein']]
 
 def basic_tokenize(original):

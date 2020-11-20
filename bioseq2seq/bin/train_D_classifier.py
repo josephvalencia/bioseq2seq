@@ -79,6 +79,8 @@ def train_helper(rank,args,model,random_seed):
 
     # obtain splits. Default 80/10/10. Filter below max_len_transcript
     df_train,df_test,df_val = train_test_val_split(dataframe,args.max_len_transcript,random_seed)
+    #df_train,df_test,df_val = train_test_val_split(dataframe,150,random_seed)
+    
     # convert to torchtext.Dataset
     train,test,val = dataset_from_df(df_train.copy(),df_test.copy(),df_val.copy(),mode='D_classify')
     device = "cpu"
@@ -135,10 +137,13 @@ def train_helper(rank,args,model,random_seed):
                                optim=optimizer)
 
         with open(log_file,'w') as outFile:
-            outFile.write("time, val_accuracy, val_loss\n")
+            outFile.write("time, step, train_accuracy, train_loss, val_accuracy, val_loss\n")
 
     model.train()
+    
     running_loss = 0.0
+    running_pred = []
+    running_tgt = []
 
     for i,  batch in enumerate(train_iterator):
         src, src_lens = batch.src
@@ -156,7 +161,13 @@ def train_helper(rank,args,model,random_seed):
 
         loss = criterion(outputs, tgt)
         running_loss += loss.item()
-        
+
+        curr_tgt = tgt.detach().cpu().numpy()
+        curr_pred = torch.max(outputs.detach().cpu(),dim=1)
+
+        running_tgt.append(curr_tgt)
+        running_pred.append(curr_pred.indices)
+
         loss.backward()
         optimizer.step()
         
@@ -166,13 +177,19 @@ def train_helper(rank,args,model,random_seed):
            
             val_loss,val_accuracy = validate(model,valid_iterator,criterion)
 
+            true = np.concatenate(running_tgt)
+            pred = np.concatenate(running_pred)
+            running_accuracy = accuracy_score(true,pred)
+
             with open(log_file,'a') as outFile:
                 save_time = time.time()
-                entry =  "{},{},{}".format(save_time,val_accuracy,val_loss)
+                entry =  "{},{},{},{},{},{}".format(save_time,i,running_accuracy,running_loss,val_accuracy,val_loss)
                 outFile.write(entry+"\n")
 
             saver.save(i, moving_average=None)
             running_loss = 0.0
+            running_tgt = []
+            running_pred = []
 
     if saver is not None:
         saver.save(i, moving_average=None)
@@ -189,6 +206,7 @@ def validate(model,iterator,criterion):
 
     with torch.no_grad():
         for i,batch in enumerate(iterator):
+            
             src, src_lens = batch.src
             tgt = torch.squeeze(batch.tgt,dim=0)
             tgt = torch.squeeze(tgt,dim=1)

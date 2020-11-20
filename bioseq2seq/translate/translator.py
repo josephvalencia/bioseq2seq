@@ -48,6 +48,7 @@ class Translator(object):
         model (onmt.modules.NMTModel): NMT model to use for translation
         fields (dict[str, torchtext.data.Field]): A dict
             mapping each side to its list of name-Field pairs.
+
         src_reader (bioseq2seq.inputters.DataReaderBase): Source reader.
         tgt_reader (onmt.inputters.TextDataReader): Target reader.
         gpu (int): GPU device. Set to negative for no GPU.
@@ -118,6 +119,7 @@ class Translator(object):
         self._tgt_bos_idx = self._tgt_vocab.stoi[tgt_field.init_token]
         self._tgt_unk_idx = self._tgt_vocab.stoi[tgt_field.unk_token]
         self._tgt_vocab_len = len(self._tgt_vocab)
+        self._tgt_coding_idx = self._tgt_vocab.stoi["<PC>"]
 
         self._dev = device
         self._use_cuda = self._dev != "cpu"
@@ -158,7 +160,8 @@ class Translator(object):
         self.pred_file = open(file_prefix+".preds",'w')
         self.self_attn_file = open(file_prefix+".self_attns",'w')
         self.enc_dec_attn_file = open(file_prefix+".enc_dec_attns",'w')
-
+        self.score_file = open(file_prefix+".scores",'w')
+        
         self.report_align = report_align
         self.report_score = report_score
         self.logger = logger
@@ -206,6 +209,7 @@ class Translator(object):
             batch_type="sents",
             save_preds=False,
             save_attn=False,
+            save_scores=False,
             align_debug=False,
             phrase_table=""):
         """Translate content of ``src`` and get gold scores from ``tgt``.
@@ -266,6 +270,10 @@ class Translator(object):
 
         start_time = time.time()
 
+        if save_scores:
+            self.score_file.write("refseq_transcript_id\tbeam_score\tcoding_prob\n")
+            self.score_file.flush()
+
         for batch in tqdm.tqdm(data_iter):
             batch_data = self.translate_batch(
                 batch, data.src_vocabs, save_attn
@@ -291,6 +299,7 @@ class Translator(object):
                     enc_dec_attn_state = EncoderDecoderAttentionDistribution(transcript_name,enc_dec_attn,rna,cds_bounds,attn_save_layer = self.attn_save_layer)
                     summary = enc_dec_attn_state.summarize()
                     self.enc_dec_attn_file.write(summary+"\n")
+                    
                     '''
                     # analyze self attention
                     self_attn = trans.self_attn
@@ -300,6 +309,7 @@ class Translator(object):
                     self.self_attn_file.flush()
                     self.enc_dec_attn_file.flush()
                     ''' 
+                
                 if tgt is not None:
                     gold_score_total += trans.gold_score
                     gold_words_total += len(trans.gold_sent) + 1
@@ -317,6 +327,12 @@ class Translator(object):
 
                     self.pred_file.write("GOLD: "+"".join(trans.gold_sent)+"\n\n")
                     self.pred_file.flush()
+
+                if save_scores:
+                    coding_prob = trans.coding_prob
+                    name_no_version = transcript_name.split(".")[0]
+                    self.score_file.write("{}\t{}\t{}\n".format(name_no_version,pred_score_total,coding_prob))
+                    self.score_file.flush()
 
                 if self.verbose:
                     sent_number = next(counter)
@@ -542,7 +558,9 @@ class Translator(object):
             decode_strategy.initialize(memory_bank, src_lengths, src_map)
         if fn_map_state is not None:
             self.model.decoder.map_state(fn_map_state)
-        
+       
+        coding_probs = None
+
         # (3) Begin decoding step by step:
         for step in range(decode_strategy.max_length):
             decoder_input = decode_strategy.current_predictions.view(1, -1, 1)
@@ -553,6 +571,11 @@ class Translator(object):
                 memory_lengths=memory_lengths,
                 step=step)
             decode_strategy.advance(log_probs, attn)
+            
+            if step == 0:
+                class_prob_indices = np.arange(0,parallel_paths*batch_size,parallel_paths)
+                coding_probs = log_probs[class_prob_indices,self._tgt_coding_idx]
+
             any_finished = decode_strategy.is_finished.any()
             if any_finished:
                 decode_strategy.update_finished()
@@ -581,6 +604,7 @@ class Translator(object):
         results["scores"] = decode_strategy.scores
         results["predictions"] = decode_strategy.predictions
         results["context_attention"] = decode_strategy.attention
+        results["coding_probs"] = coding_probs
 
         if self.report_align:
             results["alignment"] = self._align_forward(

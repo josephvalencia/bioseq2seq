@@ -1,4 +1,6 @@
 # repo-specific stuff
+mycert.pem
+mykey.key
 *.preds
 *.attns
 *.png
@@ -6,13 +8,17 @@
 *.pdf
 *.self_attns
 *.enc_dec_attns
+*.scores
 *.csv
+*.tsv
+*.eps
 *.txt
 *.attr
 *.pt
 \#*#
 .DS_Store
 data/
+/old_results/
 /examples
 experiments/
 /comparison
