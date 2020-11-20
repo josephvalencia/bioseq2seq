@@ -1,6 +1,5 @@
 # repo-specific stuff
-mycert.pem
-mykey.key
+.*
 *.preds
 *.attns
 *.png
@@ -18,16 +17,9 @@ mykey.key
 \#*#
 .DS_Store
 data/
-/old_results/
-/examples
-experiments/
-/comparison
-/stats
 /output/
-/motifs/
-/medium/
 /results/
-/coding_noncoding_dev_stats/
+/checkpoints/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
