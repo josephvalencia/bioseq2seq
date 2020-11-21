@@ -19,7 +19,7 @@ from bioseq2seq.translate import Translator
 from bioseq2seq.utils.loss import NMTLossCompute
 from bioseq2seq.bin.translate import make_vocab
 
-from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition,train_test_val_split , filter_by_length
+from bioseq2seq.inputters.batcher import dataset_from_df, iterator_from_dataset, partition,train_test_val_split , filter_by_length
 from bioseq2seq.bin.models import make_transformer_seq2seq , make_transformer_classifier
 
 def parse_args():

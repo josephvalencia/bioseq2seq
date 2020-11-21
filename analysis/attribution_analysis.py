@@ -21,9 +21,7 @@ from Bio.Alphabet import IUPAC
 from Bio.Seq import Seq
 from Bio import SeqIO
 
-from bin.batcher import train_test_val_split
-#from captum.attr import visualization as viz
-from interpretation import visualizer as viz
+from bioseq2seq.inputters.batcher import train_test_val_split
 
 def plot_stem(name,array,labels):
 
@@ -32,6 +30,7 @@ def plot_stem(name,array,labels):
     array = array / np.linalg.norm(array,ord=2)
 
     ax = plt.stem(array,use_line_collection=True)
+    #plt.show()
     plt.savefig(name+"_stemplot.png")
     plt.close()
 
@@ -58,8 +57,8 @@ def plot_line(name,array,smoothed,cds_start=None,cds_end=None):
     #plt.axhline(1/len(array),linestyle = "-.",linewidth = 0.75,c="black")
     plt.tight_layout()
     output = name+"_lineplot.pdf"
+    #plt.show()
     plt.savefig(output)
-    print("Saved plot to ",output)
     plt.close()
 
 def get_top_k(array,k=15):
@@ -179,8 +178,10 @@ def plot_attn_attr_corr(attn_file,attr_file):
         verticalalignment='top', bbox=props)
     ax.set(xlabel="Kendall tau", ylabel='Density')
 
+    plt.figure()
     plt.title("Enc-Dec vs normed")
     corr_plot = attn_prefix +"_normed_kendall_corrs.pdf"
+    #plt.show()
     plt.savefig(corr_plot)
     plt.close()
 
@@ -420,30 +421,18 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,significance_file,mode="at
         eps = 1e-12
         sorted_ratios = {k: v for k, v in sorted(cds_ratios.items(), key=lambda item: item[1],reverse=True)}
 
-        '''        
-        codons_per_page = 6
-        chunks = make_chunks(list(sorted_ratios.keys()),codons_per_page)
-
-        with PdfPages(boxplot_file) as pdf:
-            for chunk in chunks:
-                coding = codon_df[codon_df.status == "<PC>"]
-                data = coding[coding.codon.isin(chunk)]
-                ax = sns.boxplot(y="codon",x="score",hue="segment",data=data,showfliers=False,whis=[5, 95],order=chunk)
-                
-                plt.title("Enrichment in CDS")
-                plt.tight_layout(rect=[0,0.03,1,0.95])
-                pdf.savefig()
-                plt.close()
-        '''
         plt.figure(figsize=(20,5))
         coding = codon_df[codon_df.status == "<PC>"]
-        
-        for codon in sorted_ratios.keys():
-            data = coding[coding.codon == codon]
-            ax = sns.boxplot(y="codon",x="score",hue="segment",data=data,showfliers=False,whis=[5, 95])
-            plt.title("Enrichment in CDS")
-            plt.tight_layout(rect=[0,0.03,1,0.95])
-            plt.close()
+       
+        print(coding)
+
+        order = list(sorted_ratios.keys())
+        #sns.boxplot(x="codon",y="score",hue="segment",data=coding,order=order,showfliers=False,whis=[5, 95])
+        sns.barplot(x="codon",y="score",hue="segment",data=coding,order=order) 
+        plt.title("Enrichment in CDS")
+        plt.tight_layout(rect=[0,0.03,1,0.95])
+        plt.savefig(boxplot_file)
+        plt.close()
 
 def run_attributions(saved_file,df_val,tgt_field,best_dir,mode="attn"):
 
@@ -459,9 +448,10 @@ def run_attributions(saved_file,df_val,tgt_field,best_dir,mode="attn"):
     significance_file = prefix+"significance.txt"
     hist_file = prefix+"pos_hist.pdf"
 
-    top_indices(saved_file,tgt_field,coding_indices_file,noncoding_indices_file,mode=mode)
-    top_k_to_substrings(coding_indices_file,df_val)
-    top_k_to_substrings(noncoding_indices_file,df_val)
+    #top_indices(saved_file,tgt_field,coding_indices_file,noncoding_indices_file,mode=mode)
+    #top_k_to_substrings(coding_indices_file,df_val)
+    #top_k_to_substrings(noncoding_indices_file,df_val)
+    
     codon_scores(saved_file,df_val,tgt_field,boxplot_file,significance_file,mode)
     get_positional_bias(saved_file,df_val,tgt_field,hist_file,mode)
     
@@ -504,28 +494,7 @@ def get_positional_bias(saved_file,df,tgt_field,hist_file,mode):
                 entry = {"status" : "noncoding", "distance" : argmax-cds_start}
                 storage.append(entry)
 
-            '''
-            if temp_idx < 9:
-                smoothed = smooth_array(array,50)
-                out_name = saved_file.split(".")[0]+"results/"
-                plot_line(out_name+id,array,smoothed,cds_start,cds_end)
-                
-                vis = viz.VisualizationDataRecord(
-                                    array/np.linalg.norm(np.asarray(array)),
-                                    0.90,
-                                    25,
-                                    25,
-                                    25,
-                                    1.0,       
-                                    seq,
-                                    100)
-
-                display = viz.visualize_text([vis])
-
-                with open(id+"_IG_viz.html",'w') as outFile:
-                    outFile.write(display.data)
-                    temp_idx+=1
-            '''
+    plt.figure()
     df = pd.DataFrame(storage)
     sns.histplot(df,x="distance",kde=False,hue="status",stat="density")
     
@@ -534,6 +503,7 @@ def get_positional_bias(saved_file,df,tgt_field,hist_file,mode):
     plt.title("Position of maximum attention")
     plt.tight_layout(rect=[0,0.03,1,0.95])
     plt.savefig(hist_file)
+    #plt.show()
     plt.close()
 
 def visualize_attribution(data_file,attr_file):
@@ -583,16 +553,15 @@ if __name__ == "__main__":
     df_val = df_val.set_index("ID")
     
     for l in range(4):
-        layer = "best_ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns"
+        layer = "results/best_ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns"
         for h in range(8):
             tgt_head = "layer{}head{}".format(l,h)
             print("tgt_head: ",tgt_head)
-            run_attributions(layer,df_val,tgt_head,"best_ED_classify","attn")
+            run_attributions(layer,df_val,tgt_head,"results/best_ED_classify","attn")
     
     for l in range(4):
         layer = "best_seq2seq/best_seq2seq_layer"+str(l)+".enc_dec_attns"
         for h in range(8):
             tgt_head = "layer{}head{}".format(l,h)
             print("tgt_head: ",tgt_head)
-            run_attributions(layer,df_val,tgt_head,"best_seq2seq","attn")
-
+            run_attributions(layer,df_val,tgt_head,"../results/best_seq2seq","attn")

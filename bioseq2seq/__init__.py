@@ -8,10 +8,10 @@ import bioseq2seq.models
 import bioseq2seq.utils
 import bioseq2seq.modules
 import bioseq2seq.bin
-import bioseq2seq.interpretation
 from bioseq2seq.trainer import Trainer
 import sys
 import bioseq2seq.utils.optimizers
+import bioseq2seq.translate
 bioseq2seq.utils.optimizers.Optim = bioseq2seq.utils.optimizers.Optimizer
 sys.modules["bioseq2seq.Optim"] = bioseq2seq.utils.optimizers
 
@@ -19,4 +19,4 @@ sys.modules["bioseq2seq.Optim"] = bioseq2seq.utils.optimizers
 __all__ = [bioseq2seq.inputters, bioseq2seq.encoders, bioseq2seq.decoders, bioseq2seq.models,
            bioseq2seq.utils, bioseq2seq.modules, "Trainer"]
 
-__version__ = "1.0.0.rc2"
+__version__ = "1.0.0"
