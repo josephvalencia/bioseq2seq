@@ -12,9 +12,9 @@ from bioseq2seq.bin.models import make_transformer_seq2seq
 from bioseq2seq.modules.embeddings import PositionalEncoding
 
 from torchtext.data import RawField
-from bioseq2seq.inputters.batcher import train_test_val_split
-from bioseq2seq.inputters.batcher import dataset_from_df, iterator_from_dataset, partition,train_test_val_split
-from bioseq2seq.inputters.batcher import train_test_val_split
+from bioseq2seq.bin.batcher import train_test_val_split
+from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition,train_test_val_split
+from bioseq2seq.bin.batcher import train_test_val_split
 
 
 def parse_args():

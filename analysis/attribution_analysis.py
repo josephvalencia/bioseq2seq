@@ -30,7 +30,6 @@ def plot_stem(name,array,labels):
     array = array / np.linalg.norm(array,ord=2)
 
     ax = plt.stem(array,use_line_collection=True)
-    #plt.show()
     plt.savefig(name+"_stemplot.png")
     plt.close()
 
@@ -57,7 +56,6 @@ def plot_line(name,array,smoothed,cds_start=None,cds_end=None):
     #plt.axhline(1/len(array),linestyle = "-.",linewidth = 0.75,c="black")
     plt.tight_layout()
     output = name+"_lineplot.pdf"
-    #plt.show()
     plt.savefig(output)
     plt.close()
 
@@ -181,7 +179,6 @@ def plot_attn_attr_corr(attn_file,attr_file):
     plt.figure()
     plt.title("Enc-Dec vs normed")
     corr_plot = attn_prefix +"_normed_kendall_corrs.pdf"
-    #plt.show()
     plt.savefig(corr_plot)
     plt.close()
 
@@ -361,7 +358,6 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,significance_file,mode="at
 
         with open(significance_file,'w') as outFile:
             for codon in codon_df.codon.unique():
-                
                 # compare coding and noncoding
                 coding = codon_df[(codon_df.codon == codon) & (codon_df.status == "<PC>")]
                 noncoding = codon_df[(codon_df.codon == codon) & (codon_df.status == "<NC>")]
@@ -424,8 +420,6 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,significance_file,mode="at
         plt.figure(figsize=(20,5))
         coding = codon_df[codon_df.status == "<PC>"]
        
-        print(coding)
-
         order = list(sorted_ratios.keys())
         #sns.boxplot(x="codon",y="score",hue="segment",data=coding,order=order,showfliers=False,whis=[5, 95])
         sns.barplot(x="codon",y="score",hue="segment",data=coding,order=order) 
@@ -448,16 +442,13 @@ def run_attributions(saved_file,df_val,tgt_field,best_dir,mode="attn"):
     significance_file = prefix+"significance.txt"
     hist_file = prefix+"pos_hist.pdf"
 
-    #top_indices(saved_file,tgt_field,coding_indices_file,noncoding_indices_file,mode=mode)
-    #top_k_to_substrings(coding_indices_file,df_val)
-    #top_k_to_substrings(noncoding_indices_file,df_val)
+    top_indices(saved_file,tgt_field,coding_indices_file,noncoding_indices_file,mode=mode)
+    top_k_to_substrings(coding_indices_file,df_val)
+    top_k_to_substrings(noncoding_indices_file,df_val)
     
     codon_scores(saved_file,df_val,tgt_field,boxplot_file,significance_file,mode)
     get_positional_bias(saved_file,df_val,tgt_field,hist_file,mode)
     
-    if not mode == "attr":
-        #plot_attn_attr_corr(saved_file,attr_file)
-        pass
 
 def get_positional_bias(saved_file,df,tgt_field,hist_file,mode):
     
@@ -503,7 +494,6 @@ def get_positional_bias(saved_file,df,tgt_field,hist_file,mode):
     plt.title("Position of maximum attention")
     plt.tight_layout(rect=[0,0.03,1,0.95])
     plt.savefig(hist_file)
-    #plt.show()
     plt.close()
 
 def visualize_attribution(data_file,attr_file):
@@ -518,7 +508,6 @@ def visualize_attribution(data_file,attr_file):
         idx = 0
         for l in inFile:
             fields = json.loads(l)
-            #id = fields["TSCRIPT_ID"]
             id = fields["ID"]
             #attr = np.asarray([float(x) for x in fields["layer_0_pos_0"]]) 
             attr = np.asarray([float(x) for x in fields["attr"]])
@@ -536,11 +525,6 @@ def visualize_attribution(data_file,attr_file):
 
             display = viz.visualize_text([vis])
 
-            with open(id+"_IG_viz.html",'w') as outFile:
-                outFile.write(display.data)
-            if idx == 9:
-                break
-            idx+=1
 
 if __name__ == "__main__":
     
@@ -551,17 +535,19 @@ if __name__ == "__main__":
     dataframe = pd.read_csv(data_file,sep="\t",compression = "gzip")
     df_train,df_test,df_val = train_test_val_split(dataframe,1000,65)
     df_val = df_val.set_index("ID")
-    
+   
+    '''
     for l in range(4):
         layer = "results/best_ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns"
         for h in range(8):
             tgt_head = "layer{}head{}".format(l,h)
             print("tgt_head: ",tgt_head)
             run_attributions(layer,df_val,tgt_head,"results/best_ED_classify","attn")
-    
+    '''
+
     for l in range(4):
-        layer = "best_seq2seq/best_seq2seq_layer"+str(l)+".enc_dec_attns"
+        layer = "results/best_seq2seq/best_seq2seq_layer"+str(l)+".enc_dec_attns"
         for h in range(8):
             tgt_head = "layer{}head{}".format(l,h)
             print("tgt_head: ",tgt_head)
-            run_attributions(layer,df_val,tgt_head,"../results/best_seq2seq","attn")
+            run_attributions(layer,df_val,tgt_head,"results/best_seq2seq","attn")

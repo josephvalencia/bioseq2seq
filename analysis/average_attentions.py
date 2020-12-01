@@ -1,16 +1,40 @@
-import json
+import orjson
 import sys
 import gzip
 import pandas as pd
 import numpy as np
 import seaborn as sns
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy import stats , signal
 import re,random
+from mpl_toolkits.axes_grid.inset_locator import inset_axes, InsetPosition, mark_inset
 
-def load_enc_dec_attn(cds_storage,saved_file,align_on="start",plot_type="line",mode="attn",prefix=None,plt_std_error=False,plt_inset=False):
+def test_normality(data):
+
+    n_samples,n_positions = data.shape
+
+    support = np.count_nonzero(~np.isnan(data),axis=0).tolist()
+    alpha = 1e-5
+
+    normality = []
+
+    for i,count in enumerate(support):
+        
+        if count >= 0.75*n_samples:
+            stat, p = stats.normaltest(data[:,i],nan_policy='omit')
+            if p > alpha:
+                #print('Sample looks Gaussian (fail to reject H0)')
+                normality.append(1.0)
+            else:
+                #print('Sample does not look Gaussian (reject H0)')
+                normality.append(0.0)
+
+    return np.asarray(normality) 
+
+def summarize_head(cds_storage,saved_file,tgt_head,align_on="start"):
 
     samples = []
     sample_ids = []
@@ -20,30 +44,22 @@ def load_enc_dec_attn(cds_storage,saved_file,align_on="start",plot_type="line",m
     with open(saved_file) as inFile:
         for l in inFile:
 
-            fields = json.loads(l)
-            if mode == "attn":
-                tgt = "layer_0_pos_0"
-                id_field = "TSCRIPT_ID"
-            else:
-                tgt = "attr"
-                id_field = "ID" 
+            fields = orjson.loads(l)
+            id_field = "TSCRIPT_ID"
 
             id = fields[id_field]
             sample_ids.append(id)
             
-            if id in cds_storage:# and (id.startswith("XR_") or id.startswith("NR_")):
+            if id in cds_storage: # and (id.startswith("XR_") or id.startswith("NR_")):
                 cds = cds_storage[id]
+                
                 if cds != "-1" :
                     splits = cds.split(":")
                     clean = lambda x : x[1:] if x.startswith("<") or x.startswith(">") else x
                     splits = [clean(x) for x in splits]
                     start,end = tuple([int(x) for x in splits])
                 
-                    if mode == "attn":
-                        attn = keep_nonzero(fields[tgt])
-                        attn = [float(x) for x in fields[tgt]]
-                    else:
-                        attn = [float(x) for x in fields[tgt]]
+                    attn = [float(x) for x in fields[tgt_head]]
 
                     if align_on == "start":
                         before_lengths.append(start)
@@ -53,29 +69,55 @@ def load_enc_dec_attn(cds_storage,saved_file,align_on="start",plot_type="line",m
                         after_lengths.append(len(attn) - end)
                     else:
                         raise ValueError("align_on must be 'start' or 'end'")
+                    
                     samples.append(attn)
 
-    percentiles = [10 * x for x in range(11)]
+    percentiles = [10*x for x in range(11)]
     after_percentiles = np.percentile(after_lengths,percentiles)
     before_percentiles = np.percentile(before_lengths,percentiles)
 
+    max_before = max(before_lengths)
+    max_after = max(after_lengths)
+    domain = np.asarray(list(range(-max_before,max_after)))
+
     if align_on == "start":
-        max_before = max(before_lengths)
-        domain = np.asarray(list(range(-max_before,999)))
         samples = [align_on_start(attn,start,max_before) for attn,start in zip(samples,before_lengths)]
     else:
-        max_after = max(after_lengths)
-        domain = np.asarray(list(range(-999,max_after)))
         samples = [align_on_end(attn,end,max_after) for attn,end in zip(samples,before_lengths)]
 
-    attn_prefix = saved_file.split('.')[0]
-
-    # mean and standard error over samples
     samples = np.asarray(samples)
+   
+    support = np.count_nonzero(~np.isnan(samples),axis=0)
+    sufficient = support >= 0.75*samples.shape[0]
+     
+    samples = samples[:,sufficient]
+    domain = domain[sufficient]
+    
     consensus = np.nanmean(samples,axis=0)
-    error = np.nanstd(samples,axis=0) # / np.sqrt(samples.shape[0])
-    value_by_mod(consensus[max_before:max_before+400],saved_file)
+    return consensus,domain
 
+def build_consensus(parent):
+
+    combined_file = "../Fa/refseq_combined_cds.csv.gz"
+    cds_storage = load_CDS(combined_file,include_lnc=False)
+    consensus = []
+
+    for l in range(4):
+        layer = parent+"_layer{}.enc_dec_attns".format(l)
+        for h in range(8):
+            tgt_head = "layer{}head{}".format(l,h)
+            summary,domain  = summarize_head(cds_storage,layer,tgt_head,align_on ="start") 
+            consensus.append(summary.reshape(-1,1))
+
+    eps = 1e-64
+    consensus = np.concatenate(consensus,axis=1)
+        
+    savefile = parent+"_consensus.npz"
+    np.savez(savefile,consensus=consensus,domain=domain) 
+
+def plot():   
+
+    '''
     if plot_type == "examples":
         random.seed(30)
         example_indexes = random.sample(range(len(samples)),4)
@@ -132,21 +174,9 @@ def load_enc_dec_attn(cds_storage,saved_file,align_on="start",plot_type="line",m
         plt.savefig(prefix +"codingprofile.pdf")
         plt.close()
 
-    elif plot_type == "spectrum":
-        data = consensus[max_before:max_before+300]
+        '''
+    pass
 
-        freq,ps = signal.welch(data)
-        #periods = 1.0 / freq
-        #idx = np.argsort(freq)
-        plt.plot(freq,ps)
-        
-        plt.xlabel("Cycles/Nuc.")
-        plt.ylabel("Power")
-        title = "Layer {} Head {} Attention Power Spectrum".format(layer,head)
-        plt.title(title)
-        plt.tight_layout(rect=[0,0.03, 1, 0.95])
-        plt.savefig(attn_prefix +"spectrum_periods.pdf")
-        plt.close()
 
 def getLongestORF(mRNA):
     ORF_start = -1
@@ -164,6 +194,7 @@ def getLongestORF(mRNA):
                         longestORF = len(ORF)
                     break
     return ORF_start,ORF_end
+
 
 def value_by_mod(attn,savefile):
 
@@ -239,16 +270,6 @@ def load_CDS(combined_file,include_lnc=False):
 
     return dict((x,y) for x,y in zip(ids_list,cds_list))
 
-def keep_nonzero(attn):
-    nonzero = []
-    for a in attn:
-        f = float(a)
-        if f == 0.0:
-            break
-        else:
-            nonzero.append(f)
-    return nonzero
-
 def align_on_start(attn,cds_start,max_start):
 
     max_len = 999
@@ -260,11 +281,13 @@ def align_on_start(attn,cds_start,max_start):
     prefix = [np.nan for x in range(left_remainder)]
     right_remainder = max_len - indices[-1] -1
     suffix = [np.nan for x in range(right_remainder)]
+   
+    eps = 1e-64
+    min_information = 1/len(attn)
     
-    min_information = -np.log2(1.0/len(attn))
-    #attn = [min_information / -np.log2(x) for x in attn]
+    attn = [x/min_information for x in attn]
 
-    total = prefix +attn+ suffix
+    total = prefix+attn+suffix
     return total
 
 def align_on_end(attn,cds_end,max_end):
@@ -274,23 +297,99 @@ def align_on_end(attn,cds_end,max_end):
     indices = list(range(len(attn)))
     indices = [x-cds_end for x in indices]
 
-    left_remainder = max_len - cds_end
+    left_remainder = max_len-cds_end
     prefix = [np.nan for x in range(left_remainder)]
-    right_remainder = max_end - indices[-1] -1
+    right_remainder = max_end - indices[-1]-1
     suffix = [np.nan for x in range(right_remainder)]
 
-    total = prefix + attn + suffix
+    total = prefix+attn+suffix
     return total
+
+
+def plot_heatmap(consensus,title,heatmap_file):
+
+    palette = sns.cubehelix_palette(start=.5, rot=-.5, as_cmap=True)
+    sns.heatmap(consensus,cmap=palette)
+    plt.suptitle(title)
+    plt.savefig(heatmap_file)
+    plt.close()
+
+def plot_power_spectrum(consensus,title,spectrum_file,domain="freq"):
+
+    palette = sns.color_palette()
+
+    freq,ps = signal.welch(consensus,axis=0,scaling="spectrum")
+   
+    fig, ax1 = plt.subplots()
+
+    n_freq_bins, n_heads = ps.shape
+   
+    x_label = "Period (Nuc.)" if domain == "period" else "Frequency (Cycles/Nuc.)"
+    x_vals = 1.0 / freq if domain =="period" else freq    
+    
+    for i in range(n_heads):
+        layer = i // 8
+        label = layer if i % 8 == 0 else None
+        ax1.plot(x_vals,ps[:,i],color=palette[layer],label=label,alpha=0.6)
+
+    if domain == "freq":
+        tick_labels = ["0",r'$\frac{1}{10}$']+[r"$\frac{1}{"+str(x)+r"}$" for x in range(5,1,-1)]
+        tick_locs =[0,1.0/10]+ [1.0 / x for x in range(5,1,-1)]
+        ax1.set_xticks(tick_locs)
+        ax1.set_xticklabels(tick_labels)
+        ax1.legend(title="Layer")
+    
+    ax1.set_xlabel(x_label)
+    ax1.set_ylabel("Power")
+    
+    if domain == "period":
+
+        ax2 = plt.axes([0,0,1,1])
+        
+        # place and mark inset 
+        ip = InsetPosition(ax1, [0.20,0.35,0.5,0.5])
+        ax2.set_axes_locator(ip)
+        mark_inset(ax1, ax2, loc1=2, loc2=4, fc="none", ec='0.5')
+
+        for i in range(n_heads):
+            layer = i // 8
+            label = layer if i % 8 ==0 else None
+            ax2.plot(x_vals,ps[:,i],color=palette[layer],label=label,alpha=0.4)
+       
+        ax2.legend(title="Layer")
+        ax2.set_xlim(2.9,3.1)
+
+    plt.suptitle(title)
+    plt.savefig(spectrum_file)
+    plt.close()
+
+def scale_min_max(consensus):
+
+    mins = consensus.min(axis=0)
+    maxes = consensus.max(axis=0)
+    return  (consensus - mins) / (maxes - mins+1e-32)
 
 if __name__ == "__main__":
     
-    combined_file = sys.argv[1]
-    mode = sys.argv[2]
+    ED_classify = "results/best_ED_classify/best_ED_classify"
+    seq2seq = "results/best_seq2seq/best_seq2seq"
 
-    cds_storage = load_CDS(combined_file,include_lnc=False)
-    #load_enc_dec_attn(cds_storage,"classify.enc_dec_attns",align_on="start",mode=mode,plot_type="line") 
+    #build_consensus(ED_classify)
+    #build_consensus(seq2seq)
+
+    plt.rcParams['font.family'] = "sans-serif"
+
+    loaded = np.load("results/best_ED_classify/best_ED_classify_consensus.npz")
+    consensus = loaded['consensus']
+    consensus = scale_min_max(consensus)
+    domain = loaded['domain'].tolist()
     
-    for h in list(range(8)):
-        layer = "medium/layer3head{}.enc_dec_attns".format(h)
-        print(layer)
-        load_enc_dec_attn(cds_storage,layer,align_on ="start",mode=mode,plot_type="examples")
+    plot_heatmap(np.transpose(consensus),"Encoder Decoder Classifier","ED_classify_attn_heatmap.pdf")
+    plot_power_spectrum(consensus,"Encoder Decoder Power Spectrum","ED_classify_attn_spectrum_period.pdf",domain="period")
+
+    loaded = np.load("results/best_seq2seq/best_seq2seq_consensus.npz")
+    consensus = loaded['consensus'] 
+    consensus = scale_min_max(consensus)
+
+    plot_heatmap(np.transpose(consensus),"Seq2seq","seq2seq_attn_heatmap.pdf")
+    plot_power_spectrum(consensus,"Seq2seq Power Spectrum","seq2seq_attn_spectrum_period.pdf",domain="period")
