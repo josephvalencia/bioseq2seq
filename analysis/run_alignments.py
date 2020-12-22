@@ -11,7 +11,7 @@ mode = sys.argv[2]
 if mode == "classify":
     evaluator = Evaluator(mode=mode,best_of=1,k=0,full_align=False,exact_match=False)
 elif mode == "combined":
-    evaluator = Evaluator(mode=mode,best_of=1,k=8,full_align=True,exact_match=True)
+    evaluator = Evaluator(mode=mode,best_of=1,k=8,full_align=False,exact_match=True)
 
 with open(pred_file,"r") as inFile:
     lines = inFile.read().split("\n")

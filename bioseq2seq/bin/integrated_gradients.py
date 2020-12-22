@@ -12,7 +12,7 @@ import math
 import scipy
 import warnings
 
-from captum.attr import LayerIntegratedGradients,IntegratedGradients,DeepLift,LayerDeepLift
+from captum.attr import IntegratedGradients,DeepLift, Saliency
 from captum.attr import configure_interpretable_embedding_layer, remove_interpretable_embedding_layer
 
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -98,15 +98,7 @@ class FeatureAttributor:
 
         self.positional = PositionalEncoding(0,128,10).to(self.device)
         self.interpretable_emb = configure_interpretable_embedding_layer(self.model,'encoder.embeddings')
-
         self.predictor = PredictionWrapper(self.model)
-
-    def prepare_input(self,src,batch_size):
-
-        decoder_input = self.sos_token * torch.ones(size=(batch_size,1,1),dtype=torch.long).to(self.device)
-        baseline = self.pad_token * torch.ones_like(src,dtype=torch.long)
-
-        return decoder_input,baseline
 
     def zero_embed(self,src,batch_size):
 
@@ -142,26 +134,26 @@ class FeatureAttributor:
       self.nucleotide = emb
     
     def nucleotide_embed(self,src,batch_size):
-
-      decoder_input = self.sos_token * torch.ones(size=(batch_size,1,1),dtype=torch.long).to(self.device)
-
-      src_size = list(src.size())
-      baseline_emb = self.nucleotide.repeat(*src_size)
-      baseline_emb = self.positional(baseline_emb)
-      input_emb = self.interpretable_emb.indices_to_embeddings(src)
-
-      return decoder_input,baseline_emb,input_emb
+        
+        src_size = list(src.size())
+        baseline_emb = self.nucleotide.repeat(*src_size)
+        baseline_emb = self.positional(baseline_emb)
+        input_emb = self.interpretable_emb.indices_to_embeddings(src)
+        
+        return baseline_emb,input_emb
 
     def average_embed(self,src,batch_size):
     
-        decoder_input = self.sos_token * torch.ones(size=(batch_size,1,1),dtype=torch.long).to(self.device)
-        
         src_size = list(src.size())
         baseline_emb = self.average.repeat(*src_size)
         baseline_emb = self.positional(baseline_emb)
         input_emb = self.interpretable_emb.indices_to_embeddings(src)
 
-        return decoder_input,baseline_emb,input_emb
+        return baseline_emb,input_emb
+
+    def decoder_input(self,batch_size):
+
+        return self.sos_token * torch.ones(size=(batch_size,1,1),dtype=torch.long).to(self.device)
 
     def run_deeplift(self,savefile,val_iterator,target_pos,reduction):
 
@@ -179,7 +171,8 @@ class FeatureAttributor:
                 batch_size = batch.batch_size
                 
                 #decoder_input, baseline_embed, src_embed = self.average_embed(src,batch_size)
-                decoder_input, baseline_embed, src_embed = self.zero_embed(src,batch_size)
+                baseline_embed, src_embed = self.zero_embed(src,batch_size)
+                decoder_input = self.decoder_input(batch_size)
                 #decoder_input, baseline_embed, src_embed = self.nucleotide_embed(src,batch_size)
 
                 pred_classes = self.predictor(src_embed,src_lens,decoder_input,batch_size)
@@ -226,8 +219,9 @@ class FeatureAttributor:
                 for j in range(batch_size):
                     
                     curr_src = torch.unsqueeze(src[j,:,:],0)
-                    decoder_input, baseline_embed, curr_src_embed, = self.zero_embed(curr_src,1)
-               
+                    baseline_embed, curr_src_embed, = self.zero_embed(curr_src,1)
+                    decoder_input = self.decoder_input(batch_size) 
+
                     curr_ids = batch.id
 
                     curr_tgt = batch.tgt[target_pos,j,:]
@@ -263,6 +257,35 @@ class FeatureAttributor:
 
                     summary = json.dumps(entry)
                     outFile.write(summary+"\n")
+
+    def run_salience(self,savefile,val_iterator,target_pos):
+
+        sl = Saliency(self.predictor)
+        
+        with open(savefile,'w') as outFile:
+            
+            for batch in tqdm.tqdm(val_iterator):
+                ids = batch.id
+                src, src_lens = batch.src
+                src = src.transpose(0,1)
+                batch_size = batch.batch_size
+                
+                decoder_input = self.decoder_input(batch_size)
+                pred_classes = self.predictor(src,src_lens,decoder_input,1)
+                pred,answer_idx = pred_classes.data.cpu().max(dim=-1)
+
+                attributions = sl.attribute(inputs=src,target=answer_idx,additional_forward_args = (src_lens,decoder_input,batch_size))
+                attributions = np.squeeze(attributions.detach().cpu().numpy(),axis=0)
+
+                attr = [round(x,3) for x in attributions.tolist()]
+
+                saved_src = np.squeeze(np.squeeze(curr_src.detach().cpu().numpy(),axis=0),axis=1).tolist()
+                saved_src = "".join([self.vocab.itos[x] for x in saved_src])
+
+                entry = {"ID" : ids[j] , "salience" : attr, "src" : saved_src}
+
+                summary = json.dumps(entry)
+                outFile.write(summary+"\n")
 
     def merge_handler(self,attr,fh):
 
@@ -362,7 +385,8 @@ def run_helper(rank,args,model,vocab):
         attributor.run_integrated_gradients(savefile,val_iterator,target_pos,args.reduction)
     elif args.attribution_mode == "deeplift":
         attributor.run_deeplift(savefile,val_iterator,target_pos,args.reduction)
-
+    elif args.attribution_mode == "salience":
+        attributor.run_salience(savefile,val_iterator,target_pos)
 
 def run_attribution(args,device):
     

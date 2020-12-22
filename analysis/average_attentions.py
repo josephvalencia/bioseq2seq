@@ -45,7 +45,8 @@ def summarize_head(cds_storage,saved_file,tgt_head,align_on="start"):
         for l in inFile:
 
             fields = orjson.loads(l)
-            id_field = "TSCRIPT_ID"
+            #id_field = "TSCRIPT_ID"
+            id_field = "ID"
 
             id = fields[id_field]
             sample_ids.append(id)
@@ -115,68 +116,75 @@ def build_consensus(parent):
     savefile = parent+"_consensus.npz"
     np.savez(savefile,consensus=consensus,domain=domain) 
 
-def plot():   
+def build_consensus_IG(ig_file,tgt):
 
-    '''
-    if plot_type == "examples":
-        random.seed(30)
-        example_indexes = random.sample(range(len(samples)),4)
-        example_ids = [sample_ids[x] for x in example_indexes]
-        examples = samples[example_indexes,:]
-        filename = attn_prefix +"profile.pdf"
+    combined_file = "../Fa/refseq_combined_cds.csv.gz"
+    cds_storage = load_CDS(combined_file,include_lnc=False)
 
-        with PdfPages(filename) as pdf:
-            for i in range(len(example_indexes)):
-                ex = examples[i,:]
-                non_nan = ~np.isnan(ex)
-                #ex_domain = domain[non_nan]
-                #ex = ex[non_nan]
-                
-                plt.plot(domain,ex,'k',color='#CC4F1B')
-                plt.plot(domain,consensus,'k',linestyle='dashed')
-                ax = plt.gca()
+    summary,domain  = summarize_head(cds_storage,ig_file,tgt,align_on ="start") 
 
-                if plt_std_error:
-                    plt.fill_between(domain, consensus[non_nan]-2*error[non_nan], consensus[non_nan]+2*error[non_nan],alpha=0.5, edgecolor='#CC4F1B', facecolor='#FF9848')
-                
-                ax.set(xlabel = "Pos. Relative to CDS", ylabel = "Attention Score")
-                ax.set_title(sample_ids[i])
-      
-                if plt_inset:
-                    if head == 6 or head == 7:
-                        axins = ax.inset_axes([0.1, 0.6, 0.35, 0.35])
-                    else:
-                        axins = ax.inset_axes([0.6, 0.6, 0.35, 0.35])
+    eps = 1e-64
+        
+    savefile = ig_file+"_consensus.npz"
+    np.savez(savefile,consensus=summary,domain=domain) 
 
-                    axins.stem(domain,consensus,use_line_collection=True,basefmt=" ",markerfacecolor='w')
-                    axins.set_xlim(-10,13)
-                    ax.indicate_inset_zoom(axins)
 
-                plt.tight_layout(rect=[0,0.03,1,0.95])
-                pdf.savefig()
-                plt.close()
+def plot_examples(consensus):   
 
-    elif plot_type == "stem" or plot_type =="line":
-        if plot_type == "stem":
-            markerline, stemlines, baseline  = plt.stem(domain,consensus,use_line_collection=True,basefmt=" ")
-            #markerline.set_markerfacecolor('none')
-        elif plot_type == "line":
-            plt.plot(domain,consensus,'k',color='#CC4F1B')
+    random.seed(30)
+    example_indexes = random.sample(range(len(samples)),4)
+    example_ids = [sample_ids[x] for x in example_indexes]
+    examples = samples[example_indexes,:]
+    filename = attn_prefix +"profile.pdf"
+
+    with PdfPages(filename) as pdf:
+        for i in range(len(example_indexes)):
+            ex = examples[i,:]
+            non_nan = ~np.isnan(ex)
+            #ex_domain = domain[non_nan]
+            #ex = ex[non_nan]
+            
+            plt.plot(domain,ex,'k',color='#CC4F1B')
+            plt.plot(domain,consensus,'k',linestyle='dashed')
+            ax = plt.gca()
+
             if plt_std_error:
-                plt.fill_between(domain,consensus-2*error,consensus+2*error,alpha=0.5,edgecolor='#CC4F1B',facecolor='#FF9848')
-       
-        plt.xlabel("Pos. Relative to CDS")
-        plt.ylabel("Attention Score")
-        prefix = saved_file.split(".")[0]
-        title = "{} Attention Profile".format(prefix)
-        plt.title(title)
-        plt.tight_layout(rect=[0,0.03, 1, 0.95])
-        plt.savefig(prefix +"codingprofile.pdf")
-        plt.close()
+                plt.fill_between(domain, consensus[non_nan]-2*error[non_nan], consensus[non_nan]+2*error[non_nan],alpha=0.5, edgecolor='#CC4F1B', facecolor='#FF9848')
+            
+            ax.set(xlabel = "Pos. Relative to CDS", ylabel = "Attention Score")
+            ax.set_title(sample_ids[i])
+  
+            if plt_inset:
+                if head == 6 or head == 7:
+                    axins = ax.inset_axes([0.1, 0.6, 0.35, 0.35])
+                else:
+                    axins = ax.inset_axes([0.6, 0.6, 0.35, 0.35])
 
-        '''
-    pass
+                axins.stem(domain,consensus,use_line_collection=True,basefmt=" ",markerfacecolor='w')
+                axins.set_xlim(-10,13)
+                ax.indicate_inset_zoom(axins)
 
+            plt.tight_layout(rect=[0,0.03,1,0.95])
+            pdf.savefig()
+            plt.close()
+
+
+def plot_line(domain,consensus,name,plot_type):
+
+    if plot_type == "stem":
+        markerline, stemlines, baseline  = plt.stem(domain,consensus,use_line_collection=True,basefmt=" ")
+    elif plot_type == "line":
+        plt.plot(domain,consensus,'k',color='#CC4F1B')
+        if plt_std_error:
+            plt.fill_between(domain,consensus-2*error,consensus+2*error,alpha=0.5,edgecolor='#CC4F1B',facecolor='#FF9848')
+   
+    plt.xlabel("Pos. Relative to CDS")
+    plt.ylabel("Attention Score")
+    title = "{} Attention Profile".format(prefix)
+    plt.title(title)
+    plt.tight_layout(rect=[0,0.03, 1, 0.95])
+    plt.savefig(name+"codingprofile.pdf")
+    plt.close()
 
 def getLongestORF(mRNA):
     ORF_start = -1
@@ -196,7 +204,7 @@ def getLongestORF(mRNA):
     return ORF_start,ORF_end
 
 
-def value_by_mod(attn,savefile):
+def mean_by_mod(attn,savefile):
 
     idx = np.arange(attn.shape[0])
     zero = idx % 3 == 0
@@ -222,11 +230,12 @@ def value_by_mod(attn,savefile):
     r'$F-statistic=%.3f$' % (result.statistic, ),
     r'$p-val=%.3f$' % (result.pvalue, )))
 
+    print(textstr)
+
+    '''
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 
-    #ax = sns.violinplot(x="frame",y="val",data=df)
     ax = sns.barplot(x="frame",y="val",data=df)
-    #ax = sns.barplot(x=[0,1,2],y=means) 
     
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     ax.text(0.65, 0.95, textstr, transform=ax.transAxes, fontsize=14,
@@ -239,6 +248,7 @@ def value_by_mod(attn,savefile):
     outfile = prefix+"attn_frames.pdf"
     plt.savefig(outfile)
     plt.close()
+    '''
 
 def load_CDS(combined_file,include_lnc=False):
 
@@ -305,7 +315,6 @@ def align_on_end(attn,cds_end,max_end):
     total = prefix+attn+suffix
     return total
 
-
 def plot_heatmap(consensus,title,heatmap_file):
 
     palette = sns.cubehelix_palette(start=.5, rot=-.5, as_cmap=True)
@@ -367,29 +376,72 @@ def scale_min_max(consensus):
 
     mins = consensus.min(axis=0)
     maxes = consensus.max(axis=0)
-    return  (consensus - mins) / (maxes - mins+1e-32)
+    return  (consensus - mins) / (maxes - mins)
 
 if __name__ == "__main__":
     
     ED_classify = "results/best_ED_classify/best_ED_classify"
     seq2seq = "results/best_seq2seq/best_seq2seq"
 
+    ED_ig = "results/best_ED_classify/best_ED_classify.ig"
+    seq2seq_ig = "results/best_seq2seq/best_seq2seq.ig"
+
     #build_consensus(ED_classify)
     #build_consensus(seq2seq)
+    
+    #build_consensus_IG(ED_ig,"summed_attr")
+    #build_consensus_IG(seq2seq_ig, "summed_attr")
 
     plt.rcParams['font.family'] = "sans-serif"
 
-    loaded = np.load("results/best_ED_classify/best_ED_classify_consensus.npz")
+    '''
+    loaded = np.load(ED_ig+"_consensus.npz")
     consensus = loaded['consensus']
+    mean_by_mod(consensus,"test")
+    consensus = scale_min_max(consensus).reshape(-1,1)
+    domain = loaded['domain'].tolist()
+    
+    #plot_heatmap(np.transpose(consensus),"Encoder Decoder Classifier","ED_classify_IG_heatmap.pdf")
+    plot_power_spectrum(consensus,"Encoder Decoder Power Spectrum","ED_classify_IG_spectrum_period.pdf")
+
+    loaded = np.load(seq2seq_ig+"_consensus.npz")
+    consensus = loaded['consensus'] 
+    mean_by_mod(consensus,"test")
+    consensus = scale_min_max(consensus).reshape(-1,1)
+
+    #plot_heatmap(np.transpose(consensus),"Seq2seq","seq2seq_IG_heatmap.pdf")
+    plot_power_spectrum(consensus,"Seq2seq Power Spectrum","seq2seq_IG_spectrum_period.pdf")
+    
+    '''
+
+    plt.rcParams['font.family'] = "sans-serif"
+
+    loaded = np.load(ED_classify+"_consensus.npz")
+    consensus = loaded['consensus']
+    print("ED_classify") 
+    for h in range(consensus.shape[1]):
+        curr_slice = consensus[:,h]
+        print(h)
+        mean_by_mod(curr_slice,"test")
+
+    print("______________________________")
+    print("Seq2seq")
     consensus = scale_min_max(consensus)
     domain = loaded['domain'].tolist()
     
-    plot_heatmap(np.transpose(consensus),"Encoder Decoder Classifier","ED_classify_attn_heatmap.pdf")
-    plot_power_spectrum(consensus,"Encoder Decoder Power Spectrum","ED_classify_attn_spectrum_period.pdf",domain="period")
+    #plot_heatmap(np.transpose(consensus),"Encoder Decoder Classifier","ED_classify_attn_heatmap.pdf")
+    #plot_power_spectrum(consensus,"Encoder Decoder Power Spectrum","ED_classify_attn_spectrum_period.pdf",domain="period")
 
-    loaded = np.load("results/best_seq2seq/best_seq2seq_consensus.npz")
+    loaded = np.load(seq2seq+"_consensus.npz")
     consensus = loaded['consensus'] 
+    
+    for h in range(consensus.shape[1]):
+        curr_slice = consensus[:,h]
+        print(h)
+        mean_by_mod(curr_slice,"test")
+    
     consensus = scale_min_max(consensus)
 
-    plot_heatmap(np.transpose(consensus),"Seq2seq","seq2seq_attn_heatmap.pdf")
-    plot_power_spectrum(consensus,"Seq2seq Power Spectrum","seq2seq_attn_spectrum_period.pdf",domain="period")
+    #plot_heatmap(np.transpose(consensus),"Seq2seq","seq2seq_attn_heatmap.pdf")
+    #plot_power_spectrum(consensus,"Seq2seq Power Spectrum","seq2seq_attn_spectrum_period.pdf",domain="period")
+

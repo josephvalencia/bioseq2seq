@@ -120,68 +120,6 @@ def top_indices(saved_file,tgt_field,coding_topk_file,noncoding_topk_file,mode= 
             index_str = ",".join([str(x) for x in indices])
             outFile.write("{},{}\n".format(tscript,index_str))
 
-def plot_attn_attr_corr(attn_file,attr_file):
-
-    storage = {}
-    corrs = []
-    count = 0
-
-    attn_field = "layer_0_pos_0"
-    attn_prefix = attn_file.split(".")[0]
-    
-    print("Loading all attentions")
-    with open(attn_file) as inFile:
-        for l in inFile:
-            fields = json.loads(l)
-            #id = fields["TSCRIPT_ID"]
-            #storage[id] = fields[attn_field]
-            id = fields["ID"]
-            storage[id] = fields["attr"]
-
-    print("Loading all attributions")
-    with open(attr_file) as inFile:
-        for l in inFile:
-            fields = json.loads(l)
-            
-            id = fields["ID"]
-            attr = fields["attr"]
-            
-            if id in storage: # and (id.startswith("XM_") or id.startswith("NM_")):
-                count +=1
-                attn = storage[id]
-                print(" ID: {} , len(attr) {} , len(attn) {}".format(id,len(attr),len(attn)))
-
-                if len(attr) < len(attn):
-                    attn = attn[:len(attr)]
-                elif len(attn) < len(attr):
-                    attr = attr[:len(attn)]
-
-                correlation = kendalltau(attr,attn)                
-                corrs.append(correlation[0])
-
-    mu = np.mean(corrs)
-    median = np.median(corrs)
-    sigma = np.std(corrs)
-
-    textstr = '\n'.join((
-    r'$\mu=%.3f$' % (mu, ),
-    r'$\mathrm{median}=%.3f$' % (median, ),
-    r'$\sigma=%.3f$' % (sigma, )))
-
-    ax = sns.distplot(corrs)
-
-    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-
-    ax.text(0.65, 0.95, textstr, transform=ax.transAxes, fontsize=14,
-        verticalalignment='top', bbox=props)
-    ax.set(xlabel="Kendall tau", ylabel='Density')
-
-    plt.figure()
-    plt.title("Enc-Dec vs normed")
-    corr_plot = attn_prefix +"_normed_kendall_corrs.pdf"
-    plt.savefig(corr_plot)
-    plt.close()
-
 def smooth_array(array,window_size):
 
     half_size = window_size // 2
@@ -294,11 +232,10 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,significance_file,mode="at
     
     with open(saved_file) as inFile:
         for l in inFile:
-            
             fields = json.loads(l)
             id_field = "TSCRIPT_ID" if mode == "attn" else "ID"
-
             id = fields[id_field]
+            
             array = fields[tgt_field]
             seq = df.loc[id,'RNA']
             tscript_type = df.loc[id,'Type']
@@ -319,8 +256,7 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,significance_file,mode="at
             if len(seq) != len(array):
                 array = [float(x) for x in array[:len(seq)]]
 
-            uniform = 3/len(array)
-
+            uniform = 3 / len(array)
             inside = defaultdict(lambda : [0.0])
             outside = defaultdict(lambda : [0.0])
 
@@ -334,17 +270,21 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,significance_file,mode="at
                 if allowed(codon) and not inframe(i):
                     score = sum(array[i:i+3])
                     outside[codon].append(score)
+            
+            # find average 
             for codon,scores in outside.items():
                 avg = sum(scores) / len(scores) 
                 info = {"tscript" : id ,"codon" : codon, "score" : avg/uniform, "status" : tscript_type, "segment" : "OUT"}
                 extra.append(info)
 
-            # CDS
+            # inside CDS
             for i in range(cds_start,cds_end-3,3):
                 codon = seq[i:i+3]
                 if allowed(codon):
                     score = sum(array[i:i+3])
                     inside[codon].append(score)
+           
+           # average CDS
             for codon,scores in inside.items():
                 avg = sum(scores) / len(scores)
                 info = {"tscript" : id ,"codon" : codon, "score" : avg/uniform, "status" : tscript_type, "segment" : 'CDS'}
@@ -353,54 +293,48 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,significance_file,mode="at
         codon_df = pd.DataFrame(extra)
         num_coding = num_noncoding = num_out_coding = num_cds_coding = num_cds_noncoding = num_out_noncoding = 0
 
-        cds_ratios = defaultdict(float)
-        coding_status_ratios = defaultdict(float)
+        cds_ratios = defaultdict(list)
+        coding_status_ratios = defaultdict(list)
 
         with open(significance_file,'w') as outFile:
             for codon in codon_df.codon.unique():
                 # compare coding and noncoding
                 coding = codon_df[(codon_df.codon == codon) & (codon_df.status == "<PC>")]
                 noncoding = codon_df[(codon_df.codon == codon) & (codon_df.status == "<NC>")]
-                
                 result = ttest_ind(coding.score,noncoding.score,equal_var=False)
+                
                 # count number of significant differences
                 if result.pvalue < 0.01:
                     pc_score = coding.score.mean()
                     nc_score = noncoding.score.mean()
-                    ratio = 0
                     if pc_score > nc_score:
                         num_coding+=1
-                        ratio = pc_score / nc_score 
                     elif pc_score < nc_score:
                         num_noncoding+=1
-                        ratio = nc_score / pc_score
-
-                    coding_status_ratios[codon] = ratio
+                    diff = pc_score - nc_score
+                    coding_status_ratios[codon].append(diff)
                 
                 # compare CDS vs UTR
                 out = coding[coding.segment == "OUT"]
                 cds = coding[coding.segment == "CDS"]
-
                 result = ttest_ind(out.score,cds.score,equal_var=False)
+                
                 # count number of significant differences
                 if result.pvalue < 0.01:
                     out_score = out.score.mean()
                     cds_score = cds.score.mean()
-                    ratio = 0 
                     if cds_score > out_score:
                         num_cds_coding+=1
-                        ratio = cds_score / out_score
                     elif cds_score < out_score:
                         num_out_coding+=1
-                        ratio = out_score / cds_score
-                    
-                    cds_ratios[codon] = ratio 
+                    diff = cds_score - out_score 
+                    cds_ratios[codon].append(diff) 
 
                 # compare CDS vs UTR
                 out = noncoding[noncoding.segment == "OUT"]
                 cds = noncoding[noncoding.segment == "CDS"]
-
                 result = ttest_ind(out.score,cds.score,equal_var=False)
+                
                 # count number of significant differences
                 if result.pvalue < 0.01:
                     out_score = out.score.mean()
@@ -414,16 +348,14 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,significance_file,mode="at
             outFile.write("Coding : {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_coding,num_out_coding))
             outFile.write("Noncoding: {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_noncoding,num_out_noncoding))
 
-        eps = 1e-12
-        sorted_ratios = {k: v for k, v in sorted(cds_ratios.items(), key=lambda item: item[1],reverse=True)}
+        
+        sorted_ratios = {k: sum(v) / len(v) for k, v in sorted(coding_status_ratios.items(), key=lambda item: item[1],reverse=True)}
 
-        plt.figure(figsize=(20,5))
-        coding = codon_df[codon_df.status == "<PC>"]
+        plt.figure(figsize=(5,20))
        
         order = list(sorted_ratios.keys())
-        #sns.boxplot(x="codon",y="score",hue="segment",data=coding,order=order,showfliers=False,whis=[5, 95])
-        sns.barplot(x="codon",y="score",hue="segment",data=coding,order=order) 
-        plt.title("Enrichment in CDS")
+        sns.boxplot(x="score",y="codon",hue="status",data=codon_df,orient="h",whis=[5,95],order=order,showfliers=False) 
+        plt.title("Enrichment in Coding")
         plt.tight_layout(rect=[0,0.03,1,0.95])
         plt.savefig(boxplot_file)
         plt.close()
@@ -448,7 +380,6 @@ def run_attributions(saved_file,df_val,tgt_field,best_dir,mode="attn"):
     
     codon_scores(saved_file,df_val,tgt_field,boxplot_file,significance_file,mode)
     get_positional_bias(saved_file,df_val,tgt_field,hist_file,mode)
-    
 
 def get_positional_bias(saved_file,df,tgt_field,hist_file,mode):
     
@@ -457,10 +388,11 @@ def get_positional_bias(saved_file,df,tgt_field,hist_file,mode):
 
     with open(saved_file) as inFile:
         for l in inFile:
+            
             fields = json.loads(l)
             id_field = "TSCRIPT_ID" if mode == "attn" else "ID"
-
             id = fields[id_field]
+            
             array = fields[tgt_field]
             seq = df.loc[id,'RNA']
             tscript_type = df.loc[id,'Type']
@@ -512,7 +444,8 @@ def visualize_attribution(data_file,attr_file):
             #attr = np.asarray([float(x) for x in fields["layer_0_pos_0"]]) 
             attr = np.asarray([float(x) for x in fields["attr"]])
             seq = df_val.loc[id,"RNA"]
-            # storing couple samples in an array for visualization purposes
+           
+           # storing couple samples in an array for visualization purposes
             vis = viz.VisualizationDataRecord(
                                     attr,
                                     0.90,
@@ -522,9 +455,8 @@ def visualize_attribution(data_file,attr_file):
                                     attr.sum(),
                                     seq,
                                     100)
-
+            
             display = viz.visualize_text([vis])
-
 
 if __name__ == "__main__":
     
@@ -535,15 +467,21 @@ if __name__ == "__main__":
     dataframe = pd.read_csv(data_file,sep="\t",compression = "gzip")
     df_train,df_test,df_val = train_test_val_split(dataframe,1000,65)
     df_val = df_val.set_index("ID")
+  
+    ig_seq2seq = "results/best_seq2seq/best_seq2seq.ig"
+    run_attributions(ig_seq2seq,df_val,"normed_attr","results/best_seq2seq", "IG")
+
+    ig_classify = "results/best_ED_classify/best_ED_classify.ig"
+    run_attributions(ig_classify,df_val,"normed_attr","results/best_ED_classify", "IG")
    
-    '''
+    quit()
+
     for l in range(4):
         layer = "results/best_ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns"
         for h in range(8):
             tgt_head = "layer{}head{}".format(l,h)
             print("tgt_head: ",tgt_head)
             run_attributions(layer,df_val,tgt_head,"results/best_ED_classify","attn")
-    '''
 
     for l in range(4):
         layer = "results/best_seq2seq/best_seq2seq_layer"+str(l)+".enc_dec_attns"
@@ -551,3 +489,4 @@ if __name__ == "__main__":
             tgt_head = "layer{}head{}".format(l,h)
             print("tgt_head: ",tgt_head)
             run_attributions(layer,df_val,tgt_head,"results/best_seq2seq","attn")
+
