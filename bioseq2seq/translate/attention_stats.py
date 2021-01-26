@@ -16,9 +16,6 @@ class AttentionDistribution:
         self.seq = seq
         self.cds = cds
 
-        if not os.path.isdir("output/"+self.tscript_name):
-            os.mkdir("output/"+self.tscript_name)
-
     def __attention_entropy__(self,attns,axis=1):
         """ Shannon entropy of attention distribution.
            Args:

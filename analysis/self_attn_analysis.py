@@ -6,6 +6,7 @@ import numpy as np
 import json
 import pprint
 import logomaker
+from tqdm import tqdm
 from matplotlib import pyplot as plt
 from collections import Counter, defaultdict
 from matplotlib.backends.backend_pdf import PdfPages
@@ -85,10 +86,34 @@ def plot_max(max_attns,cds_start,cds_end,tscript_name,head_name,line = False,no_
 def plot_maxdist(max_attns,tscript_name,head_name):
 
     distance = max_attns - np.arange(max_attns.shape[0])
-    sns.distplot(distance,bins=2*max_attns.shape[0],kde=False)
+    sns.histplot(distance,bins=2*max_attns.shape[0],stat='probability',kde=False)
     plt.xlabel("Distance to Max")
     plt.ylabel("Count")
     plt.title(head_name)
+
+def summarize_maxes(layer,tscript_id,storage):
+
+    layer_num = layer['layer']
+    heads = layer['heads']
+
+    for h in heads:
+        max_attns = np.asarray(h['max'])
+        absolute = tabulate(max_attns)
+        layerhead = "layer{}head{}".format(layer_num,h['head'])
+        abs_val, abs_weight = absolute[0]
+        distance = max_attns - np.arange(max_attns.shape[0])
+        relative = tabulate(distance)
+        rel_val, rel_weight = relative[0]
+        entry = {'tscript_id': tscript_id, 'head' : layerhead , 'abs_weight' : abs_weight, 'abs_val' : abs_val , 'rel_weight' : rel_weight , 'rel_val' : rel_val}
+        storage.append(entry)
+
+def tabulate(vals):
+
+    unique, counts = np.unique(vals,return_counts=True)
+    total = vals.shape[0]
+    counts = [(i,c/total) for i,c in zip(unique.tolist(),counts.tolist())]
+    counts = sorted(counts,key= lambda x : x[1],reverse=True)
+    return counts
 
 def plot_center(centers,cds_start,cds_end,tscript_name,head_name,line = False,no_diagonal = False):
     """ Plot nucleotide position vs center index of attention.
@@ -119,31 +144,7 @@ def plot_heatmap(tscript_name,head_name,attns):
 
 def pipeline(saved_attn):
 
-    with open(saved_attn) as inFile:
-        for line in inFile:
-
-            decoded = json.loads(line)
-            tscript_id = decoded['TSCRIPT_ID']
-            seq = decoded['seq']
-            cds_start = decoded['CDS_START']
-            cds_end = decoded['CDS_END']
-            layers = decoded['layers']
-            print(tscript_id)
-
-            if not os.path.isdir("self_output/"+tscript_id+"/"):
-                os.mkdir("self_output/"+tscript_id+"/")
-            
-            for n,layer in enumerate(layers):
-                max_PDF(layer,cds_start,cds_end,tscript_id)
-                maxdist_PDF(layer,tscript_id)
-                maxdist_txt(layer,tscript_id,seq)
-                entropy_PDF(layer,tscript_id)
-
-
-def layer_entropy_heatmap(saved_attn):
-
-    activations = defaultdict(lambda: defaultdict(float))
-    total_nucs = 0
+    storage = []
 
     with open(saved_attn) as inFile:
         for line in inFile:
@@ -155,43 +156,54 @@ def layer_entropy_heatmap(saved_attn):
             cds_end = decoded['CDS_END']
             layers = decoded['layers']
 
-            if not os.path.isdir("self_output/"+tscript_id+"/"):
-                os.mkdir("self_output/"+tscript_id+"/")
+            #if not os.path.isdir("self_output/"+tscript_id+"/"):
+            #    os.mkdir("self_output/"+tscript_id+"/")
             
             for n,layer in enumerate(layers):
-                
-                sequence_logo(layer,tscript_id)
-                max_PDF(layer,cds_start,cds_end,tscript_id)
-                maxdist_PDF(layer,tscript_id)
-                maxdist_txt(layer,tscript_id,seq)
-                entropy_PDF(layer,tscript_id)
+                #max_PDF(layer,cds_start,cds_end,tscript_id)
+                #maxdist_PDF(layer,tscript_id)
+                #maxdist_txt(layer,tscript_id,seq)
+                #entropy_PDF(layer,tscript_id)
+                summarize_maxes(layer,tscript_id,storage)
 
-                layer_num = layer['layer']
-                heads = layer['heads']
-                h_len = 0
+    pos_df = pd.DataFrame(storage)
 
-                for h in range(8):
-                    entropy = heads[h]["h_x"]
-                    curr_entropy = np.asarray([float(x) for x in entropy])
+    mean = pos_df.groupby('head').mean()
+    var = pos_df.groupby('head').var()
+    mode = pos_df.groupby('head').agg(lambda x: pd.Series.mode(x).values[0])
 
-                    if np.any(np.isnan(curr_entropy)):
-                        print(tscript_id)
+    a = mean.merge(var,on='head',suffixes = ('_mean','_var'))
+    a = a.merge(mode,on='head')
+    b = ['abs_weight' ,'abs_val', 'rel_weight' ,'rel_val']
+    a.columns = a.columns.map(lambda x : x+'_mode' if x in b  else x)
+    a = a.drop(columns=a.columns.difference(['abs_weight_mean','rel_weight_mean','rel_val_var','rel_val_mode']))
+    print(a)
+    #a = pos_df.groupby('tscript_id').mean()
+    a.to_csv('self_attn_maxes.csv',sep='\t')
 
-                    h_len = len(curr_entropy)
-                    activations[n][h] += np.sum(curr_entropy)
+def self_attn_heatmap(filename):
 
-                total_nucs += h_len
+    a = pd.read_csv(filename,sep='\t')
+    rel_weights = a['rel_weight_mean'].values.reshape(4,8)
+    rel_val_mode = a['rel_val_mode'].values.reshape(4,8)
+    rel_val_var = a['rel_val_var'].values.reshape(4,8)
 
-    for n,inside in activations.items():
-        for h,val in inside.items():
-            inside[h] = val / total_nucs
+    inconsistent = rel_val_var > 0.1
     
-    df = pd.DataFrame.from_dict(activations)
-    sns.heatmap(df.transpose(),cmap="Blues")
-    plt.xlabel("Head")
-    plt.ylabel("Layer")
-    plt.title("Mean Entropy")
-    plt.savefig("attn_head_entropy_heatmap.pdf")
+    annotations = rel_val_mode.astype(str)
+    annotations = annotations.ravel().tolist()
+    annotations = [x if x.startswith('-') else '+'+x for x in annotations]
+    annotations = np.asarray(annotations).reshape(4,8)
+    annotations[inconsistent] = ""
+    
+    ax = sns.heatmap(data=rel_weights,annot=annotations,fmt='s',cmap="Blues",)
+    ax.set_ylabel('Layer')
+    ax.set_xlabel('Head')
+    ax.set_title('Self Attention Relative Position')
+    
+    plt.tight_layout()
+    prefix = filename.split('.')[0]
+    plt.savefig(prefix+'_rel_pos.pdf')
     plt.close()
 
 def max_PDF(layer,cds_start,cds_end,tscript_id):
@@ -305,4 +317,5 @@ def maxdist_txt(layer,tscript_id,seq):
 
 if __name__ == "__main__":
 
-    pipeline(sys.argv[1])
+    #pipeline(sys.argv[1])
+    self_attn_heatmap(sys.argv[1])

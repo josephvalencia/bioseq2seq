@@ -3,6 +3,8 @@
 *.preds
 *.attns
 *.png
+*.ig
+*.npz
 *.out
 *.pdf
 *.self_attns

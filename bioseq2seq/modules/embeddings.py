@@ -44,16 +44,14 @@ class PositionalEncoding(nn.Module):
             step (int or NoneType): If stepwise (``seq_len = 1``), use
                 the encoding for this position.
         """
-
         emb = emb * math.sqrt(self.dim)
         if step is None:
             emb = emb + self.pe[:emb.size(0)]
         else:
             emb = emb + self.pe[step]
+        diff = self.pe[:emb.size(0)]
         emb = self.dropout(emb)
-
         return emb
-
 
 class VecEmbedding(nn.Module):
     def __init__(self, vec_size,
@@ -273,10 +271,8 @@ class Embeddings(nn.Module):
                     source = module(source, step=step)
                 else:
                     source = module(source)
-
         else:
             source = self.make_embedding(source)
-
         if grad_mode:
             return source.transpose(0,1)
         else:

@@ -235,7 +235,7 @@ class TransformerDecoder(DecoderBase):
             self._init_cache(memory_bank)
         
         tgt_words = tgt[:, :, 0].transpose(0, 1)
-
+        
         emb = self.embeddings(tgt, step=step,grad_mode=grad_mode)
         assert emb.dim() == 3  # len x batch x embedding_dim
 

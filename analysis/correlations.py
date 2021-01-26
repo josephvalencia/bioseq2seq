@@ -68,7 +68,6 @@ def multiple_correlation(attr_storage,attn_files,prefix):
     median = np.nanmedian(scores)
     print(mu,std,median)
    
-
     max_means = []
     for h,m in sorted(max_attns.items(),key = lambda x : x[0]):
         print(h,sum(m)/len(m))
@@ -161,7 +160,7 @@ if __name__ == "__main__":
             kendall_correlation(attr_storage,attn_file,tgt_head)
     '''
     
-    attr_file = "results/best_seq2seq/best_seq2seq.ig"
+    attr_file = "best_seq2seq_zero.ig"
 
     with open(attr_file) as inFile:
         for l in inFile:
@@ -169,12 +168,12 @@ if __name__ == "__main__":
             id = fields["ID"]
             src = fields['src']
             l = strip_padding(src)
-            attr_storage[id] = fields["summed_attr"][:l]
+            attr_storage[id] = fields["normed_attr"][:l]
     
     attn_files = ["results/best_seq2seq/best_seq2seq_layer"+str(l)+".enc_dec_attns" for l in range(4)]
-    multiple_correlation(attr_storage,attn_files,"seq2seq_summed")
+    multiple_correlation(attr_storage,attn_files,"seq2seq_normed")
 
-    attr_file = "results/best_ED_classify/best_ED_classify.ig"
+    attr_file = "best_ED_classify_zero.ig"
 
     with open(attr_file) as inFile:
         for l in inFile:
@@ -182,7 +181,7 @@ if __name__ == "__main__":
             id = fields["ID"]
             src = fields['src']
             l = strip_padding(src)
-            attr_storage[id] = fields["summed_attr"][:l]
+            attr_storage[id] = fields["normed_attr"][:l]
 
     attn_files = ["results/best_ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns" for l in range(4)]
-    multiple_correlation(attr_storage,attn_files ,"ED_classify_summed")
+    multiple_correlation(attr_storage,attn_files ,"ED_classify_normed")

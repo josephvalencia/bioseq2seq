@@ -30,6 +30,9 @@ def parse_args():
     parser.add_argument("--output_name","--o", default = "translation",help = "Name of file for saving predicted translations")
     parser.add_argument("--checkpoint", "--c",help="ONMT checkpoint (.pt)")
     parser.add_argument("--mode",default = "translate",help="translate|classify|combined")
+    parser.add_argument("--dataset",default="validation",help="train|validation|test")
+    parser.add_argument("--rank",default=0)
+    
     # translate optional args
     parser.add_argument("--beam_size","--b",type = int, default = 8, help ="Beam size for decoding")
     parser.add_argument("--n_best", type = int, default = 4, help = "Number of beams to wait for")
@@ -97,7 +100,7 @@ def arrange_data_by_mode(df, mode):
     
     return protein,ids,rna,cds
 
-def translate_from_transformer_checkpt(args,device,use_splits=False):
+def translate_from_transformer_checkpt(args,use_splits=False):
 
     random_seed = 65
     random.seed(random_seed)
@@ -109,13 +112,18 @@ def translate_from_transformer_checkpt(args,device,use_splits=False):
     # replicate splits
     if use_splits:
         train,test,dev = train_test_val_split(data,1000,random_seed)
-        protein,ids,rna,cds = arrange_data_by_mode(dev,args.mode)
+        if args.dataset == "validation":
+            protein,ids,rna,cds = arrange_data_by_mode(dev,args.mode)
+        elif args.dataset == "test":
+            protein,ids,rna,cds = arrange_data_by_mode(test,args.mode)
+        elif args.dataset == "train":
+            protein,ids,rna,cds = arrange_data_by_mode(train,args.mode)
     else:
         protein,ids,rna,cds = arrange_data_by_mode(data,args.mode)
 
+    device = "cuda:{}".format(args.rank)
     checkpoint = torch.load(args.checkpoint,map_location = device)
     options = checkpoint['opt']
-
     vocab = checkpoint['vocab']
     print(vocab['tgt'].vocab.stoi)
     print(vocab['src'].vocab.stoi)
@@ -131,7 +139,7 @@ def translate_from_transformer_checkpt(args,device,use_splits=False):
 
     text_fields = make_vocab(checkpoint['vocab'],rna,protein)
     translate(model,text_fields,rna,protein,ids,cds,device,beam_size=args.beam_size,
-            n_best=args.n_best,save_preds=True,save_attn=True,
+            n_best=args.n_best,save_preds=True,save_attn=False,
             attn_save_layer=args.attn_save_layer,file_prefix=args.output_name)
 
 def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
@@ -188,5 +196,4 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
 if __name__ == "__main__":
 
     args = parse_args()
-    machine = "cuda"
-    translate_from_transformer_checkpt(args,machine,use_splits=True)
+    translate_from_transformer_checkpt(args,use_splits=True)

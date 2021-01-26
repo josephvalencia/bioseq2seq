@@ -300,7 +300,6 @@ class Translator(object):
                     summary = enc_dec_attn_state.summarize()
                     self.enc_dec_attn_file.write(summary+"\n")
                     
-                    '''
                     # analyze self attention
                     self_attn = trans.self_attn
                     self_attn_state = SelfAttentionDistribution(transcript_name,self_attn,rna,cds_bounds)
@@ -308,7 +307,6 @@ class Translator(object):
                     self.self_attn_file.write(summary+"\n")
                     self.self_attn_file.flush()
                     self.enc_dec_attn_file.flush()
-                    ''' 
                 
                 if tgt is not None:
                     gold_score_total += trans.gold_score
@@ -539,7 +537,7 @@ class Translator(object):
 
         # (1) Run the encoder on the src.
         src, enc_states, memory_bank, src_lengths, enc_attn = self._run_encoder(batch)
-
+        
         self.model.decoder.init_state(src, memory_bank, enc_states)
 
         results = {
