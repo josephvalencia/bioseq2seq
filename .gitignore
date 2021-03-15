@@ -13,6 +13,8 @@
 *.csv
 *.tsv
 *.eps
+*.fa
+*.svg
 *.txt
 *.attr
 *.pt

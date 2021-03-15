@@ -8,7 +8,7 @@ def convert_enc_dec(saved_file,tgt_field):
     # delete pre-existing files
     with open(saved_file) as inFile:
         first = inFile.readline()
-        fields = json.loads(first)
+        fields = orjson.loads(first)
         keys = list(fields.keys())
         tscript = keys.pop(0)
         for head in keys:
@@ -18,7 +18,7 @@ def convert_enc_dec(saved_file,tgt_field):
 
     with open(saved_file) as inFile:
         for l in inFile:
-            fields = json.loads(l)
+            fields = orjson.loads(l)
             keys  = list(fields.keys())
             id  = keys.pop(0)
             for head in keys:
@@ -49,21 +49,25 @@ def convert_IG(saved_file):
                 array = fields[head]
                 with open(tab_file,'a') as outFile:
                     for i,s in enumerate(array):
-                        outFile.write("{}\t{}\t{}\n".format(tscript,i,s))
+                        outFile.write("{}\t{}\t{}\n".format(tscript,i,s/1000))
 
 if __name__ == "__main__":
-
-    '''
+    
     for l in range(4):
-        saved_file = "best_ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns"
+        saved_file = "results/val/best_seq2seq/best_seq2seq_layer"+str(l)+".enc_dec_attns"
         for h in range(8):
             tgt_field = "layer{}head{}".format(l,h)
-            convert(saved_file,tgt_field,"attn")
-    '''
+            convert_enc_dec(saved_file,tgt_field)
 
-    saved_file = "../../results/best_ED_classify/best_enc_dec.ig"
-    convert_IG(saved_file)
+    quit()
+    bases = ['A','C','G','T','avg','zero']
+    
+    ED_prefix = "results/best_ED_classify/best_ED_classify_"
+    ED_files = [ED_prefix+b +'_pos.ig' for b in bases] 
+    for f in ED_files:
+        convert_IG(f)
 
-    saved_file = "../../results/best_seq2seq/best_seq2seq.ig"
-    convert_IG(saved_file)
-
+    seq_prefix = "results/best_seq2seq/seq2seq_3_"
+    seq_files = [seq_prefix+b+'_pos.ig' for b in bases]
+    for f in seq_files:
+        convert_IG(f)

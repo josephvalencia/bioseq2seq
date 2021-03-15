@@ -146,13 +146,14 @@ def to_csv(table):
     df = pd.DataFrame(linear,columns = ['ID','RNA','Type','Protein',"CDS"])
     df = df.set_index('ID')
     df = df.sample(frac = 1.0, random_state = 65)
-    df.to_csv("combined.csv",sep = "\t")
+    #df.to_csv("combined.csv",sep = "\t")
+    df.to_csv("danio_rerio.csv",sep = "\t")
 
 if __name__ == "__main__":
 
-    parent = "../../../Fa/refseq/"
+    parent = "../Fa/refseq/"
 
-    species_names = {"gorilla":"gorilla_gorilla/GCF_008122165.1_Kamilah_GGO_v0_",
+    '''species_names = {"gorilla":"gorilla_gorilla/GCF_008122165.1_Kamilah_GGO_v0_",
                         "cow" : "bos_taurus/GCF_002263795.1_ARS-UCD1.2_",
                         "mouse" : "mus_musculus/GCF_000001635.26_GRCm38.p6_",\
                         "human" : "homo_sapiens/GCF_000001405.39_GRCh38.p13_",
@@ -160,11 +161,9 @@ if __name__ == "__main__":
                         "chimp" : "pan_troglodytes/GCF_002880755.1_Clint_PTRv2_",
                         "rat" : "rattus_rattus/GCF_011064425.1_Rrattus_CSIRO_v1_",
                         "orangutan" : "pongo_abelii/GCF_002880775.1_Susie_PABv2_"}
-    
-    total_pc = 0
-    total_nc = 0
+    '''
 
-    master_list = []
+    species_names = {'zebrafish': 'danio_rerio/GCF_000002035.6_GRCz11_'}
     table = {}
 
     for name,prefix in species_names.items():
@@ -182,5 +181,5 @@ if __name__ == "__main__":
     print("Finishing")
     to_csv(table)
 
-    covid_genome_path = "/nfs0/BB/Hendrix_Lab/CoV/FASTA/SARSCoV2_genome.fasta"
-    parse_SARSCov2(covid_genome_path)
+    #covid_genome_path = "/nfs0/BB/Hendrix_Lab/CoV/FASTA/SARSCoV2_genome.fasta"
+    #parse_SARSCov2(covid_genome_path)

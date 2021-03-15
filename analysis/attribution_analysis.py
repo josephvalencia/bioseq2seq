@@ -22,14 +22,43 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
 
-from bioseq2seq.inputters.batcher import train_test_val_split
+from bioseq2seq.bin.batcher import train_test_val_split
+
+
+def get_CDS_start(cds,rna):
+
+    if cds != "-1": 
+        splits = cds.split(":")
+        clean = lambda x : x[1:] if x.startswith("<") or x.startswith(">") else x
+        splits = [clean(x) for x in splits]
+        start,end = tuple([int(x) for x in splits])
+    else:
+        start,end = getLongestORF(rna)
+    
+    return start
+        
+def getLongestORF(mRNA):
+    ORF_start = -1
+    ORF_end = -1
+    longestORF = 0
+    for startMatch in re.finditer('ATG',mRNA):
+        remaining = mRNA[startMatch.start():]
+        if re.search('TGA|TAG|TAA',remaining):
+            for stopMatch in re.finditer('TGA|TAG|TAA',remaining):
+                ORF = remaining[0:stopMatch.end()]
+                if len(ORF) % 3 == 0:
+                    if len(ORF) > longestORF:
+                        ORF_start = startMatch.start()
+                        ORF_end = startMatch.start()+stopMatch.end()
+                        longestORF = len(ORF)
+                    break
+    return ORF_start,ORF_end
 
 def plot_stem(name,array,labels):
 
     array = np.asarray(array)
     array = np.expand_dims(array,axis=1)
     array = array / np.linalg.norm(array,ord=2)
-
     ax = plt.stem(array,use_line_collection=True)
     plt.savefig(name+"_stemplot.png")
     plt.close()
@@ -56,7 +85,7 @@ def plot_line(name,array,smoothed,cds_start=None,cds_end=None):
 
     #plt.axhline(1/len(array),linestyle = "-.",linewidth = 0.75,c="black")
     plt.tight_layout()
-    output = name+"_lineplot.pdf"
+    output = name+"_lineplot.svg"
     plt.savefig(output)
     plt.close()
 
@@ -96,7 +125,7 @@ def top_indices(saved_file,tgt_field,coding_topk_file,noncoding_topk_file,mode= 
 
             id = fields[id_field]
             array = fields[tgt_field]
-            array = np.asarray(array)
+            array = np.asarray(array) / 1000
 
             name = id + "_" + mode
             
@@ -107,16 +136,18 @@ def top_indices(saved_file,tgt_field,coding_topk_file,noncoding_topk_file,mode= 
             
             max_idx = np.argmax(array).tolist()
             min_idx = np.argmax(-array).tolist()
-            
+            smallest_magnitude_idx = np.argmax(np.abs(array)).tolist()
+
             tscript_type = "<PC>" if (id.startswith("XM_") or id.startswith("NM_")) else "<NC>"
             storage = (id,max_idx)
             alt_storage = (id,min_idx)
+            #alt_storage = (id,smallest_magnitude_idx)
 
             if tscript_type == "<PC>":
                 coding_storage.append(storage)
             else:
-                noncoding_storage.append(storage)
-
+                noncoding_storage.append(alt_storage)
+            
             #coding_storage.append(storage)
             #noncoding_storage.append(alt_storage)
 
@@ -212,7 +243,7 @@ def getLongestORF(mRNA):
                 if len(ORF) % 3 == 0:
                     if len(ORF) > longestORF:
                         ORF_start = startMatch.start()
-                        ORF_end = stopMatch.end()
+                        ORF_end = startMatch.start()+stopMatch.end()
                         longestORF = len(ORF)
                     break
     return ORF_start,ORF_end
@@ -249,19 +280,17 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significa
                 cds_start,cds_end = getLongestORF(seq)
             
             array = [float(x) / 1000 for x in array]
-            inside = defaultdict(lambda : [0.0])
-            outside = defaultdict(lambda : [0.0])
+            inside = defaultdict(lambda : [])
+            outside = defaultdict(lambda : [])
 
             disallowed = {'N','K','R','Y'}
             allowed = lambda codon : all([x not in disallowed for x in codon])
             inframe = lambda x : x >= cds_start and x<=cds_end-2 and (x-cds_start) % 3 == 0 
 
-            total = sum(array)
-            expectation = 3 * (total/len(array))
-            uniform = 3 / len(array)
-
             # 5' UTR and out of frame and 3' UTR
+            #outside_range = list(range(0,cds_start-3)) + list(range(cds_end,len(array) -3))
             for i in range(0,len(array)-3):
+                #for i in outside_range:
                 codon = seq[i:i+3]
                 if allowed(codon) and not inframe(i):
                     score = sum(array[i:i+3])
@@ -269,8 +298,10 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significa
             
             # find average 
             for codon,scores in outside.items():
-                avg = sum(scores) / len(scores) 
-                info = {"tscript" : id ,"codon" : codon, "score" : avg , "status" : tscript_type, "segment" : "OUT"}
+                #avg = sum(scores) / len(scores) 
+                argmax = np.argmax(np.abs(scores))
+                avg = scores[argmax]
+                info = {"tscript" : id ,"codon" : codon, "score" : avg /len(array), "status" : tscript_type, "segment" : "OUT"}
                 extra.append(info)
             
             # inside CDS
@@ -282,86 +313,97 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significa
            
            # average CDS
             for codon,scores in inside.items():
-                avg = sum(scores) / len(scores)
-                info = {"tscript" : id ,"codon" : codon, "score" : avg , "status" : tscript_type, "segment" : 'CDS'}
+                #avg = sum(scores) / len(scores)
+                argmax = np.argmax(np.abs(scores))
+                avg = scores[argmax]
+                info = {"tscript" : id ,"codon" : codon, "score" : avg/len(array) , "status" : tscript_type, "segment" : 'CDS'}
                 extra.append(info)
             
         codon_df = pd.DataFrame(extra)
-        num_coding = num_noncoding = num_out_coding = num_cds_coding = num_cds_noncoding = num_out_noncoding = 0
-        cds_ratios = defaultdict(list)
-        coding_status_ratios = defaultdict(list)
-
-        with open(significance_file,'w') as outFile:
-            for codon in codon_df.codon.unique():
-                # compare coding and noncoding
-                coding = codon_df[(codon_df.codon == codon) & (codon_df.status == "<PC>")]
-                noncoding = codon_df[(codon_df.codon == codon) & (codon_df.status == "<NC>")]
-                result = ttest_ind(coding.score,noncoding.score,equal_var=False)
-                
-                # count number of significant differences
-                if result.pvalue < 0.01:
-                    pc_score = coding.score.mean()
-                    nc_score = noncoding.score.mean()
-                    if pc_score > nc_score:
-                        num_coding+=1
-                    elif pc_score < nc_score:
-                        num_noncoding+=1
-                    diff = pc_score - nc_score
-                    coding_status_ratios[codon].append(diff)
-                
-                # compare CDS vs UTR
-                out = coding[coding.segment == "OUT"]
-                cds = coding[coding.segment == "CDS"]
-                result = ttest_ind(out.score,cds.score,equal_var=False)
-                
-                # count number of significant differences
-                if result.pvalue < 0.01:
-                    out_score = out.score.mean()
-                    cds_score = cds.score.mean()
-                    if cds_score > out_score:
-                        num_cds_coding+=1
-                    elif cds_score < out_score:
-                        num_out_coding+=1
-                    diff = cds_score - out_score 
-                    cds_ratios[codon].append(diff) 
-                
-                # compare CDS vs UTR
-                out = noncoding[noncoding.segment == "OUT"]
-                cds = noncoding[noncoding.segment == "CDS"]
-                result = ttest_ind(out.score,cds.score,equal_var=False)
-                
-                # count number of significant differences
-                if result.pvalue < 0.01:
-                    out_score = out.score.mean()
-                    cds_score = cds.score.mean()
-                    if cds_score > out_score:
-                        num_cds_noncoding+=1
-                    elif cds_score < out_score:
-                        num_out_noncoding+=1
-
-            outFile.write("Overall : {}/64 higher in coding , {}/64 higher in noncoding\n".format(num_coding,num_noncoding))
-            outFile.write("Coding : {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_coding,num_out_coding))
-            outFile.write("Noncoding: {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_noncoding,num_out_noncoding))
         
-        sorted_ratios = {k: sum(v) / len(v) for k, v in sorted(coding_status_ratios.items(), key=lambda item: item[1],reverse=True)}
-        plt.figure(figsize=(10,5))
-        
+        # valid codons
         a = codon_df[codon_df['codon'].str.len() == 3]
+        #boxplot_all(a,boxplot_file)
+        
+        # coding CDS only
+        coding_cds = a[(a['segment'] == 'CDS') & (a['status'] == '<PC>')]
+        no_start_stop_file = boxplot_file.split('.')[0]+'_no_start_stop.svg'
+        boxplot_no_start_stop(coding_cds,no_start_stop_file)
+        
+def boxplot_no_start_stop(data,boxplot_file,**kws):
+
+    plt.figure(figsize=(12,8))
+
+    start_stop = ['ATG','TAA','TAG','TGA']
+    data = data[~data['codon'].isin(start_stop)]
+    medians = data.groupby('codon').median().sort_values(by='score',ascending=False)
+    medians = medians.reset_index()
+    order = medians['codon'].values.tolist()
+    median_scores = medians['score'].values.tolist() 
+    
+    ax = sns.boxplot(x="codon",y="score",data=data,order=order,showfliers=False,linewidth=0.6,orient='v',palette='coolwarm_r') 
+    ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
+    ax.set_xticklabels(ax.get_xticklabels(), rotation = 90, fontsize = 12)
+    ax.set_ylabel('Max IG score per transcript')
+
+    meds = [str(np.round(s,2)) for s in median_scores]
+    ind = 0
+    for tick in range(len(ax.get_xticklabels())):
+        ax.text(tick+.2, median_scores[ind]+1, meds[ind], horizontalalignment='center', color='w', weight='semibold')
+        ind += 1    
+    
+    plt.savefig(boxplot_file)
+    plt.close()
+
+def boxplot_all(data,boxplot_file):
+
+    ax = sns.FacetGrid(data, row="status",col='segment', sharex=False,sharey=False)
+    ax.map_dataframe(boxplot_fn)
+
+    axes = ax.axes.flatten()
+    for a in axes:
+        a.set_title('')
+
+    plt.tight_layout()
+    plt.savefig(boxplot_file)
+    plt.close()
+
+def boxplot_fn(data, **kws):
+
+    medians = data.groupby('codon').median().sort_values(by='score',ascending=False)
+    medians = medians.reset_index()
+    order = medians['codon'].values.tolist()
+    x_order = order[:8] + order[-8:]
+    
+    ax = sns.boxplot(x="codon",y="score",data=data,order=x_order,showfliers=False,width=0.8,linewidth=0.6) 
+    ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
+
+    palette = sns.color_palette()
+
+    for item in ax.get_xticklabels():
+        item.set_rotation(90)
+
+    for i in range(len(ax.artists)):
+        mybox = ax.artists[i]
+        if i < 8:
+            mybox.set_facecolor(palette[0])
+        else:
+            mybox.set_facecolor(palette[1])
+
+def scatter_plot(a,scatterplot_file):
+
         out = a[a['segment'] == 'OUT']
         cds = a[a['segment'] == 'CDS']
         nc = a[a['status'] == '<NC>']
         pc = a[a['status'] == '<PC>']
 
-        out = out.groupby('codon').mean()
-        cds = cds.groupby('codon').mean()
+        out = out.groupby('codon').median()
+        cds = cds.groupby('codon').median()
         pc = pc.groupby('codon').median()
         nc = nc.groupby('codon').median()
         
-        '''
         by_status = pc.merge(nc,on='codon',suffixes=['_pc','_nc'])
         by_status['diff_coding'] = by_status['score_pc'] - by_status['score_nc'] 
-        #by_status = by_status.sort_values('score_pc',ascending=False)
-        #by_status.reset_index(inplace=True)
         by_segment = cds.merge(out,on='codon',suffixes=['_cds','_out'])
         
         combined = by_segment.merge(by_status,on='codon')
@@ -369,29 +411,75 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significa
         combined['diff_coding'] = combined['score_pc'] - combined['score_nc']
         combined = combined.sort_values('diff_coding',ascending=False) 
         combined.reset_index(inplace=True)
-        
-        order = list(sorted_ratios.keys())
-        '''
+         
         pc = pc.sort_values('score',ascending=False)
         pc.reset_index(inplace=True)
-        
-        ax = sns.boxplot(x="codon",y="score",data=a[a['status'] == "<PC>"],order=pc['codon'].values.tolist(),linewidth=1,showfliers=False) 
-        
-        for item in ax.get_xticklabels():
-            item.set_rotation(90)
-        
-        plt.title("Enrichment in Coding")
-        plt.savefig(boxplot_file)
-        plt.close()
 
-        '''
         ax = sns.scatterplot(x='diff_cds',y='diff_coding',data=combined)
         for line in range(0,combined.shape[0]):
             ax.text(combined['diff_cds'][line]+0.001, combined['diff_coding'][line], combined['codon'][line], horizontalalignment='left',size='medium', color='black', weight='semibold')
         
         plt.savefig(scatterplot_file)
         plt.close()
-        '''
+
+def significance(codon_df,significance_file):
+
+    num_coding = num_noncoding = num_out_coding = num_cds_coding = num_cds_noncoding = num_out_noncoding = 0
+    cds_ratios = defaultdict(list)
+    coding_status_ratios = defaultdict(list)
+
+    with open(significance_file,'w') as outFile:
+        for codon in codon_df.codon.unique():
+            # compare coding and noncoding
+            coding = codon_df[(codon_df.codon == codon) & (codon_df.status == "<PC>")]
+            noncoding = codon_df[(codon_df.codon == codon) & (codon_df.status == "<NC>")]
+            result = ttest_ind(coding.score,noncoding.score,equal_var=False)
+            
+            # count number of significant differences
+            if result.pvalue < 0.01:
+                pc_score = coding.score.mean()
+                nc_score = noncoding.score.mean()
+                if pc_score > nc_score:
+                    num_coding+=1
+                elif pc_score < nc_score:
+                    num_noncoding+=1
+                diff = pc_score - nc_score
+                coding_status_ratios[codon].append(diff)
+            
+            # compare CDS vs UTR
+            out = coding[coding.segment == "OUT"]
+            cds = coding[coding.segment == "CDS"]
+            result = ttest_ind(out.score,cds.score,equal_var=False)
+            
+            # count number of significant differences
+            if result.pvalue < 0.01:
+                out_score = out.score.mean()
+                cds_score = cds.score.mean()
+                if cds_score > out_score:
+                    num_cds_coding+=1
+                elif cds_score < out_score:
+                    num_out_coding+=1
+                diff = cds_score - out_score 
+                cds_ratios[codon].append(diff) 
+            
+            # compare CDS vs UTR
+            out = noncoding[noncoding.segment == "OUT"]
+            cds = noncoding[noncoding.segment == "CDS"]
+            result = ttest_ind(out.score,cds.score,equal_var=False)
+            
+            # count number of significant differences
+            if result.pvalue < 0.01:
+                out_score = out.score.mean()
+                cds_score = cds.score.mean()
+                if cds_score > out_score:
+                    num_cds_noncoding+=1
+                elif cds_score < out_score:
+                    num_out_noncoding+=1
+
+        outFile.write("Overall : {}/64 higher in coding , {}/64 higher in noncoding\n".format(num_coding,num_noncoding))
+        outFile.write("Coding : {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_coding,num_out_coding))
+        outFile.write("Noncoding: {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_noncoding,num_out_noncoding))
+    
 
 def class_separation(saved_file):
 
@@ -428,8 +516,8 @@ def class_separation(saved_file):
     print('JS Divergence:',jsd)
 
     sns.histplot(df,x="summed",kde=False,hue="status",stat="density")
-    #plt.tight_layout(rect=[0,0.03,1,0.95])
-    plt.savefig(saved_file+'_class_hist.pdf')
+    plt.tight_layout(rect=[0,0.03,1,0.95])
+    plt.savefig(saved_file+'_class_hist.svg')
     plt.close()
 
 def IG_correlations(file_a,file_b):
@@ -463,7 +551,8 @@ def IG_correlations(file_a,file_b):
 
 def run_attributions(saved_file,df_val,tgt_field,best_dir,mode="attn"):
 
-    name = saved_file.split('.')[0]
+    name = os.path.split(saved_file)[1]
+    name = name.split('.')[0]
 
     prefix = best_dir+"/"+name+'_'+tgt_field+"/"
     if not os.path.isdir(prefix):
@@ -474,18 +563,48 @@ def run_attributions(saved_file,df_val,tgt_field,best_dir,mode="attn"):
     noncoding_indices_file = prefix+"noncoding_topk_idx.txt"
     coding_motifs_file = prefix+"coding_motifs.fa"
     noncoding_motifs_file = prefix +"noncoding_motifs.fa"
-    boxplot_file = prefix+"coding_boxplot.pdf"
-    scatterplot_file = prefix+"coding_scatterplot.pdf"
+    boxplot_file = prefix+"codon_boxplot.svg"
+    scatterplot_file = prefix+"codon_scatterplot.svg"
     significance_file = prefix+"significance.txt"
-    hist_file = prefix+"pos_hist.pdf"
+    hist_file = prefix+"pos_hist.svg"
 
     top_indices(saved_file,tgt_field,coding_indices_file,noncoding_indices_file,mode=mode)
     top_k_to_substrings(coding_indices_file,coding_motifs_file,df_val)
     top_k_to_substrings(noncoding_indices_file,noncoding_motifs_file,df_val)
-    codon_scores(saved_file,df_val,tgt_field,boxplot_file,scatterplot_file,significance_file,mode)
-    get_positional_bias(saved_file,df_val,tgt_field,hist_file,mode)
+    get_positional_bias(coding_indices_file,noncoding_indices_file,hist_file)
+    #codon_scores(saved_file,df_val,tgt_field,boxplot_file,scatterplot_file,significance_file,mode)
 
-def get_positional_bias(saved_file,df,tgt_field,hist_file,mode):
+def get_positional_bias(coding_indices_file,noncoding_indices_file,hist_file):
+
+    storage = []
+
+    pc = pd.read_csv(coding_indices_file,names=['ID','start'])
+    nc = pd.read_csv(noncoding_indices_file,names=['ID','start'])
+    df_attn = pd.concat([pc,nc])
+    
+    df_val = pd.read_csv('val.csv',sep="\t")
+    df_val['cds_start'] = [get_CDS_start(cds,seq) for cds,seq in zip(df_val['CDS'].values.tolist(),df_val['RNA'].values.tolist())]
+    df = pd.merge(df_attn,df_val,on='ID')
+    df['rel_start'] = df['start'] - df['cds_start'] -1
+    df = df.drop(df.columns.difference(['Type','rel_start']),1)
+    print(df)
+
+    bins = np.arange(-750,1000,10)
+    g = sns.displot(data=df,x='rel_start',col='Type',kind='hist',stat='density',bins=bins,element='step')
+    #sns.histplot(data=pc,x='rel_start',hue='motif_id',binwidth=10,common_bins=True,ax=axs[1],legend=False,element='step')
+
+    axes = g.axes.flatten()
+    axes[0].set_title("")
+    axes[0].set_xlabel("Position of max IG val rel. start")
+    axes[0].set_ylabel("Density")
+    axes[1].set_title("")
+    axes[1].set_xlabel("Position of min IG val rel. to start longest ORF")
+    axes[1].set_ylabel("")
+    
+    plt.savefig(hist_file)
+    plt.close()
+
+def get_positional_bias_old(saved_file,df,tgt_field,hist_file,mode):
     
     storage = []
     temp_idx = 0
@@ -522,7 +641,7 @@ def get_positional_bias(saved_file,df,tgt_field,hist_file,mode):
 
     plt.figure()
     df = pd.DataFrame(storage)
-    sns.histplot(df,x="distance",kde=False,hue="status",stat="density")
+    sns.histplot(df,x="distance",kde=False,hue="status",stat="density",binwidth=10,common_bins=True,element='step')
     
     plt.xlabel("Position relative to start/first AUG")
     plt.ylabel("Density")
@@ -570,16 +689,18 @@ def visualize_attribution(data_file,attr_file):
 if __name__ == "__main__":
     
     #plt.style.use('ggplot')
-    sns.set_style("whitegrid")
+    #sns.set_style("whitegrid")
    
     # ingest stored data
     data_file = "../Fa/refseq_combined_cds.csv.gz"
     dataframe = pd.read_csv(data_file,sep="\t",compression = "gzip")
     df_train,df_test,df_val = train_test_val_split(dataframe,1000,65)
     df_val = df_val.set_index("ID")
-    
-    seq2seq_avg = "seq2seq_3_avg_pos_redo.ig"
-    seq2seq_zero = "seq2seq_3_zero_pos_redo.ig"
+    df_train = df_train.set_index("ID")
+    #df_val.to_csv("dev.csv",sep='\t')
+
+    seq2seq_avg = "seq2seq_3_avg_pos_.ig"
+    seq2seq_zero = "seq2seq_3_zero_pos_.ig"
     seq2seq_A = "seq2seq_3_A_pos.ig"
     seq2seq_C = "seq2seq_3_C_pos.ig"
     seq2seq_G = "seq2seq_3_G_pos.ig"
@@ -592,12 +713,19 @@ if __name__ == "__main__":
     ED_classify_G = "best_ED_classify_G_pos.ig"
     ED_classify_T = "best_ED_classify_T_pos.ig"
 
-    for base in ['avg','A','C','G','T']:
+    '''
+    for base in ['avg','zero','A','C','G','T']:
         f = "best_ED_classify_"+base+"_pos.ig"
         run_attributions(f,df_val,"summed_attr","attributions/", "IG")
         f = "seq2seq_3_"+base+"_pos.ig"
-        if f != seq2seq_zero:
-            run_attributions(f,df_val,"summed_attr","attributions/", "IG")
+        run_attributions(f,df_val,"summed_attr","attributions/", "IG")
+    '''
+    run_attributions("results/val/best_seq2seq/seq2seq_3_avg_pos.ig",df_val,"summed_attr","attributions/", "IG")
+    run_attributions("results/val/best_seq2seq/seq2seq_3_zero_pos.ig",df_val,"summed_attr","attributions/","IG") 
+    #run_attributions("best_ED_classify_avg_pos.ig",df_val,"summed_attr","attributions/", "IG")
+    #run_attributions("best_ED_classify_zero_pos.ig",df_val,"summed_attr","attributions/","IG") 
+    #run_attributions("seq2seq_3_A_pos.ig",df_val,"summed_attr","attributions/","IG") 
+    #run_attributions("seq2seq_3_avg_pos_train.ig",df_train,"summed_attr","attributions/", "IG")
     
     '''
     for l in range(4):

@@ -22,8 +22,10 @@ def multiple_correlation(attr_storage,attn_files,prefix):
         for line in fh:
             fields = json.loads(line)
             tscript_id = fields["TSCRIPT_ID"]
+            #tscript_id = fields["ID"]
             for h in range(8):
                 tgt_head = "layer{}head{}".format(l,h)
+                #tgt_head = "summed_attr"
                 attn = np.asarray(fields[tgt_head])
                 attn_storage[tscript_id].append(attn)
 
@@ -34,7 +36,8 @@ def multiple_correlation(attr_storage,attn_files,prefix):
     for tscript_id ,features in attn_storage.items():
 
         attr = attr_storage[tscript_id]
-        attr = np.abs(np.asarray(attr))
+        attr = np.abs(np.asarray(attr) / 1000)
+        
         features = np.vstack(features).T
 
         maximums = features.max(axis=0).tolist()
@@ -44,7 +47,12 @@ def multiple_correlation(attr_storage,attn_files,prefix):
         # perform multiple linear regression
         N,D = features.shape
         ones = np.ones(N).reshape(-1,1)
-        features = np.concatenate([features,ones],axis=1)
+        t = np.arange(N).reshape(-1,1)
+        features = np.concatenate([features,ones,t],axis=1)
+        
+        min_len = min(attr.shape[0],features.shape[0])
+        attr = attr[:min_len]
+        features = features[:min_len,:]
         beta_hat = np.linalg.pinv(features) @ attr
         beta_hat = beta_hat.reshape(-1,1)
 
@@ -67,7 +75,8 @@ def multiple_correlation(attr_storage,attn_files,prefix):
     std = np.nanstd(scores)
     median = np.nanmedian(scores)
     print(mu,std,median)
-   
+
+    '''
     max_means = []
     for h,m in sorted(max_attns.items(),key = lambda x : x[0]):
         print(h,sum(m)/len(m))
@@ -82,7 +91,7 @@ def multiple_correlation(attr_storage,attn_files,prefix):
     heat_plot = prefix+"_heatmap.pdf"
     plt.savefig(heat_plot)
     plt.close()
-
+    '''
     textstr = '\n'.join((
     r'$\mu=%.3f$' % (mu, ),
     r'$\mathrm{median}=%.3f$' % (median, ),
@@ -159,8 +168,14 @@ if __name__ == "__main__":
             print("tgt_head: ",tgt_head)
             kendall_correlation(attr_storage,attn_file,tgt_head)
     '''
+    # collate IG consensus
+    #bases = ['A','C','G','T','avg','zero']
+    bases = ['A','C','G','T']
+    ED_file_list = ['best_ED_classify_'+b+'_pos.ig' for b in bases] 
+    seq_file_list = ['seq2seq_3_'+b+'_pos.ig' for b in bases]
     
-    attr_file = "best_seq2seq_zero.ig"
+    attr_file = "seq2seq_3_zero_pos.ig"
+    #attr_file = "seq2seq_3_C_pos.ig"
 
     with open(attr_file) as inFile:
         for l in inFile:
@@ -168,12 +183,13 @@ if __name__ == "__main__":
             id = fields["ID"]
             src = fields['src']
             l = strip_padding(src)
-            attr_storage[id] = fields["normed_attr"][:l]
+            attr_storage[id] = fields["summed_attr"][:l]
     
     attn_files = ["results/best_seq2seq/best_seq2seq_layer"+str(l)+".enc_dec_attns" for l in range(4)]
-    multiple_correlation(attr_storage,attn_files,"seq2seq_normed")
+    multiple_correlation(attr_storage,attn_files,"seq2seq_summed")
 
-    attr_file = "best_ED_classify_zero.ig"
+    attr_file = "best_ED_classify_zero_pos.ig"
+    #attr_file = "best_ED_classify_C_pos.ig"
 
     with open(attr_file) as inFile:
         for l in inFile:
@@ -181,7 +197,7 @@ if __name__ == "__main__":
             id = fields["ID"]
             src = fields['src']
             l = strip_padding(src)
-            attr_storage[id] = fields["normed_attr"][:l]
+            attr_storage[id] = fields["summed_attr"][:l]
 
     attn_files = ["results/best_ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns" for l in range(4)]
-    multiple_correlation(attr_storage,attn_files ,"ED_classify_normed")
+    multiple_correlation(attr_storage,attn_files,"ED_classify_summed")

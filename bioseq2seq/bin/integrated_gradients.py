@@ -244,7 +244,6 @@ class FeatureAttributor:
                     attributions = np.squeeze(attributions.detach().cpu().numpy(),axis=0)
                     pct_error = convergence_delta.item() / np.sum(attributions)
                     
-
                     summed  = 1000*np.sum(attributions,axis=1)
                     normed = 1000*np.linalg.norm(attributions,2,axis=1)
                     summed_attr = [round(x,3) for x in summed.tolist()]

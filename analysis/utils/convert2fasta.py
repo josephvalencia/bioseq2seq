@@ -26,7 +26,7 @@ def to_fasta(df,seq_type,name):
     sequences  = df[seq_type].tolist()
     records = [make_record(name,seq) for name,seq in zip(ids,sequences)]
     
-    SeqIO.write(records, name+"_"+seq_type+".fasta", "fasta")
+    SeqIO.write(records, name+"_"+seq_type+".fa", "fasta")
 
 def make_record(id,rna):
 
