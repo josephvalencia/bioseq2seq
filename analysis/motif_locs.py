@@ -12,8 +12,7 @@ def find_motif_locations(fimo_output):
     plt.figure(figsize=(20,20))
 
     # ingest stored data
-    df_val = pd.read_csv('val.csv',sep="\t")
-    print(df_val)
+    df_val = pd.read_csv('test.csv',sep="\t")
     df_val['cds_start'] = [get_CDS_start(cds,seq) for cds,seq in zip(df_val['CDS'].values.tolist(),df_val['RNA'].values.tolist())]
 
     df_fimo = pd.read_csv(fimo_output,sep='\t')
@@ -33,13 +32,13 @@ def find_motif_locations(fimo_output):
     print(by_type)
     bins = np.arange(-750,1000,10)
 
-    g = sns.displot(data=df,x='rel_start',col='Type',kind='hist',bins=bins,stat='density',element='step')
+    g = sns.displot(data=df,x='rel_start',hue='motif_id',col='Type',kind='hist',bins=bins,stat='density',element='step')
     #sns.histplot(data=pc,x='rel_start',hue='motif_id',binwidth=10,common_bins=True,ax=axs[1],legend=False,element='step')
 
     axes = g.axes.flatten()
     axes[0].set_title("")
     axes[0].set_xlabel("Motif start position relative to CDS")
-    axes[0].set_ylabel("Count")
+    axes[0].set_ylabel("Density")
     axes[1].set_title("")
     axes[1].set_xlabel("Motif start position relative to start of longest ORF")
     #axes[1].spines['left'].set_visible(False)

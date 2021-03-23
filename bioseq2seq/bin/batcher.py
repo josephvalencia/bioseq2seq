@@ -165,10 +165,10 @@ def tgt_tokenize(original):
         protein = original
     return [label]+[c for c in protein]
 
-def train_test_val_split(translation_table,max_len,random_seed,splits =[0.8,0.1,0.1]):
+def train_test_val_split(translation_table,max_len,random_seed,min_len=0,splits=[0.8,0.1,0.1]):
     
     # keep entries with RNA length < max_len
-    translation_table = filter_by_length(translation_table,max_len)
+    translation_table = filter_by_length(translation_table,max_len,min_len)
     # shuffle
     translation_table = translation_table.sample(frac=1.0, random_state=random_seed).reset_index(drop=True)
     N = translation_table.shape[0]

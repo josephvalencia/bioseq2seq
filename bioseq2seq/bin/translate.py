@@ -111,7 +111,10 @@ def translate_from_transformer_checkpt(args,use_splits=False):
 
     # replicate splits
     if use_splits:
-        train,test,dev = train_test_val_split(data,1000,random_seed)
+        train,test,dev = train_test_val_split(data,2000,random_seed,min_len=1000,splits=[0.0,0.9454,0.0546])
+        #train,test,dev = train_test_val_split(data,1000,random_seed,splits=[0.0,0.0,1.00])
+        total = len(train)+len(test)+len(dev)
+        print(total,len(dev))
         if args.dataset == "validation":
             protein,ids,rna,cds = arrange_data_by_mode(dev,args.mode)
         elif args.dataset == "test":
@@ -160,7 +163,7 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
                                    length_penalty = "avg",
                                    coverage_penalty = "none")
 
-    MAX_LEN = 333
+    MAX_LEN = 666
 
     # hack to expand positional encoding
     '''
@@ -187,7 +190,7 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
                                                       tgt = protein,
                                                       names = ids,
                                                       cds = cds,
-                                                      batch_size = 2,
+                                                      batch_size = 1,
                                                       save_attn = save_attn,
                                                       save_preds = save_preds,
                                                       save_scores = True)

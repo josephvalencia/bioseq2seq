@@ -205,8 +205,8 @@ class Evaluator:
         disallowed = ['','?','<unk>']
 
         if seqa not in disallowed and seqb not in disallowed:
-            #cmd_format = "/home/bb/valejose/EMBOSS-6.6.0/emboss/needle -asequence {} -bsequence {} -gapopen {} -gapextend {} -sprotein -brief -stdout -auto"
-            cmd_format = "needle -asequence {} -bsequence {} -gapopen {} -gapextend {} -sprotein -brief -stdout -auto"
+            cmd_format = "/home/bb/valejose/EMBOSS-6.6.0/emboss/needle -asequence {} -bsequence {} -gapopen {} -gapextend {} -sprotein -brief -stdout -auto"
+            #cmd_format = "needle -asequence {} -bsequence {} -gapopen {} -gapextend {} -sprotein -brief -stdout -auto"
             cmd = cmd_format.format("asis::"+seqa,"asis::"+seqb,10,0.5)
 
             response = subprocess.check_output(shlex.split(cmd),universal_newlines=True)

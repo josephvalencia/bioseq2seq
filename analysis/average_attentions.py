@@ -347,10 +347,11 @@ def plot_power_spectrum(consensus,title,spectrum_file,mode,units='freq'):
             label = layer if i % 8 == 0 else None
             ax1.plot(x_vals,ps[:,i],color=palette[layer],label=label,alpha=0.6)
     else:
-        labels = ['A','C','G','T','mean','zero']
-        #for i in range(4,len(labels)):
-        #    ax1.plot(x_vals,ps[:,i],color=palette[i],label=labels[i],alpha=0.6)
-        ax1.plot(x_vals,ps[:,5],color=palette[0],label='zero',alpha=0.6)
+        #labels = ['A','C','G','T','mean','zero']
+        labels = ['mean','zero']
+        for i in range(len(labels)):
+            ax1.plot(x_vals,ps[:,i],color=palette[i],label=labels[i],alpha=0.6)
+        #ax1.plot(x_vals,ps[:,5],color=palette[0],label='zero',alpha=0.6)
 
     tick_labels = ["0",r'$\frac{1}{10}$']+[r"$\frac{1}{"+str(x)+r"}$" for x in range(5,1,-1)]
     tick_locs =[0,1.0/10]+ [1.0 / x for x in range(5,1,-1)]
@@ -472,10 +473,11 @@ if __name__ == "__main__":
 
     df_val = df_val[df_val.index.str.startswith('NM')]
     # IG data
-    bases = ['A','C','G','T','avg','zero']
-    ED_file_list = ['best_ED_classify_'+b+'_pos.ig' for b in bases] 
-    seq_file_list = ['seq2seq_3_'+b+'_pos.ig' for b in bases]
-    
+    #bases = ['A','C','G','T','avg','zero']
+    bases = ['avg','zero']
+    ED_file_list = ['results/test/best_ED_classify/best_ED_classify_'+b+'_pos_test.ig' for b in bases] 
+    seq_file_list = ['results/test/best_seq2seq/seq2seq_3_'+b+'_pos_test.ig' for b in bases]
+
     # select and save example transcripts
     np.random.seed(65)
     id_list = np.random.choice(df_val.index.values,size=35,replace=False)
@@ -489,20 +491,19 @@ if __name__ == "__main__":
     np.savez('example_ids.npz',ids=id_list,protein=seqs,rna=rna,starts=starts,ends=ends) 
     #build_example_multi_IG('seq2seq_3',seq_file_list,'summed_attr',id_list)
     #build_example_multi_IG('best_ED_classify',ED_file_list,'summed_attr',id_list)
-    
+
     # build EDA consensus
-    build_consensus_EDA('results/best_seq2seq/best_seq2seq',coding=True)
-    build_consensus_EDA('results/best_seq2seq/best_seq2seq',coding=False)
-    build_consensus_EDA('results/best_ED_classify/best_ED_classify',coding=True)
-    build_consensus_EDA('results/best_ED_classify/best_ED_classify',coding=False)
+    #build_consensus_EDA('results/best_seq2seq/best_seq2seq',coding=True)
+    #build_consensus_EDA('results/best_seq2seq/best_seq2seq',coding=False)
+    #build_consensus_EDA('results/best_ED_classify/best_ED_classify',coding=True)
+    #build_consensus_EDA('results/best_ED_classify/best_ED_classify',coding=False)
     
     # build multi_IG consensus
     build_consensus_multi_IG('seq2seq_3',seq_file_list,'summed_attr',coding=True)
     build_consensus_multi_IG('seq2seq_3',seq_file_list,'summed_attr',coding=False)
     build_consensus_multi_IG('ED_classify',ED_file_list,'normed_attr',coding=True)
     build_consensus_multi_IG('ED_classify',ED_file_list,'normed_attr',coding=False)
-    '''
-
+    
     # load example transcripts
     examples = np.load('example_ids.npz',allow_pickle=True)
     id_list = examples['ids'].tolist()
@@ -513,8 +514,7 @@ if __name__ == "__main__":
     ED_transcripts = ['examples/'+t+'_best_ED_classify_'+'multi.npz' for t in id_list]
     seq_transcripts = ['examples/'+t+'_seq2seq_3_'+'multi.npz' for t in id_list]
     scaler = preprocessing.StandardScaler()
-
-    '''
+    
     # seq2seq transcript examples
     for f,s,e,r,p in zip(seq_transcripts,starts,ends,rna,proteins):
         name = f.split('.npz')[0]
@@ -538,39 +538,37 @@ if __name__ == "__main__":
     # seq2seq multi IG consensus
     loaded = np.load("seq2seq_3_PC_multi_consensus.npz")
     consensus = loaded['consensus']
-    #plot_heatmap(np.transpose(consensus),14,"","seq2seq_3_multi_IG_PC_heatmap.svg")
-    plot_power_spectrum(consensus,"","seq2seq_3_multi_IG_PC_spectrum.svg",mode='IG')
+    plot_power_spectrum(consensus,"","seq2seq_3_multi_IG_PC_spectrum_test.svg",mode='IG')
+    
     loaded = np.load("seq2seq_3_NC_multi_consensus.npz")
     consensus = loaded['consensus']
-    #plot_heatmap(np.transpose(consensus),108,"","seq2seq_3_multi_IG_NC_heatmap.svg")
-    plot_power_spectrum(consensus,"","seq2seq_3_multi_IG_NC_spectrum.svg",mode='IG')
+    plot_power_spectrum(consensus,"","seq2seq_3_multi_IG_NC_spectrum_test.svg",mode='IG')
 
     # ED_classify multi IG consensus
     loaded = np.load("ED_classify_PC_multi_consensus.npz")
     consensus = loaded['consensus']
-    plot_heatmap(np.transpose(consensus),14,"","ED_classify_multi_IG_PC_heatmap.svg")
-    plot_power_spectrum(consensus,"","ED_classify_3_multi_IG_PC_spectrum.svg",mode='IG')
+    plot_power_spectrum(consensus,"","ED_classify_3_multi_IG_PC_spectrum_test.svg",mode='IG')
+    
     loaded = np.load("ED_classify_NC_multi_consensus.npz")
     consensus = loaded['consensus']
-    #plot_heatmap(np.transpose(consensus),108,"","ED_classify_multi_IG_NC_heatmap.svg")
-    plot_power_spectrum(consensus,"","ED_classify_3_multi_IG_NC_spectrum.svg",mode='IG')
+    plot_power_spectrum(consensus,"","ED_classify_3_multi_IG_NC_spectrum_test.svg",mode='IG')
 
+    '''
     # seq2seq encoder decoder attention
     loaded = np.load("results/best_seq2seq/best_seq2seq_PC_EDA_consensus.npz")
     consensus = loaded['consensus'] 
-    plot_heatmap(np.transpose(consensus),14,"","seq2seq_attn_PC_heatmap.svg")
     plot_power_spectrum(consensus,"","seq2seq_attn_PC_spectrum.svg",mode='attn')
+
     loaded = np.load("results/best_seq2seq/best_seq2seq_NC_EDA_consensus.npz")
     consensus = loaded['consensus'] 
-    #plot_heatmap(np.transpose(consensus),108,"","seq2seq_3_attn_NC_heatmap.svg")
-    plot_power_spectrum(consensus,"","seq2seq_3_attn_NC_spectrum.svg",mode='attn')
+    plot_power_spectrum(consensus,"","seq2seq_3_attn_NC_spectrum_test.svg",mode='attn')
     
     # ED_classify encoder decoder attention
     loaded = np.load("results/best_ED_classify/best_ED_classify_PC_EDA_consensus.npz")
     consensus = loaded['consensus']
-    plot_heatmap(np.transpose(consensus),14,"","ED_classify_attn_PC_heatmap.svg")
     plot_power_spectrum(consensus,"","ED_classify_attn_PC_spectrum.svg",mode='attn')
+    
     loaded = np.load("results/best_ED_classify/best_ED_classify_NC_EDA_consensus.npz")
     consensus = loaded['consensus']
-    #plot_heatmap(np.transpose(consensus),108,"","ED_classify_attn_NC_heatmap.svg")
     plot_power_spectrum(consensus,"","ED_classify_attn_NC_spectrum.svg",mode='attn')
+    '''

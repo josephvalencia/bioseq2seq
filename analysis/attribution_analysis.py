@@ -549,7 +549,7 @@ def IG_correlations(file_a,file_b):
     print(np.nanmean(corrs))
     print(np.nanstd(corrs))
 
-def run_attributions(saved_file,df_val,tgt_field,best_dir,mode="attn"):
+def run_attributions(saved_file,df,tgt_field,best_dir,mode="attn"):
 
     name = os.path.split(saved_file)[1]
     name = name.split('.')[0]
@@ -569,10 +569,10 @@ def run_attributions(saved_file,df_val,tgt_field,best_dir,mode="attn"):
     hist_file = prefix+"pos_hist.svg"
 
     top_indices(saved_file,tgt_field,coding_indices_file,noncoding_indices_file,mode=mode)
-    top_k_to_substrings(coding_indices_file,coding_motifs_file,df_val)
-    top_k_to_substrings(noncoding_indices_file,noncoding_motifs_file,df_val)
+    top_k_to_substrings(coding_indices_file,coding_motifs_file,df)
+    top_k_to_substrings(noncoding_indices_file,noncoding_motifs_file,df)
     get_positional_bias(coding_indices_file,noncoding_indices_file,hist_file)
-    #codon_scores(saved_file,df_val,tgt_field,boxplot_file,scatterplot_file,significance_file,mode)
+    codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significance_file,mode)
 
 def get_positional_bias(coding_indices_file,noncoding_indices_file,hist_file):
 
@@ -582,7 +582,7 @@ def get_positional_bias(coding_indices_file,noncoding_indices_file,hist_file):
     nc = pd.read_csv(noncoding_indices_file,names=['ID','start'])
     df_attn = pd.concat([pc,nc])
     
-    df_val = pd.read_csv('val.csv',sep="\t")
+    df_val = pd.read_csv('test.csv',sep="\t")
     df_val['cds_start'] = [get_CDS_start(cds,seq) for cds,seq in zip(df_val['CDS'].values.tolist(),df_val['RNA'].values.tolist())]
     df = pd.merge(df_attn,df_val,on='ID')
     df['rel_start'] = df['start'] - df['cds_start'] -1
@@ -695,6 +695,8 @@ if __name__ == "__main__":
     data_file = "../Fa/refseq_combined_cds.csv.gz"
     dataframe = pd.read_csv(data_file,sep="\t",compression = "gzip")
     df_train,df_test,df_val = train_test_val_split(dataframe,1000,65)
+    
+    df_test = df_test.set_index("ID")
     df_val = df_val.set_index("ID")
     df_train = df_train.set_index("ID")
     #df_val.to_csv("dev.csv",sep='\t')
@@ -720,10 +722,10 @@ if __name__ == "__main__":
         f = "seq2seq_3_"+base+"_pos.ig"
         run_attributions(f,df_val,"summed_attr","attributions/", "IG")
     '''
-    run_attributions("results/val/best_seq2seq/seq2seq_3_avg_pos.ig",df_val,"summed_attr","attributions/", "IG")
-    run_attributions("results/val/best_seq2seq/seq2seq_3_zero_pos.ig",df_val,"summed_attr","attributions/","IG") 
-    #run_attributions("best_ED_classify_avg_pos.ig",df_val,"summed_attr","attributions/", "IG")
-    #run_attributions("best_ED_classify_zero_pos.ig",df_val,"summed_attr","attributions/","IG") 
+    run_attributions("results/test/best_seq2seq/seq2seq_3_avg_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
+    run_attributions("results/test/best_seq2seq/seq2seq_3_zero_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
+    run_attributions("results/test/best_ED_classify/best_ED_classify_avg_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
+    run_attributions("results/test/best_ED_classify/best_ED_classify_zero_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
     #run_attributions("seq2seq_3_A_pos.ig",df_val,"summed_attr","attributions/","IG") 
     #run_attributions("seq2seq_3_avg_pos_train.ig",df_train,"summed_attr","attributions/", "IG")
     
