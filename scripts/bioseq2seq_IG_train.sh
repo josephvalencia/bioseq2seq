@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+export BIOHOME=/home/bb/valejose/home
+export PYTHONPATH=/home/bb/valejose/home/bioseq2seq
+source $BIOHOME/bioseq2seq/venv/bin/activate
+python $BIOHOME/bioseq2seq/bioseq2seq/bin/integrated_gradients.py --input $BIOHOME/Fa/refseq_combined_cds.csv.gz --checkpoint $BIOHOME/bioseq2seq/checkpoints/coding_noncoding/Sep17_20-05-15/_step_52500.pt --name seq2seq_4_avg_pos_train --rank 0 --num_gpus 4 --attribution_mode ig --dataset train --baseline avg
+python $BIOHOME/bioseq2seq/bioseq2seq/bin/integrated_gradients.py --input $BIOHOME/Fa/refseq_combined_cds.csv.gz --checkpoint $BIOHOME/bioseq2seq/checkpoints/coding_noncoding/Sep17_20-05-15/_step_52500.pt --name seq2seq_4_zero_pos_train --rank 0 --num_gpus 4 --attribution_mode ig --dataset train --baseline zero
+#python $BIOHOME/bioseq2seq/bioseq2seq/bin/integrated_gradients.py --input $BIOHOME/Fa/refseq_combined_cds.csv.gz --checkpoint $BIOHOME/bioseq2seq/checkpoints/coding_noncoding/Sep17_20-05-15/_step_52500.pt --name seq2seq_4_A_pos_train --rank 0 --num_gpus 4 --attribution_mode ig --dataset train --baseline A
+#python $BIOHOME/bioseq2seq/bioseq2seq/bin/integrated_gradients.py --input $BIOHOME/Fa/refseq_combined_cds.csv.gz --checkpoint $BIOHOME/bioseq2seq/checkpoints/coding_noncoding/Sep17_20-05-15/_step_52500.pt --name seq2seq_4_C_pos_train --rank 0 --num_gpus 4 --attribution_mode ig --dataset train --baseline C
+#python $BIOHOME/bioseq2seq/bioseq2seq/bin/integrated_gradients.py --input $BIOHOME/Fa/refseq_combined_cds.csv.gz --checkpoint $BIOHOME/bioseq2seq/checkpoints/coding_noncoding/Sep17_20-05-15/_step_52500.pt --name seq2seq_4_G_pos_train --rank 0 --num_gpus 4 --attribution_mode ig --dataset train --baseline G
+#python $BIOHOME/bioseq2seq/bioseq2seq/bin/integrated_gradients.py --input $BIOHOME/Fa/refseq_combined_cds.csv.gz --checkpoint $BIOHOME/bioseq2seq/checkpoints/coding_noncoding/Sep17_20-05-15/_step_52500.pt --name seq2seq_4_T_pos_train --rank 0 --num_gpus 4 --attribution_mode ig --dataset train --baseline T

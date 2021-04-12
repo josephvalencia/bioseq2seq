@@ -216,7 +216,7 @@ def partition(dataset, split_ratios, random_state):
 
     return splits
 
-def dataset_from_df(train,test,dev,mode="combined",saved_vocab = None):
+def dataset_from_df(df_list,mode="combined",saved_vocab = None):
 
     # Fields define tensor attributes
     if saved_vocab is None:
@@ -244,7 +244,7 @@ def dataset_from_df(train,test,dev,mode="combined",saved_vocab = None):
     ID = RawField()
     splits = []
     
-    for translation_table in [train,test,dev]:
+    for translation_table in df_list:
         # map column name to batch attribute and Field object
         if mode == "ED_classify" or mode == "D_classify":
             fields = {'ID':('id', ID),'RNA':('src', RNA),'Type':('tgt', PROTEIN)}

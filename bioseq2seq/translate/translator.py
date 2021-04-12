@@ -161,7 +161,8 @@ class Translator(object):
         self.self_attn_file = open(file_prefix+".self_attns",'w')
         self.enc_dec_attn_file = open(file_prefix+".enc_dec_attns",'w')
         self.score_file = open(file_prefix+".scores",'w')
-        
+        self.failure_file = open(file_prefix+".failures",'w')
+
         self.report_align = report_align
         self.report_score = report_score
         self.logger = logger
@@ -275,70 +276,75 @@ class Translator(object):
             self.score_file.flush()
 
         for batch in tqdm.tqdm(data_iter):
-            batch_data = self.translate_batch(
-                batch, data.src_vocabs, save_attn
-            )
-            translations = xlation_builder.from_batch(batch_data)
+            try:
+                batch_data = self.translate_batch(
+                    batch, data.src_vocabs, save_attn
+                )
+                translations = xlation_builder.from_batch(batch_data)
 
-            for trans in translations:
+                for trans in translations:
 
-                all_scores += [trans.pred_scores[:self.n_best]]
-                pred_score_total += trans.pred_scores[0]
-                pred_words_total += len(trans.pred_sents[0])
+                    all_scores += [trans.pred_scores[:self.n_best]]
+                    pred_score_total += trans.pred_scores[0]
+                    pred_words_total += len(trans.pred_sents[0])
 
-                rna = "".join(trans.src_raw)
-                transcript_name = names[trans.index]
+                    rna = "".join(trans.src_raw)
+                    transcript_name = names[trans.index]
 
-                if save_attn:
+                    if save_attn:
+                        bounds = cds[trans.index]
+                        cds_bounds = None if bounds == "-1" else [int(x) for x in bounds.split(":")]
 
-                    bounds = cds[trans.index]
-                    cds_bounds = None if bounds == "-1" else [int(x) for x in bounds.split(":")]
-
-                    # analyze encoder-decoder attention
-                    enc_dec_attn = trans.context_attn
-                    enc_dec_attn_state = EncoderDecoderAttentionDistribution(transcript_name,enc_dec_attn,rna,cds_bounds,attn_save_layer = self.attn_save_layer)
-                    summary = enc_dec_attn_state.summarize()
-                    self.enc_dec_attn_file.write(summary+"\n")
+                        #analyze encoder-decoder attention
+                        #enc_dec_attn = trans.context_attn
+                        #enc_dec_attn_state = EncoderDecoderAttentionDistribution(transcript_name,enc_dec_attn,rna,cds_bounds,attn_save_layer = self.attn_save_layer)
+                        #summary = enc_dec_attn_state.summarize()
+                        #self.enc_dec_attn_file.write(summary+"\n")
+                        
+                        # analyze self attention
+                        #self_attn = trans.self_attn
+                        #self_attn_state = SelfAttentionDistribution(transcript_name,self_attn,rna,cds_bounds)
+                        #summary = self_attn_state.summarize()
+                        #self.self_attn_file.write(summary+"\n")
+                        #self.self_attn_file.flush()
+                        #self.enc_dec_attn_file.flush()
                     
-                    # analyze self attention
-                    self_attn = trans.self_attn
-                    self_attn_state = SelfAttentionDistribution(transcript_name,self_attn,rna,cds_bounds)
-                    summary = self_attn_state.summarize()
-                    self.self_attn_file.write(summary+"\n")
-                    self.self_attn_file.flush()
-                    self.enc_dec_attn_file.flush()
-                
-                if tgt is not None:
-                    gold_score_total += trans.gold_score
-                    gold_words_total += len(trans.gold_sent) + 1
-                    all_golds.append("".join(trans.gold_sent))
+                    if tgt is not None:
+                        gold_score_total += trans.gold_score
+                        gold_words_total += len(trans.gold_sent) + 1
+                        all_golds.append("".join(trans.gold_sent))
 
-                n_best_preds = ["".join(pred) for pred in trans.pred_sents[:self.n_best]]
-                all_predictions += [n_best_preds]
+                    n_best_preds = ["".join(pred) for pred in trans.pred_sents[:self.n_best]]
+                    all_predictions += [n_best_preds]
 
-                if save_preds:
-                    self.pred_file.write("ID: {}\n".format(transcript_name))
-                    self.pred_file.write("RNA: {}\n".format(rna))
+                    if save_preds:
+                        self.pred_file.write("ID: {}\n".format(transcript_name))
+                        self.pred_file.write("RNA: {}\n".format(rna))
+                        for pred in n_best_preds:
+                            self.pred_file.write("PRED: "+pred+"\n")
+                        self.pred_file.write("GOLD: "+"".join(trans.gold_sent)+"\n\n")
+                        self.pred_file.flush()
 
-                    for pred in n_best_preds:
-                        self.pred_file.write("PRED: "+pred+"\n")
+                    if save_scores:
+                        coding_prob = trans.coding_prob
+                        name_no_version = transcript_name.split(".")[0]
+                        self.score_file.write("{}\t{}\t{}\n".format(name_no_version,pred_score_total,coding_prob))
+                        self.score_file.flush()
 
-                    self.pred_file.write("GOLD: "+"".join(trans.gold_sent)+"\n\n")
-                    self.pred_file.flush()
-
-                if save_scores:
-                    coding_prob = trans.coding_prob
-                    name_no_version = transcript_name.split(".")[0]
-                    self.score_file.write("{}\t{}\t{}\n".format(name_no_version,pred_score_total,coding_prob))
-                    self.score_file.flush()
-
-                if self.verbose:
-                    sent_number = next(counter)
-                    output = trans.log(sent_number)
-                    if self.logger:
-                        self.logger.info(output)
-                    else:
-                        os.write(1, output.encode('utf-8'))
+                    if self.verbose:
+                        sent_number = next(counter)
+                        output = trans.log(sent_number)
+                        if self.logger:
+                            self.logger.info(output)
+                        else:
+                            os.write(1, output.encode('utf-8'))
+            
+            except RuntimeError:
+                torch.cuda.empty_cache()
+                failed = names[batch.indices]
+                print('GPU memory exceeded for transcript {}. Writing to failure file'.format(failed))
+                self.failure_file.write("{}\n".format(failed))
+                self.failure_file.flush()
 
         end_time = time.time()
 
@@ -367,6 +373,7 @@ class Translator(object):
         self.self_attn_file.close()
         self.enc_dec_attn_file.close()
         self.pred_file.close()
+        self.failure_file.close()
 
         return all_predictions,all_golds,all_scores
 

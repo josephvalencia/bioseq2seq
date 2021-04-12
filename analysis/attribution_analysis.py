@@ -24,7 +24,6 @@ from Bio import SeqIO
 
 from bioseq2seq.bin.batcher import train_test_val_split
 
-
 def get_CDS_start(cds,rna):
 
     if cds != "-1": 
@@ -89,22 +88,20 @@ def plot_line(name,array,smoothed,cds_start=None,cds_end=None):
     plt.savefig(output)
     plt.close()
 
-def get_top_k(array,k=15):
+def get_top_k(array,k=1):
 
     k = k if k < len(array) else len(array)
     array = np.asarray(array)
-
     k_largest_inds = np.argpartition(array,-k)[-k:]
     k_largest_scores = array[k_largest_inds].tolist()
     k_largest_inds = k_largest_inds.tolist()
 
     return k_largest_scores,k_largest_inds
 
-def get_min_k(array,k=15):
+def get_min_k(array,k=1):
 
     k = k if k < len(array) else len(array)
     array = np.asarray(array)
-
     k_smallest_inds = np.argpartition(array,k)[:k]
     k_smallest_inds = k_smallest_inds.tolist()
 
@@ -124,30 +121,27 @@ def top_indices(saved_file,tgt_field,coding_topk_file,noncoding_topk_file,mode= 
             id_field = "TSCRIPT_ID" if mode == "attn" else "ID"
 
             id = fields[id_field]
-            array = fields[tgt_field]
+            src = fields['src'].split('<pad>')[0]
+            array = fields[tgt_field][:len(src)]
             array = np.asarray(array) / 1000
 
             name = id + "_" + mode
-            
             window_size = 50
-            
-            #smoothed = uniform_filter1d(array,window_size,mode='constant',cval=0.0)
-            #max_scores,max_idx = get_top_k(smoothed,1)
             
             max_idx = np.argmax(array).tolist()
             min_idx = np.argmax(-array).tolist()
-            smallest_magnitude_idx = np.argmax(np.abs(array)).tolist()
-
+            smallest_magnitude_idx = np.argmax(-np.abs(array)).tolist()
+            largest_magnitude_idx = np.argmax(np.abs(array)).tolist()
+            
             tscript_type = "<PC>" if (id.startswith("XM_") or id.startswith("NM_")) else "<NC>"
             storage = (id,max_idx)
             alt_storage = (id,min_idx)
-            #alt_storage = (id,smallest_magnitude_idx)
 
             if tscript_type == "<PC>":
                 coding_storage.append(storage)
             else:
                 noncoding_storage.append(alt_storage)
-            
+
             #coding_storage.append(storage)
             #noncoding_storage.append(alt_storage)
 
@@ -283,8 +277,8 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significa
             inside = defaultdict(lambda : [])
             outside = defaultdict(lambda : [])
 
-            disallowed = {'N','K','R','Y'}
-            allowed = lambda codon : all([x not in disallowed for x in codon])
+            legal_chars = {'A','C','G','T'}
+            allowed = lambda codon : all([x in legal_chars for x in codon])
             inframe = lambda x : x >= cds_start and x<=cds_end-2 and (x-cds_start) % 3 == 0 
 
             # 5' UTR and out of frame and 3' UTR
@@ -582,7 +576,7 @@ def get_positional_bias(coding_indices_file,noncoding_indices_file,hist_file):
     nc = pd.read_csv(noncoding_indices_file,names=['ID','start'])
     df_attn = pd.concat([pc,nc])
     
-    df_val = pd.read_csv('test.csv',sep="\t")
+    df_val = pd.read_csv('../Fa/test.csv',sep="\t")
     df_val['cds_start'] = [get_CDS_start(cds,seq) for cds,seq in zip(df_val['CDS'].values.tolist(),df_val['RNA'].values.tolist())]
     df = pd.merge(df_attn,df_val,on='ID')
     df['rel_start'] = df['start'] - df['cds_start'] -1
@@ -615,7 +609,6 @@ def get_positional_bias_old(saved_file,df,tgt_field,hist_file,mode):
             fields = json.loads(l)
             id_field = "TSCRIPT_ID" if mode == "attn" else "ID"
             id = fields[id_field]
-            
             array = fields[tgt_field]
             seq = df.loc[id,'RNA']
             tscript_type = df.loc[id,'Type']
@@ -662,13 +655,10 @@ def visualize_attribution(data_file,attr_file):
         idx = 0
         for l in inFile:
             fields = json.loads(l)
-            
             id = fields["ID"]
-            
             if id == tgt_id:
                 attr = np.asarray([float(x) / 1000 for x in fields["summed_attr"]])
                 seq = df_val.loc[id,"RNA"]
-               
                # storing couple samples in an array for visualization purposes
                 vis = viz.VisualizationDataRecord(
                                         attr,
@@ -679,7 +669,6 @@ def visualize_attribution(data_file,attr_file):
                                         attr.sum(),
                                         seq,
                                         100)
-                
                 display = viz.visualize_text([vis])
                 html = display.data
                 
@@ -699,22 +688,7 @@ if __name__ == "__main__":
     df_test = df_test.set_index("ID")
     df_val = df_val.set_index("ID")
     df_train = df_train.set_index("ID")
-    #df_val.to_csv("dev.csv",sep='\t')
-
-    seq2seq_avg = "seq2seq_3_avg_pos_.ig"
-    seq2seq_zero = "seq2seq_3_zero_pos_.ig"
-    seq2seq_A = "seq2seq_3_A_pos.ig"
-    seq2seq_C = "seq2seq_3_C_pos.ig"
-    seq2seq_G = "seq2seq_3_G_pos.ig"
-    seq2seq_T = "seq2seq_3_T_pos.ig"
-
-    ED_classify_avg = "best_ED_classify_avg_pos.ig"
-    ED_classify_zero = "best_ED_classify_zero_pos.ig"
-    ED_classify_A = "best_ED_classify_A_pos.ig"
-    ED_classify_C = "best_ED_classify_C_pos.ig"
-    ED_classify_G = "best_ED_classify_G_pos.ig"
-    ED_classify_T = "best_ED_classify_T_pos.ig"
-
+    
     '''
     for base in ['avg','zero','A','C','G','T']:
         f = "best_ED_classify_"+base+"_pos.ig"
@@ -722,10 +696,22 @@ if __name__ == "__main__":
         f = "seq2seq_3_"+base+"_pos.ig"
         run_attributions(f,df_val,"summed_attr","attributions/", "IG")
     '''
-    run_attributions("results/test/best_seq2seq/seq2seq_3_avg_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
-    run_attributions("results/test/best_seq2seq/seq2seq_3_zero_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
-    run_attributions("results/test/best_ED_classify/best_ED_classify_avg_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
-    run_attributions("results/test/best_ED_classify/best_ED_classify_zero_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
+
+    # best bioseq2seq test
+    #run_attributions("seq2seq_4_avg_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
+    #run_attributions("seq2seq_4_zero_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
+    #run_attributions("seq2seq_4_A_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
+    #run_attributions("seq2seq_4_C_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
+    #run_attributions("seq2seq_4_G_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
+    #run_attributions("seq2seq_4_T_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
+   
+    # best bioseq2seq train
+    #run_attributions("output/test/seq2seq/best_seq2seq_avg_pos_train.ig",df_train,"summed_attr","train_attributions/","IG") 
+    #run_attributions("output/test/seq2seq/best_seq2seq_zero_pos_train.ig",df_train,"summed_attr","train_attributions/","IG") 
+
+    run_attributions("output/test/ED_classify/best_ED_classify_avg_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
+    run_attributions("output/test/ED_classify/best_ED_classify_zero_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
+    #run_attributions("output/test/ED_classify/ED_classify_3_zero_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
     #run_attributions("seq2seq_3_A_pos.ig",df_val,"summed_attr","attributions/","IG") 
     #run_attributions("seq2seq_3_avg_pos_train.ig",df_train,"summed_attr","attributions/", "IG")
     

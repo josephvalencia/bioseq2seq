@@ -18,6 +18,8 @@
 *.txt
 *.attr
 *.pt
+*.failures
+*.ig_norm*
 \#*#
 .DS_Store
 data/

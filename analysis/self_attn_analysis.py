@@ -181,7 +181,7 @@ def pipeline(saved_attn):
     #a = pos_df.groupby('tscript_id').mean()
     a.to_csv('self_attn_maxes.csv',sep='\t')
 
-def self_attn_heatmap(filename):
+def self_attn_heatmap_relative(filename):
 
     a = pd.read_csv(filename,sep='\t')
     rel_weights = a['rel_weight_mean'].values.reshape(4,8)
@@ -195,16 +195,35 @@ def self_attn_heatmap(filename):
     annotations = [x if x.startswith('-') else '+'+x for x in annotations]
     annotations = np.asarray(annotations).reshape(4,8)
     annotations[inconsistent] = ""
-    
-    ax = sns.heatmap(data=rel_weights,annot=annotations,fmt='s',cmap="Blues",)
-    ax.set_ylabel('Layer')
-    ax.set_xlabel('Head')
-    ax.set_title('Self Attention Relative Position')
-    
+   
+    heatmap(rel_weights,"Blues",annotations=annotations)
     plt.tight_layout()
     prefix = filename.split('.')[0]
-    plt.savefig(prefix+'_rel_pos.pdf')
+    plt.savefig(prefix+'_rel_pos.svg')
     plt.close()
+
+def self_attn_heatmap_absolute(filename):
+
+    a = pd.read_csv(filename,sep='\t')
+    abs_weights = a['abs_weight_mean'].values.reshape(4,8)
+    
+    heatmap(abs_weights,"Reds")
+    plt.tight_layout()
+    prefix = filename.split('.')[0]
+    plt.savefig(prefix+'_abs_pos.svg')
+    plt.close()
+
+def heatmap(weights,colors,annotations=None):
+
+    ax = sns.heatmap(data=weights,annot=annotations,fmt='s',square=True,cmap=colors)
+    lw = 1.5
+    ax.axhline(y=0, color='k',linewidth=lw)
+    ax.axhline(y=weights.shape[0], color='k',linewidth=lw)
+    ax.axvline(x=0, color='k',linewidth=lw)
+    ax.axvline(x=weights.shape[1], color='k',linewidth=lw)
+    ax.set_ylabel('Layer')
+    ax.set_xlabel('Head')
+    ax.set_title('')
 
 def max_PDF(layer,cds_start,cds_end,tscript_id):
 
@@ -317,5 +336,6 @@ def maxdist_txt(layer,tscript_id,seq):
 
 if __name__ == "__main__":
 
-    pipeline(sys.argv[1])
-    #self_attn_heatmap(sys.argv[1])
+    #pipeline(sys.argv[1])
+    self_attn_heatmap_absolute(sys.argv[1])
+    self_attn_heatmap_relative(sys.argv[1])

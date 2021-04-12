@@ -101,13 +101,19 @@ class FeatureAttributor:
         self.interpretable_emb = configure_interpretable_embedding_layer(self.model,'encoder.embeddings')
         self.predictor = PredictionWrapper(self.model)
 
+    def old_zero_embed(self,src):
+
+        src_size = list(src.size())
+        baseline_emb = torch.zeros(size=(src_size[0],src_size[1],128),dtype=torch.float).to(self.device)
+        return baseline_emb
+    
     def zero_embed(self,src):
 
         src_size = list(src.size())
         baseline_emb = torch.zeros(size=(src_size[0],src_size[1],128),dtype=torch.float).to(self.device)
-        #baseline_emb = baseline_emb.permute(1,0,2)
-        #baseline_emb = self.positional(baseline_emb)
-        #baseline_emb = baseline_emb.permute(1,0,2)
+        baseline_emb = baseline_emb.permute(1,0,2)
+        baseline_emb = self.positional(baseline_emb)
+        baseline_emb = baseline_emb.permute(1,0,2)
         return baseline_emb
 
     def src_embed(self,src):
@@ -116,11 +122,23 @@ class FeatureAttributor:
         src_emb = src_emb.permute(1,0,2)
         return src_emb 
 
-    def nucleotide_embed(self,src,nucleotide):
-        
+    def old_nucleotide_embed(self,src,nucleotide):
+
         src_size = list(src.size())
+        i=self.vocab[nucleotide]
+        test = torch.tensor([[[i]]]).to(self.device)
+        emb = self.interpretable_emb.indices_to_embeddings(test)
+        baseline_emb = emb.repeat(*src_size)
+        baseline_emb = self.positional(baseline_emb)
+        return baseline_emb
+
+    def nucleotide_embed(self,src,nucleotide):
+       
+        src_size = list(src.size())
+        # retrieve embedding from torchtext
         n = self.vocab[nucleotide]
-        test =  n * torch.ones_like(src).to(self.device)
+        # copy across length
+        test =  n*torch.ones_like(src).to(self.device)
         baseline_emb = self.interpretable_emb.indices_to_embeddings(test.permute(1,0,2))
         baseline_emb = baseline_emb.permute(1,0,2)
         return baseline_emb
@@ -128,13 +146,32 @@ class FeatureAttributor:
     def average_embed(self,src):
 
         tensor_list = []
-
+        # gather all nucleotide embeddings
         for nuc in ['A','C','G','T']:
             nuc_emb = self.nucleotide_embed(src,nuc)
             tensor_list.append(nuc_emb)
-
+        # find mean
         stack = torch.stack(tensor_list,dim=0)
         baseline_emb = torch.mean(stack,dim=0)
+        return baseline_emb
+
+    def old_average_embed(self,src):
+
+        tensor_list = []
+
+        for nuc in ['A','G','C','T']:
+            i = self.vocab[nuc]
+            test = torch.tensor([[[i]]]).to(self.device)
+            emb = self.interpretable_emb.indices_to_embeddings(test)
+            tensor_list.append(torch.squeeze(emb,dim=0))
+
+        summary = torch.mean(torch.stack(tensor_list,dim=0),dim=0)
+        summary = torch.unsqueeze(summary,dim=0)
+        average = summary
+
+        src_size = list(src.size())
+        baseline_emb = average.repeat(*src_size)
+        baseline_emb = self.positional(baseline_emb)
         return baseline_emb
 
     def decoder_input(self,batch_size):
@@ -152,7 +189,7 @@ class FeatureAttributor:
                 src, src_lens = batch.src
                 src = src.transpose(0,1)
                 batch_size = batch.batch_size
-                
+                print(src.shape)        
                 #decoder_input, baseline_embed, src_embed = self.average_embed(src,batch_size)
                 baseline_embed, src_embed = self.zero_embed(src,batch_size)
                 decoder_input = self.decoder_input(batch_size)
@@ -197,7 +234,6 @@ class FeatureAttributor:
                 
                 # can only do one batch at a time
                 batch_size = batch.batch_size
-
                 for j in range(batch_size):
                     
                     curr_src = torch.unsqueeze(src[j,:,:],0)
@@ -205,11 +241,13 @@ class FeatureAttributor:
                     
                     if baseline == "zero":
                         baseline_embed = self.zero_embed(curr_src)
-                    elif baseline == "average":
+                    elif baseline == "avg":
                         baseline_embed = self.average_embed(curr_src)
-                    else:
+                    elif baseline in ['A','C','G','T']:
                         baseline_embed = self.nucleotide_embed(curr_src,baseline)
-                    
+                    else:
+                        raise ValueError('Invalid IG baseline given')
+
                     decoder_input = self.decoder_input(1) 
                     curr_ids = batch.id
 
@@ -228,10 +266,9 @@ class FeatureAttributor:
                     #msg = "{}\t{}\t{}\t{}\t{}".format(ids[j],answer_idx.item(),curr_tgt.item(),prob_pc,prob_nc)
                     #print(msg)
                     
+                    n_steps = 50
                     saved_src = np.squeeze(np.squeeze(curr_src.detach().cpu().numpy(),axis=0),axis=1).tolist()
                     saved_src = "".join([self.vocab.itos[x] for x in saved_src])
-                    
-                    n_steps = 50
                      
                     attributions,convergence_delta = ig.attribute(inputs=curr_src_embed,
                                                 target=pc_class,
@@ -250,7 +287,6 @@ class FeatureAttributor:
                     normed_attr = [round(x,3) for x in normed.tolist()]
 
                     entry = {"ID" : ids[j] , "summed_attr" : summed_attr, "normed_attr" : normed_attr, "src" : saved_src}
-
                     summary = json.dumps(entry)
                     outFile.write(summary+"\n")
 
@@ -324,7 +360,7 @@ def parse_args():
     parser.add_argument("--checkpoint", "--c",help ="ONMT checkpoint (.pt)")
     parser.add_argument("--inference_mode",default ="combined")
     parser.add_argument("--attribution_mode",default="ig")
-    parser.add_argument("--baseline",default="zero", help="zero|average|A|G|C|T")
+    parser.add_argument("--baseline",default="zero", help="zero|avg|A|C|G|T")
     parser.add_argument("--dataset",default="validation",help="train|test|validation")
     parser.add_argument("--name",default = "temp")
     parser.add_argument("--rank",type=int,default=0)
@@ -335,35 +371,38 @@ def parse_args():
     
     return parser.parse_args()
 
-def run_helper(rank,args,model,vocab):
+def run_helper(rank,args,model,vocab,use_splits=True):
     
     random_seed = 65
     random.seed(random_seed)
     random_state = random.getstate()
 
-    data = pd.read_csv(args.input,sep="\t")
-    data["CDS"] = ["-1" for _ in range(data.shape[0])]
+    df = pd.read_csv(args.input,sep="\t")
+    df["CDS"] = ["-1" for _ in range(df.shape[0])]
 
     sos_token = vocab['tgt'].vocab['<sos>']
     pad_token = vocab['src'].vocab['<pad>']
     pc_token = vocab['tgt'].vocab['<PC>']
     print(vocab['tgt'].vocab.stoi)
 
-    # replicate splits
-    df_train,df_test,df_dev = train_test_val_split(data,1000,random_seed)
-    train,test,dev = dataset_from_df(df_train.copy(),df_test.copy(),df_dev.copy(),mode=args.inference_mode,saved_vocab=vocab)
+    if use_splits:
+        # replicate splits
+        df_train,df_test,df_dev = train_test_val_split(df,1000,random_seed)
+        train,test,dev = dataset_from_df([df_train.copy(),df_test.copy(),df_dev.copy()],mode=args.inference_mode,saved_vocab=vocab)
+        if args.dataset == "train":
+            dataset = train
+        elif args.dataset == "test":
+            dataset = test
+        elif args.dataset == "val":
+            dataset = dev
+        else:
+            raise ValueError('Invalid dataset argument')
+    else:
+        dataset = data
     
-    if args.dataset == "train":
-        dataset = train
-    elif args.dataset == "test":
-        dataset = test
-    elif args.dataset == "validation":
-        dataset = dev
-
+    #dataset = dataset_from_df([df],mode=args.inference_mode,saved_vocab=vocab)
     max_tokens_in_batch = 1000
-
     device = "cpu"
-
     savefile = "{}.{}_{}.rank_{}".format(args.name,args.attribution_mode,args.reduction,rank)
 
     if args.num_gpus > 0: # GPU training
@@ -373,7 +412,6 @@ def run_helper(rank,args,model,vocab):
         model.cuda()
 
     if args.num_gpus > 1:
-
         splits = [1.0/args.num_gpus for _ in range(args.num_gpus)]
         dev_partitions = partition(dataset,split_ratios = splits,random_state = random_state)
         local_slice = dev_partitions[rank]
@@ -398,11 +436,16 @@ def run_helper(rank,args,model,vocab):
 def run_attribution(args,device):
     
     checkpoint = torch.load(args.checkpoint,map_location = device)
-    
     options = checkpoint['opt']
     vocab = checkpoint['vocab']
     model = restore_transformer_model(checkpoint,device,options)
 
+    if not options is None:
+        model_name = ""
+        print("----------- Saved Parameters for ------------ {}".format("SAVED MODEL"))
+        for k,v in vars(options).items():
+            print(k,v)
+ 
     if args.num_gpus > 1:
         torch.multiprocessing.spawn(run_helper, nprocs=args.num_gpus, args=(args,model,vocab))
     elif args.num_gpus > 0:

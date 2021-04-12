@@ -107,8 +107,22 @@ def translate_from_transformer_checkpt(args,use_splits=False):
     state = random.getstate()
 
     data = pd.read_csv(args.input,sep="\t")
-    data["CDS"] = ["-1" for _ in range(data.shape[0])]
+    
+    '''
+    # hack to process seqs that failed on GPU
+    failed = pd.read_csv('best_seq2seq_test_layer0.failures',names=['ID'])
+    print(failed)
+    failed = failed.set_index("ID")
+    data = data.set_index("ID")
+    data = data.drop(labels=data.index.difference(failed.index))
+    data = data.reset_index()
+    print(data) 
+    '''
 
+    data["CDS"] = ["-1" for _ in range(data.shape[0])]
+    protein,ids,rna,cds = arrange_data_by_mode(data,args.mode)
+    
+    '''
     # replicate splits
     if use_splits:
         train,test,dev = train_test_val_split(data,2000,random_seed,min_len=1000,splits=[0.0,0.9454,0.0546])
@@ -123,8 +137,10 @@ def translate_from_transformer_checkpt(args,use_splits=False):
             protein,ids,rna,cds = arrange_data_by_mode(train,args.mode)
     else:
         protein,ids,rna,cds = arrange_data_by_mode(data,args.mode)
-
+    '''
+    
     device = "cuda:{}".format(args.rank)
+    #device = "cpu"
     checkpoint = torch.load(args.checkpoint,map_location = device)
     options = checkpoint['opt']
     vocab = checkpoint['vocab']
@@ -142,7 +158,7 @@ def translate_from_transformer_checkpt(args,use_splits=False):
 
     text_fields = make_vocab(checkpoint['vocab'],rna,protein)
     translate(model,text_fields,rna,protein,ids,cds,device,beam_size=args.beam_size,
-            n_best=args.n_best,save_preds=True,save_attn=False,
+            n_best=args.n_best,save_preds=False,save_attn=True,
             attn_save_layer=args.attn_save_layer,file_prefix=args.output_name)
 
 def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
@@ -193,7 +209,7 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
                                                       batch_size = 1,
                                                       save_attn = save_attn,
                                                       save_preds = save_preds,
-                                                      save_scores = True)
+                                                      save_scores = False)
     return predictions,golds,scores
 
 if __name__ == "__main__":

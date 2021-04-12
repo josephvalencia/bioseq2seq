@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+export BIOHOME=/home/bb/valejose/home
+export PYTHONPATH=/home/bb/valejose/home/bioseq2seq
+source $BIOHOME/bioseq2seq/venv/bin/activate
+python $BIOHOME/bioseq2seq/bioseq2seq/bin/integrated_gradients.py --input $BIOHOME/Fa/refseq_combined_cds.csv.gz --checkpoint $BIOHOME/bioseq2seq/checkpoints/coding_noncoding/Oct12_15-42-19/_step_150000.pt --name best_ED_classify_zero_pos_val --rank 0 --num_gpus 1 --attribution_mode ig --dataset val --baseline zero
+#python $BIOHOME/bioseq2seq/bioseq2seq/bin/integrated_gradients.py --input $BIOHOME/Fa/refseq_combined_cds.csv.gz --checkpoint $BIOHOME/bioseq2seq/checkpoints/coding_noncoding/Oct12_15-42-19/_step_150000.pt --name best_ED_classify_avg_pos_val --rank 0 --num_gpus 1 --attribution_mode ig --dataset val --baseline avg
+#python $BIOHOME/bioseq2seq/bioseq2seq/bin/integrated_gradients.py --input $BIOHOME/Fa/refseq_combined_cds.csv.gz --checkpoint $BIOHOME/bioseq2seq/checkpoints/coding_noncoding/Oct12_15-42-19/_step_150000.pt --name best_ED_classify_A_pos_val --rank 0 --num_gpus 1 --attribution_mode ig --dataset val --baseline A
+#python $BIOHOME/bioseq2seq/bioseq2seq/bin/integrated_gradients.py --input $BIOHOME/Fa/refseq_combined_cds.csv.gz--checkpoint $BIOHOME/bioseq2seq/checkpoints/coding_noncoding/Oct12_15-42-19/_step_150000.pt --name best_ED_classify_C_pos_val --rank 0 --num_gpus 1 --attribution_mode ig --dataset val --baseline C
+#python $BIOHOME/bioseq2seq/bioseq2seq/bin/integrated_gradients.py --input $BIOHOME/Fa/refseq_combined_cds.csv.gz --checkpoint $BIOHOME/bioseq2seq/checkpoints/coding_noncoding/Oct12_15-42-19/_step_150000.pt --name best_ED_classify_G_pos_val --rank 0 --num_gpus 1 --attribution_mode ig --dataset val --baseline G
+#python $BIOHOME/bioseq2seq/bioseq2seq/bin/integrated_gradients.py --input $BIOHOME/Fa/refseq_combined_cds.csv.gz --checkpoint $BIOHOME/bioseq2seq/checkpoints/coding_noncoding/Oct12_15-42-19/_step_150000.pt --name best_ED_classify_T_pos_val --rank 0 --num_gpus 1 --attribution_mode ig --dataset val --baseline T
