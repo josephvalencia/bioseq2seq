@@ -119,7 +119,6 @@ def top_indices(saved_file,tgt_field,coding_topk_file,noncoding_topk_file,mode= 
         for l in inFile:
             fields = json.loads(l)
             id_field = "TSCRIPT_ID" if mode == "attn" else "ID"
-
             id = fields[id_field]
             src = fields['src'].split('<pad>')[0]
             array = fields[tgt_field][:len(src)]
@@ -292,10 +291,10 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significa
             
             # find average 
             for codon,scores in outside.items():
-                #avg = sum(scores) / len(scores) 
+                avg = sum(scores) / len(scores) 
                 argmax = np.argmax(np.abs(scores))
                 avg = scores[argmax]
-                info = {"tscript" : id ,"codon" : codon, "score" : avg /len(array), "status" : tscript_type, "segment" : "OUT"}
+                info = {"tscript" : id ,"codon" : codon, "score" : avg/len(array), "status" : tscript_type, "segment" : "OUT"}
                 extra.append(info)
             
             # inside CDS
@@ -310,13 +309,14 @@ def codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significa
                 #avg = sum(scores) / len(scores)
                 argmax = np.argmax(np.abs(scores))
                 avg = scores[argmax]
-                info = {"tscript" : id ,"codon" : codon, "score" : avg/len(array) , "status" : tscript_type, "segment" : 'CDS'}
+                info = {"tscript" : id ,"codon" : codon, "score" : avg/len(array), "status" : tscript_type, "segment" : 'CDS'}
                 extra.append(info)
             
         codon_df = pd.DataFrame(extra)
         
         # valid codons
         a = codon_df[codon_df['codon'].str.len() == 3]
+        scatter_plot(a,scatterplot_file)
         #boxplot_all(a,boxplot_file)
         
         # coding CDS only
@@ -328,24 +328,31 @@ def boxplot_no_start_stop(data,boxplot_file,**kws):
 
     plt.figure(figsize=(12,8))
 
-    start_stop = ['ATG','TAA','TAG','TGA']
-    data = data[~data['codon'].isin(start_stop)]
-    medians = data.groupby('codon').median().sort_values(by='score',ascending=False)
-    medians = medians.reset_index()
-    order = medians['codon'].values.tolist()
-    median_scores = medians['score'].values.tolist() 
+    #start_stop = ['ATG','TAA','TAG','TGA']
+    #data = data[~data['codon'].isin(start_stop)]
+    #medians = data.groupby('codon').median().sort_values(by='score',ascending=False)
+    #medians = medians.reset_index()
+    #order = medians['codon'].values.tolist()
+    #median_scores = medians['score'].values.tolist() 
     
-    ax = sns.boxplot(x="codon",y="score",data=data,order=order,showfliers=False,linewidth=0.6,orient='v',palette='coolwarm_r') 
+    means = data.groupby('codon').mean().sort_values(by='score',ascending=False)
+    means = means.reset_index()
+    order = means['codon'].values.tolist()
+    
+    #ax = sns.boxplot(x="codon",y="score",data=data,order=order,showfliers=False,linewidth=0.6,orient='v',palette='coolwarm_r') 
+    #ax = sns.pointplot(x='codon', y='score',data=data,order=order)
+    ax = sns.barplot(x='codon',y='score',data=data,order=order)
     ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
     ax.set_xticklabels(ax.get_xticklabels(), rotation = 90, fontsize = 12)
     ax.set_ylabel('Max IG score per transcript')
 
+    '''
     meds = [str(np.round(s,2)) for s in median_scores]
     ind = 0
     for tick in range(len(ax.get_xticklabels())):
         ax.text(tick+.2, median_scores[ind]+1, meds[ind], horizontalalignment='center', color='w', weight='semibold')
         ind += 1    
-    
+    ''' 
     plt.savefig(boxplot_file)
     plt.close()
 
@@ -391,10 +398,10 @@ def scatter_plot(a,scatterplot_file):
         nc = a[a['status'] == '<NC>']
         pc = a[a['status'] == '<PC>']
 
-        out = out.groupby('codon').median()
-        cds = cds.groupby('codon').median()
-        pc = pc.groupby('codon').median()
-        nc = nc.groupby('codon').median()
+        out = out.groupby('codon').mean()
+        cds = cds.groupby('codon').mean()
+        pc = pc.groupby('codon').mean()
+        nc = nc.groupby('codon').mean()
         
         by_status = pc.merge(nc,on='codon',suffixes=['_pc','_nc'])
         by_status['diff_coding'] = by_status['score_pc'] - by_status['score_nc'] 
@@ -403,15 +410,17 @@ def scatter_plot(a,scatterplot_file):
         combined = by_segment.merge(by_status,on='codon')
         combined['diff_cds'] = combined['score_cds'] - combined['score_out']
         combined['diff_coding'] = combined['score_pc'] - combined['score_nc']
-        combined = combined.sort_values('diff_coding',ascending=False) 
+        #combined = combined.sort_values('diff_coding',ascending=False) 
         combined.reset_index(inplace=True)
-         
+        
         pc = pc.sort_values('score',ascending=False)
         pc.reset_index(inplace=True)
-
-        ax = sns.scatterplot(x='diff_cds',y='diff_coding',data=combined)
+        ax = sns.scatterplot(x='score_nc',y='score_pc',data=combined)
+        ax.set_xlim(-0.0012,0.00075)
+        ax.set_ylim(-0.0001,0.0004)
+        
         for line in range(0,combined.shape[0]):
-            ax.text(combined['diff_cds'][line]+0.001, combined['diff_coding'][line], combined['codon'][line], horizontalalignment='left',size='medium', color='black', weight='semibold')
+            ax.text(combined['score_nc'][line]+0.000001, combined['score_pc'][line]+0.000001, combined['codon'][line], horizontalalignment='left',size='medium', color='black', weight='semibold')
         
         plt.savefig(scatterplot_file)
         plt.close()
@@ -473,7 +482,6 @@ def significance(codon_df,significance_file):
         outFile.write("Overall : {}/64 higher in coding , {}/64 higher in noncoding\n".format(num_coding,num_noncoding))
         outFile.write("Coding : {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_coding,num_out_coding))
         outFile.write("Noncoding: {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_noncoding,num_out_noncoding))
-    
 
 def class_separation(saved_file):
 
@@ -677,8 +685,8 @@ def visualize_attribution(data_file,attr_file):
                 
 if __name__ == "__main__":
     
-    #plt.style.use('ggplot')
-    #sns.set_style("whitegrid")
+    plt.style.use('ggplot')
+    sns.set_style("whitegrid")
    
     # ingest stored data
     data_file = "../Fa/refseq_combined_cds.csv.gz"
@@ -695,6 +703,7 @@ if __name__ == "__main__":
         run_attributions(f,df_val,"summed_attr","attributions/", "IG")
         f = "seq2seq_3_"+base+"_pos.ig"
         run_attributions(f,df_val,"summed_attr","attributions/", "IG")
+        run_attributions(f,df_val,"summed_attr","attributions/", "IG")
     '''
 
     # best bioseq2seq test
@@ -709,11 +718,15 @@ if __name__ == "__main__":
     #run_attributions("output/test/seq2seq/best_seq2seq_avg_pos_train.ig",df_train,"summed_attr","train_attributions/","IG") 
     #run_attributions("output/test/seq2seq/best_seq2seq_zero_pos_train.ig",df_train,"summed_attr","train_attributions/","IG") 
 
+    print("bioseq2seq avg")
+    run_attributions("output/test/seq2seq/best_seq2seq_avg_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
+    print("bioseq2seq zero")
+    run_attributions("output/test/seq2seq/best_seq2seq_zero_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
+    
+    print("EDC avg")
     run_attributions("output/test/ED_classify/best_ED_classify_avg_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
+    print("EDC zero")
     run_attributions("output/test/ED_classify/best_ED_classify_zero_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
-    #run_attributions("output/test/ED_classify/ED_classify_3_zero_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
-    #run_attributions("seq2seq_3_A_pos.ig",df_val,"summed_attr","attributions/","IG") 
-    #run_attributions("seq2seq_3_avg_pos_train.ig",df_train,"summed_attr","attributions/", "IG")
     
     '''
     for l in range(4):

@@ -37,7 +37,9 @@ def find_motif_locations(fimo_output,by='start',stat='count'):
         bins = np.arange(-1000,750,10)
     else:
         bins = np.arange(-750,1000,10)
-    
+   
+    by_count = df.groupby('motif_id').count().sort_values(by='Type',ascending=False)
+    hue_order = by_count.index.values.tolist()
     g = sns.displot(data=df,x='rel_start',hue='motif_id',col='Type',kind='hist',bins=bins,stat=stat,element='step',facet_kws={'col_order':['<PC>','<NC>']})
     g._legend.set_title('IG motif (STREME ID)')
 

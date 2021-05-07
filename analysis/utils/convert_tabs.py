@@ -47,6 +47,10 @@ def convert_IG(saved_file):
                 tab_file = saved_file+"."+head+".tabs"
                 tscript = fields[id_field]
                 array = fields[head]
+                
+                src = fields['src'].split('<pad>')[0]
+                array = array[:len(src)]
+                
                 with open(tab_file,'a') as outFile:
                     for i,s in enumerate(array):
                         outFile.write("{}\t{}\t{}\n".format(tscript,i,s/1000))
@@ -54,20 +58,26 @@ def convert_IG(saved_file):
 if __name__ == "__main__":
     
     for l in range(4):
-        saved_file = "results/val/best_seq2seq/best_seq2seq_layer"+str(l)+".enc_dec_attns"
+        saved_file = "output/test/seq2seq/best_seq2seq_test_layer"+str(l)+".enc_dec_attns"
         for h in range(8):
             tgt_field = "layer{}head{}".format(l,h)
             convert_enc_dec(saved_file,tgt_field)
 
-    quit()
-    bases = ['A','C','G','T','avg','zero']
+    for l in range(4):
+        saved_file = "output/test/ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns"
+        for h in range(8):
+            tgt_field = "layer{}head{}".format(l,h)
+            convert_enc_dec(saved_file,tgt_field)
     
-    ED_prefix = "results/best_ED_classify/best_ED_classify_"
-    ED_files = [ED_prefix+b +'_pos.ig' for b in bases] 
+    bases = ['avg','zero','A','C','G','T']
+    short_bases = ['avg','zero']
+
+    ED_prefix = "output/test/ED_classify/best_ED_classify_"
+    ED_files = [ED_prefix+b +'_pos_test.ig' for b in short_bases] 
     for f in ED_files:
         convert_IG(f)
 
-    seq_prefix = "results/best_seq2seq/seq2seq_3_"
-    seq_files = [seq_prefix+b+'_pos.ig' for b in bases]
+    seq_prefix = "output/test/seq2seq/best_seq2seq_"
+    seq_files = [seq_prefix+b+'_pos_test.ig' for b in bases]
     for f in seq_files:
         convert_IG(f)

@@ -110,15 +110,13 @@ def translate_from_transformer_checkpt(args,use_splits=False):
     
     '''
     # hack to process seqs that failed on GPU
-    failed = pd.read_csv('best_seq2seq_test_layer0.failures',names=['ID'])
-    print(failed)
+    failed = pd.read_csv('seq2seq_4_zebrafish.failures',names=['ID'])
     failed = failed.set_index("ID")
     data = data.set_index("ID")
     data = data.drop(labels=data.index.difference(failed.index))
     data = data.reset_index()
     print(data) 
-    '''
-
+    ''' 
     data["CDS"] = ["-1" for _ in range(data.shape[0])]
     protein,ids,rna,cds = arrange_data_by_mode(data,args.mode)
     
@@ -138,9 +136,9 @@ def translate_from_transformer_checkpt(args,use_splits=False):
     else:
         protein,ids,rna,cds = arrange_data_by_mode(data,args.mode)
     '''
-    
     device = "cuda:{}".format(args.rank)
     #device = "cpu"
+    
     checkpoint = torch.load(args.checkpoint,map_location = device)
     options = checkpoint['opt']
     vocab = checkpoint['vocab']
@@ -158,7 +156,7 @@ def translate_from_transformer_checkpt(args,use_splits=False):
 
     text_fields = make_vocab(checkpoint['vocab'],rna,protein)
     translate(model,text_fields,rna,protein,ids,cds,device,beam_size=args.beam_size,
-            n_best=args.n_best,save_preds=False,save_attn=True,
+            n_best=args.n_best,save_preds=True,save_attn=True,
             attn_save_layer=args.attn_save_layer,file_prefix=args.output_name)
 
 def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,

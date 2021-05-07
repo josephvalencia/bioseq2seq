@@ -83,7 +83,7 @@ class Evaluator:
         align = lambda a,b : self.emboss_needle(a,b) if a != "" and b != "" else (0.0,1)
         alignments = [align("".join(c),gold) for c in candidates[:self.best_of_n]]
         align_pcts = [self.divide(a,b) for a,b in alignments]
-        print("{}\t{}".format(name,align_pcts[0]))
+        #print("{}\t{}".format(name,align_pcts[0]))
         self.update_helper("needle_align_id",align_pcts,name=name)
 
     def update_exact_match(self,name,candidates,gold):

@@ -142,32 +142,32 @@ def plot_heatmap(tscript_name,head_name,attns):
     plt.savefig("self_output/"+tscript_name+"/"+head_name+"_heatmap.pdf")
     plt.close()
 
-def pipeline(saved_attn):
+def summarize_positional_heads(saved_attn):
 
     storage = []
-
+    
+    subset = set()
+    sub_file = "output/test/redundancy/test_reduced_80_ids.txt" 
+    
+    with open(sub_file) as inFile:
+        for l in inFile:
+            subset.add(l.rstrip())
+    
     with open(saved_attn) as inFile:
         for line in inFile:
-
             decoded = json.loads(line)
             tscript_id = decoded['TSCRIPT_ID']
-            seq = decoded['seq']
-            cds_start = decoded['CDS_START']
-            cds_end = decoded['CDS_END']
-            layers = decoded['layers']
-
-            #if not os.path.isdir("self_output/"+tscript_id+"/"):
-            #    os.mkdir("self_output/"+tscript_id+"/")
             
-            for n,layer in enumerate(layers):
-                #max_PDF(layer,cds_start,cds_end,tscript_id)
-                #maxdist_PDF(layer,tscript_id)
-                #maxdist_txt(layer,tscript_id,seq)
-                #entropy_PDF(layer,tscript_id)
-                summarize_maxes(layer,tscript_id,storage)
+            if tscript_id in subset:
+                seq = decoded['seq']
+                cds_start = decoded['CDS_START']
+                cds_end = decoded['CDS_END']
+                layers = decoded['layers']
+                for n,layer in enumerate(layers):
+                    summarize_maxes(layer,tscript_id,storage)
 
     pos_df = pd.DataFrame(storage)
-
+    print(pos_df)
     mean = pos_df.groupby('head').mean()
     var = pos_df.groupby('head').var()
     mode = pos_df.groupby('head').agg(lambda x: pd.Series.mode(x).values[0])
@@ -177,13 +177,39 @@ def pipeline(saved_attn):
     b = ['abs_weight' ,'abs_val', 'rel_weight' ,'rel_val']
     a.columns = a.columns.map(lambda x : x+'_mode' if x in b  else x)
     a = a.drop(columns=a.columns.difference(['abs_weight_mean','rel_weight_mean','rel_val_var','rel_val_mode']))
-    print(a)
-    #a = pos_df.groupby('tscript_id').mean()
-    a.to_csv('self_attn_maxes.csv',sep='\t')
+    return a
 
-def self_attn_heatmap_relative(filename):
+def pipeline(seq_attn_file,ED_attn_file):
 
-    a = pd.read_csv(filename,sep='\t')
+    seq_df = summarize_positional_heads(seq_attn_file).reset_index()
+    seq_df['model'] = ['bioseq2seq' for _ in range(len(seq_df))]
+    seq_df.to_csv('bioseq2seq_self_attn_maxes.csv',sep='\t')
+    
+    ED_df = summarize_positional_heads(ED_attn_file).reset_index()
+    ED_df['model'] = ['EDC' for _ in range(len(ED_df))]
+    ED_df.to_csv('EDC_self_attn_maxes.csv',sep='\t')
+    
+    seq_df = pd.read_csv('bioseq2seq_self_attn_maxes.csv',sep='\t')
+    ED_df = pd.read_csv('EDC_self_attn_maxes.csv',sep='\t')
+    
+    # relative position
+    seq_relative = [x for x in seq_df['rel_weight_mean'].values.tolist()] 
+    ED_relative = [x for x in ED_df['rel_weight_mean'].values.tolist()] 
+    min_val = min(min(seq_relative),min(ED_relative)) 
+    max_val = max(max(seq_relative),max(ED_relative)) 
+    self_attn_heatmap_relative(seq_df,min_val,max_val,'bioseq2seq')
+    self_attn_heatmap_relative(ED_df,min_val,max_val,'EDC')
+
+    # absolute position
+    seq_abs = [x for x in seq_df['abs_weight_mean'].values.tolist()] 
+    ED_abs = [x for x in ED_df['abs_weight_mean'].values.tolist()] 
+    min_val = min(min(seq_abs),min(ED_abs)) 
+    max_val = max(max(seq_abs),max(ED_abs)) 
+    self_attn_heatmap_absolute(seq_df,min_val,max_val,'bioseq2seq')
+    self_attn_heatmap_absolute(ED_df,min_val,max_val,'EDC')
+
+def self_attn_heatmap_relative(a,vmin,vmax,prefix):
+
     rel_weights = a['rel_weight_mean'].values.reshape(4,8)
     rel_val_mode = a['rel_val_mode'].values.reshape(4,8)
     rel_val_var = a['rel_val_var'].values.reshape(4,8)
@@ -196,33 +222,34 @@ def self_attn_heatmap_relative(filename):
     annotations = np.asarray(annotations).reshape(4,8)
     annotations[inconsistent] = ""
    
-    heatmap(rel_weights,"Blues",annotations=annotations)
+    heatmap(rel_weights,"Blues",vmin,vmax,prefix,annotations=annotations)
     plt.tight_layout()
-    prefix = filename.split('.')[0]
-    plt.savefig(prefix+'_rel_pos.svg')
+    plt.savefig(prefix+'_self_attn_maxes_rel_pos.svg')
     plt.close()
 
-def self_attn_heatmap_absolute(filename):
+def self_attn_heatmap_absolute(a,vmin,vmax,prefix):
 
-    a = pd.read_csv(filename,sep='\t')
     abs_weights = a['abs_weight_mean'].values.reshape(4,8)
     
-    heatmap(abs_weights,"Reds")
+    heatmap(abs_weights,"Reds",vmin,vmax,prefix)
     plt.tight_layout()
-    prefix = filename.split('.')[0]
-    plt.savefig(prefix+'_abs_pos.svg')
+    plt.savefig(prefix+'_self_attn_maxes_abs_pos.svg')
     plt.close()
 
-def heatmap(weights,colors,annotations=None):
+def heatmap(weights,colors,vmin,vmax,prefix,annotations=None):
 
-    ax = sns.heatmap(data=weights,annot=annotations,fmt='s',square=True,cmap=colors)
+    if not annotations is None:
+        annotations = annotations.T
+
+    ax = sns.heatmap(data=weights.T,annot=annotations,fmt='s',square=True,cmap=colors,vmin=vmin,vmax=vmax)
+    ax.set_yticklabels(ax.get_yticklabels(), rotation = 0)
     lw = 1.5
-    ax.axhline(y=0, color='k',linewidth=lw)
-    ax.axhline(y=weights.shape[0], color='k',linewidth=lw)
     ax.axvline(x=0, color='k',linewidth=lw)
-    ax.axvline(x=weights.shape[1], color='k',linewidth=lw)
-    ax.set_ylabel('Layer')
-    ax.set_xlabel('Head')
+    ax.axvline(x=weights.shape[0], color='k',linewidth=lw)
+    ax.axhline(y=0, color='k',linewidth=lw)
+    ax.axhline(y=weights.shape[1], color='k',linewidth=lw)
+    ax.set_xlabel(' Layer ({})'.format(prefix))
+    ax.set_ylabel(' Head')
     ax.set_title('')
 
 def max_PDF(layer,cds_start,cds_end,tscript_id):
@@ -336,6 +363,6 @@ def maxdist_txt(layer,tscript_id,seq):
 
 if __name__ == "__main__":
 
-    #pipeline(sys.argv[1])
-    self_attn_heatmap_absolute(sys.argv[1])
-    self_attn_heatmap_relative(sys.argv[1])
+    pipeline(sys.argv[1],sys.argv[2])
+    #self_attn_heatmap_absolute(sys.argv[1])
+    #self_attn_heatmap_relative(sys.argv[1])

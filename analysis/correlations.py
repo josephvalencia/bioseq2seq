@@ -36,7 +36,8 @@ def multiple_correlation(attr_storage,attn_files,prefix):
     for tscript_id ,features in attn_storage.items():
 
         attr = attr_storage[tscript_id]
-        attr = np.abs(np.asarray(attr) / 1000)
+        #attr = np.abs(np.asarray(attr) / 1000)
+        attr = np.asarray(attr) / 1000
         
         features = np.vstack(features).T
 
@@ -74,7 +75,7 @@ def multiple_correlation(attr_storage,attn_files,prefix):
     mu = np.nanmean(scores)
     std = np.nanstd(scores)
     median = np.nanmedian(scores)
-    print(mu,std,median)
+    print(prefix,mu,std,median)
 
     '''
     max_means = []
@@ -103,8 +104,7 @@ def multiple_correlation(attr_storage,attn_files,prefix):
     ax.text(0.075, 0.95, textstr, transform=ax.transAxes, fontsize=14,
     verticalalignment='top', bbox=props)
     ax.set(xlabel="Multiple Correlation (R)", ylabel='Density')
-    plt.title(" Multiple Correlation Density"+"({})".format(prefix))
-    corr_plot = prefix +"_kendall_corrs.pdf"
+    corr_plot = prefix +"_kendall_corrs.svg"
     plt.savefig(corr_plot)
     plt.close()
 
@@ -117,8 +117,8 @@ def kendall_correlation(attr_storage,attn_file,tgt_head):
 
         for line in inFile:
             fields = json.loads(line)
-            tscript_id = fields["TSCRIPT_ID"]
-            
+            #tscript_id = fields["TSCRIPT_ID"]
+            tscript_id = fields['ID'] 
             attn = fields[tgt_head]
             attr = attr_storage[tscript_id]
 
@@ -149,55 +149,73 @@ def strip_padding(src):
 if __name__ == "__main__":
 
     attr_storage = {}
-
-    '''
-    #attr_file = "results/best_ED_classify/best_ED_classify.ig"
-    attr_file = "results/best_seq2seq/best_seq2seq.ig"
     
-    with open(attr_file) as inFile:
+    '''
+    avg_seq = "output/test/seq2seq/best_seq2seq_avg_pos_test.ig"
+    zero_seq = "output/test/seq2seq/best_seq2seq_zero_pos_test.ig"
+    avg_EDC = "output/test/ED_classify/best_ED_classify_avg_pos_test.ig"
+    zero_EDC = "output/test/ED_classify/best_ED_classify_zero_pos_test.ig"
+    
+    with open(zero_seq) as inFile:
         for l in inFile:
             fields = json.loads(l)
             id = fields["ID"]
-            attr_storage[id] = fields["normed_attr"]
+            attr_storage[id] = fields["summed_attr"]
+
+    kendall_correlation(attr_storage,zero_EDC,'summed_attr')
+    ''' 
     
-    for l in range(4):
-        #attn_file = "results/best_ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns"
-        attn_file = "results/best_seq2seq/best_seq2seq_layer"+str(l)+".enc_dec_attns"
-        for h in range(8):
-            tgt_head = "layer{}head{}".format(l,h)
-            print("tgt_head: ",tgt_head)
-            kendall_correlation(attr_storage,attn_file,tgt_head)
-    '''
     # collate IG consensus
     #bases = ['A','C','G','T','avg','zero']
     bases = ['A','C','G','T']
-    ED_file_list = ['best_ED_classify_'+b+'_pos.ig' for b in bases] 
-    seq_file_list = ['seq2seq_3_'+b+'_pos.ig' for b in bases]
-    
-    attr_file = "seq2seq_3_zero_pos.ig"
-    #attr_file = "seq2seq_3_C_pos.ig"
 
-    with open(attr_file) as inFile:
+    ED_file_list = ['output/test/ED_classify/best_ED_classify_'+b+'_pos.ig' for b in bases] 
+    seq_file_list = ['output/test/seq2seq/best_seq2seq_'+b+'_pos.ig' for b in bases]
+    
+    attn_files = ["output/test/seq2seq/best_seq2seq_test_layer"+str(l)+".enc_dec_attns" for l in range(4)]
+    avg_seq = "output/test/seq2seq/best_seq2seq_avg_pos_test.ig"
+    zero_seq = "output/test/seq2seq/best_seq2seq_zero_pos_test.ig"
+
+    with open(avg_seq) as inFile:
         for l in inFile:
             fields = json.loads(l)
             id = fields["ID"]
             src = fields['src']
             l = strip_padding(src)
-            attr_storage[id] = fields["summed_attr"][:l]
+            attr_storage[id] = fields["normed_attr"][:l]
     
-    attn_files = ["results/best_seq2seq/best_seq2seq_layer"+str(l)+".enc_dec_attns" for l in range(4)]
-    multiple_correlation(attr_storage,attn_files,"seq2seq_summed")
-
-    attr_file = "best_ED_classify_zero_pos.ig"
-    #attr_file = "best_ED_classify_C_pos.ig"
-
-    with open(attr_file) as inFile:
+    multiple_correlation(attr_storage,attn_files,"seq2seq_normed_avg")
+    
+    with open(zero_seq) as inFile:
         for l in inFile:
             fields = json.loads(l)
             id = fields["ID"]
             src = fields['src']
             l = strip_padding(src)
-            attr_storage[id] = fields["summed_attr"][:l]
+            attr_storage[id] = fields["normed_attr"][:l]
+    
+    multiple_correlation(attr_storage,attn_files,"seq2seq_normed_zero")
 
-    attn_files = ["results/best_ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns" for l in range(4)]
-    multiple_correlation(attr_storage,attn_files,"ED_classify_summed")
+    attn_files = ["output/test/ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns" for l in range(4)]
+    avg_EDC = "output/test/ED_classify/best_ED_classify_avg_pos_test.ig"
+    zero_EDC = "output/test/ED_classify/best_ED_classify_zero_pos_test.ig" 
+
+    with open(avg_EDC) as inFile:
+        for l in inFile:
+            fields = json.loads(l)
+            id = fields["ID"]
+            src = fields['src']
+            l = strip_padding(src)
+            attr_storage[id] = fields["normed_attr"][:l]
+
+    multiple_correlation(attr_storage,attn_files,"ED_classify_avg_normed")
+
+    with open(zero_EDC) as inFile:
+        for l in inFile:
+            fields = json.loads(l)
+            id = fields["ID"]
+            src = fields['src']
+            l = strip_padding(src)
+            attr_storage[id] = fields["normed_attr"][:l]
+
+    multiple_correlation(attr_storage,attn_files,"ED_classify_zero_normed")
