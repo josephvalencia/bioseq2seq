@@ -33,7 +33,7 @@ def countCodons(fastaFile,K):
                     codonTotal += 1.0
                     codonPos[i] = 1.0
                 else:
-                    print "Found ",transcriptID,"position ", str(i), " has K-mer ", codon
+                    print("Found {} position {} has K-mer {}".format(transcriptID,i,codon))
                     sys.exit()
             for i in range(len(seq)-K):
                 if i not in codonPos:
@@ -72,7 +72,7 @@ def validCDS(seq,start,end):
 usage = 'Usage: python ' + sys.argv[0] + ' <fasta file> <K>'
 
 if len(sys.argv) != 3:
-    print usage
+    print(usage)
     sys.exit()
 
 ALLCDS = True

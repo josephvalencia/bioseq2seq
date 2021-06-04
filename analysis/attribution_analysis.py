@@ -246,6 +246,56 @@ def make_chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
+
+def mutation_analysis(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significance_file,baseline,mode="attn"):
+    
+    extra = []
+    
+    with open(saved_file) as inFile:
+        for l in inFile:
+            fields = json.loads(l)
+            id_field = "TSCRIPT_ID" if mode == "attn" else "ID"
+            id = fields[id_field]
+            array = fields[tgt_field]
+            seq = df.loc[id,'RNA']
+            tscript_type = df.loc[id,'Type']
+
+            if tscript_type == "<PC>":               
+                # use provided CDS
+                cds = df.loc[id,'CDS']
+                if cds != "-1":
+                    splits = cds.split(":")
+                    clean = lambda x : x[1:] if x.startswith("<") or x.startswith(">") else x
+                    cds_start,cds_end = tuple([int(clean(x)) for x in splits])
+                else:
+                    cds_start,cds_end = getLongestORF(seq)
+            else:
+                # use start and end of longest ORF
+                cds_start,cds_end = getLongestORF(seq)
+            
+            array = [float(x) / 1000 for x in array]
+            inside = defaultdict(lambda : [])
+            outside = defaultdict(lambda : [])
+
+            legal_chars = {'A','C','G','T'}
+            allowed = lambda codon : all([x in legal_chars for x in codon])
+            inframe = lambda x : x >= cds_start and x<=cds_end-2 and (x-cds_start) % 3 == 0 
+            
+            # inside CDS
+            for i in range(cds_start,cds_end-3,3):
+                print("________________________")
+                codon = seq[i:i+3]
+                print(codon)
+                if allowed(codon):
+                    codon_scores = array[i:i+3]
+                    print("________________________")
+                    for j in range(len(codon_scores)):
+                        new_codon = list(codon)
+                        new_codon[j] = baseline
+                        new_codon = ''.join(new_codon)
+                        print(new_codon)
+                         
+
 def codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significance_file,mode="attn"):
 
     extra = []
@@ -330,18 +380,18 @@ def boxplot_no_start_stop(data,boxplot_file,**kws):
 
     #start_stop = ['ATG','TAA','TAG','TGA']
     #data = data[~data['codon'].isin(start_stop)]
-    #medians = data.groupby('codon').median().sort_values(by='score',ascending=False)
-    #medians = medians.reset_index()
-    #order = medians['codon'].values.tolist()
+    medians = data.groupby('codon').median().sort_values(by='score',ascending=False)
+    medians = medians.reset_index()
+    order = medians['codon'].values.tolist()
     #median_scores = medians['score'].values.tolist() 
     
-    means = data.groupby('codon').mean().sort_values(by='score',ascending=False)
-    means = means.reset_index()
-    order = means['codon'].values.tolist()
+    #means = data.groupby('codon').mean().sort_values(by='score',ascending=False)
+    #means = means.reset_index()
+    #order = means['codon'].values.tolist()
     
-    #ax = sns.boxplot(x="codon",y="score",data=data,order=order,showfliers=False,linewidth=0.6,orient='v',palette='coolwarm_r') 
+    ax = sns.boxplot(x="codon",y="score",data=data,order=order,showfliers=False,linewidth=0.6,orient='v',palette='coolwarm_r') 
     #ax = sns.pointplot(x='codon', y='score',data=data,order=order)
-    ax = sns.barplot(x='codon',y='score',data=data,order=order)
+    #ax = sns.barplot(x='codon',y='score',data=data,order=order)
     ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
     ax.set_xticklabels(ax.get_xticklabels(), rotation = 90, fontsize = 12)
     ax.set_ylabel('Max IG score per transcript')
@@ -383,7 +433,7 @@ def boxplot_fn(data, **kws):
 
     for item in ax.get_xticklabels():
         item.set_rotation(90)
-
+    
     for i in range(len(ax.artists)):
         mybox = ax.artists[i]
         if i < 8:
@@ -393,37 +443,58 @@ def boxplot_fn(data, **kws):
 
 def scatter_plot(a,scatterplot_file):
 
-        out = a[a['segment'] == 'OUT']
-        cds = a[a['segment'] == 'CDS']
-        nc = a[a['status'] == '<NC>']
-        pc = a[a['status'] == '<PC>']
+    
+    #start_stop = ['ATG','TAA','TAG','TGA']
+    #a = a[~a['codon'].isin(start_stop)]
+    out = a[a['segment'] == 'OUT']
+    cds = a[a['segment'] == 'CDS']
+    nc = a[a['status'] == '<NC>']
+    pc = a[a['status'] == '<PC>']
 
-        out = out.groupby('codon').mean()
-        cds = cds.groupby('codon').mean()
-        pc = pc.groupby('codon').mean()
-        nc = nc.groupby('codon').mean()
-        
-        by_status = pc.merge(nc,on='codon',suffixes=['_pc','_nc'])
-        by_status['diff_coding'] = by_status['score_pc'] - by_status['score_nc'] 
-        by_segment = cds.merge(out,on='codon',suffixes=['_cds','_out'])
-        
-        combined = by_segment.merge(by_status,on='codon')
-        combined['diff_cds'] = combined['score_cds'] - combined['score_out']
-        combined['diff_coding'] = combined['score_pc'] - combined['score_nc']
-        #combined = combined.sort_values('diff_coding',ascending=False) 
-        combined.reset_index(inplace=True)
-        
-        pc = pc.sort_values('score',ascending=False)
-        pc.reset_index(inplace=True)
-        ax = sns.scatterplot(x='score_nc',y='score_pc',data=combined)
-        ax.set_xlim(-0.0012,0.00075)
-        ax.set_ylim(-0.0001,0.0004)
-        
-        for line in range(0,combined.shape[0]):
-            ax.text(combined['score_nc'][line]+0.000001, combined['score_pc'][line]+0.000001, combined['codon'][line], horizontalalignment='left',size='medium', color='black', weight='semibold')
-        
-        plt.savefig(scatterplot_file)
-        plt.close()
+    out = out.groupby('codon').mean()
+    cds = cds.groupby('codon').mean()
+    pc = pc.groupby('codon').mean()
+    nc = nc.groupby('codon').mean()
+    
+    by_status = pc.merge(nc,on='codon',suffixes=['_pc','_nc'])
+    by_status['diff_coding'] = by_status['score_pc'] - by_status['score_nc'] 
+    by_segment = cds.merge(out,on='codon',suffixes=['_cds','_out'])
+    
+    combined = by_segment.merge(by_status,on='codon')
+    combined['diff_cds'] = combined['score_cds'] - combined['score_out']
+    combined['diff_coding'] = combined['score_pc'] - combined['score_nc']
+    #combined = combined.sort_values('diff_coding',ascending=False) 
+    combined.reset_index(inplace=True)
+    
+    pc = pc.sort_values('score',ascending=False)
+    pc.reset_index(inplace=True)
+  
+    #x_var = 'score_nc'
+    #y_var = 'score_pc'
+    x_var = 'score_nc'
+    y_var = 'score_pc'
+
+    min_x = np.min(combined[x_var].values)
+    max_x = np.max(combined[x_var].values)
+    min_y = np.min(combined[y_var].values)
+    max_y = np.max(combined[y_var].values)
+
+    ax = sns.scatterplot(x=x_var,y=y_var,data=combined)
+    #ax = sns.lmplot(x='score_nc',y='score_pc',data=combined)
+    
+    x_spread = max_x - min_x
+    y_spread = max_y - min_y
+    ax.set_xlim(min_x - x_spread*0.05,max_x + x_spread*0.05)
+    ax.set_ylim(min_y - y_spread*0.05,max_y + y_spread*0.05)
+    
+    for line in range(0,combined.shape[0]):
+        ax.text(combined[x_var][line]+0.005*x_spread, combined[y_var][line]+0.005*y_spread, \
+                combined['codon'][line], horizontalalignment='left',size='medium', color='black', weight='semibold')
+    
+    #ax = sns.pairplot(combined)
+    plt.savefig(scatterplot_file)
+    plt.close()
+
 
 def significance(codon_df,significance_file):
 
@@ -483,44 +554,6 @@ def significance(codon_df,significance_file):
         outFile.write("Coding : {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_coding,num_out_coding))
         outFile.write("Noncoding: {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_noncoding,num_out_noncoding))
 
-def class_separation(saved_file):
-
-    storage = []
-    
-    with open(saved_file) as inFile:
-        for l in inFile:
-            fields = json.loads(l)
-            id_field = "ID"
-            tscript_id = fields[id_field]
-            summed = np.asarray(fields['summed_attr']) / 1000
-            status = "<PC>" if tscript_id.startswith("NM_") or tscript_id.startswith("XM_") else "<NC>"
-            entry = {'transcript' : tscript_id , 'summed' : np.sum(summed), 'status' : status}
-            print(entry)
-            storage.append(entry)
-
-    df = pd.DataFrame(storage)
-    nc = df[df['status'] == '<NC>']
-    pc = df[df['status'] == '<PC>']
-    
-    min_pc = np.round(pc['summed'].min(),decimals=3)
-    max_pc = np.round(pc['summed'].max(),decimals=3)
-    min_nc = np.round(nc['summed'].min(),decimals=3)
-    max_nc = np.round(nc['summed'].max(),decimals=3)
-    minimum = min(min_pc,min_nc)
-    maximum = max(max_pc,max_nc)
-
-    bins = np.arange(minimum,maximum,0.0005)
-    pc_density,pc_bins = np.histogram(pc['summed'].values, bins=bins, density=True)
-    pc_density = pc_density / pc_density.sum()
-    nc_density,nc_bins = np.histogram(nc['summed'].values, bins=bins, density=True)
-    nc_density = nc_density / nc_density.sum()
-    jsd = jensenshannon(nc_density,pc_density)
-    print('JS Divergence:',jsd)
-
-    sns.histplot(df,x="summed",kde=False,hue="status",stat="density")
-    plt.tight_layout(rect=[0,0.03,1,0.95])
-    plt.savefig(saved_file+'_class_hist.svg')
-    plt.close()
 
 def IG_correlations(file_a,file_b):
 
@@ -570,11 +603,12 @@ def run_attributions(saved_file,df,tgt_field,best_dir,mode="attn"):
     significance_file = prefix+"significance.txt"
     hist_file = prefix+"pos_hist.svg"
 
-    top_indices(saved_file,tgt_field,coding_indices_file,noncoding_indices_file,mode=mode)
-    top_k_to_substrings(coding_indices_file,coding_motifs_file,df)
-    top_k_to_substrings(noncoding_indices_file,noncoding_motifs_file,df)
-    get_positional_bias(coding_indices_file,noncoding_indices_file,hist_file)
-    codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significance_file,mode)
+    #top_indices(saved_file,tgt_field,coding_indices_file,noncoding_indices_file,mode=mode)
+    #top_k_to_substrings(coding_indices_file,coding_motifs_file,df)
+    #top_k_to_substrings(noncoding_indices_file,noncoding_motifs_file,df)
+    #get_positional_bias(coding_indices_file,noncoding_indices_file,hist_file)
+    #codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significance_file,mode)
+    mutation_analysis(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significance_file,'A',mode)
 
 def get_positional_bias(coding_indices_file,noncoding_indices_file,hist_file):
 
@@ -682,11 +716,11 @@ def visualize_attribution(data_file,attr_file):
                 
             with open('html_file.html', 'w') as f:
                 f.write(html)
-                
+
 if __name__ == "__main__":
     
-    plt.style.use('ggplot')
-    sns.set_style("whitegrid")
+    #plt.style.use('ggplot')
+    #sns.set_style("whitegrid")
    
     # ingest stored data
     data_file = "../Fa/refseq_combined_cds.csv.gz"
@@ -720,13 +754,13 @@ if __name__ == "__main__":
 
     print("bioseq2seq avg")
     run_attributions("output/test/seq2seq/best_seq2seq_avg_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
-    print("bioseq2seq zero")
-    run_attributions("output/test/seq2seq/best_seq2seq_zero_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
+    #print("bioseq2seq zero")
+    #run_attributions("output/test/seq2seq/best_seq2seq_zero_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
     
     print("EDC avg")
-    run_attributions("output/test/ED_classify/best_ED_classify_avg_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
+    #run_attributions("output/test/ED_classify/best_ED_classify_avg_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
     print("EDC zero")
-    run_attributions("output/test/ED_classify/best_ED_classify_zero_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
+    #run_attributions("output/test/ED_classify/best_ED_classify_zero_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
     
     '''
     for l in range(4):

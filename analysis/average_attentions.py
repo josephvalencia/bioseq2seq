@@ -370,15 +370,16 @@ def plot_power_spectrum(consensus,title,spectrum_file,mode,units='freq'):
             layer = i // 8
             label = layer if i % 8 == 0 else None
             ax1.plot(x_vals,ps[:,i],color=palette[layer],label=label,alpha=0.6)
+            #ax1.plot(x_vals,ps[:,i],label=i,alpha=0.6)
     else:
         #labels = ['A','C','G','T']
-        labels = ['mean','zero']
+        #labels = ['mean','zero']
         #labels = ['A','C','G','mean','zero']
-        for i in range(len(labels)):
-            ax1.plot(x_vals,ps[:,i],color=palette[i],label=labels[i],alpha=0.6)
+        #for i in range(len(labels)):
+        #    ax1.plot(x_vals,ps[:,i],color=palette[i],label=labels[i],alpha=0.6)
     
-        #ax1.plot(x_vals,ps[:,4],color=palette[0],label='mean',alpha=0.6)
-        #ax1.plot(x_vals,ps[:,5],color=palette[1],label='zero',alpha=0.6)
+        ax1.plot(x_vals,ps[:,4],color=palette[0],label='mean',alpha=0.6)
+        ax1.plot(x_vals,ps[:,5],color=palette[1],label='zero',alpha=0.6)
    
     tick_labels = ["0",r'$\frac{1}{10}$']+[r"$\frac{1}{"+str(x)+r"}$" for x in range(5,1,-1)]
     tick_locs =[0,1.0/10]+ [1.0 / x for x in range(5,1,-1)]
@@ -503,6 +504,7 @@ if __name__ == "__main__":
     df_val = df_val.set_index('ID')
     df_train = df_train.set_index('ID')
     '''
+    ''' 
     test_file = "../Fa/test.csv"
     train_file = "../Fa/train.csv"
     val_file = "../Fa/val.csv"
@@ -549,11 +551,11 @@ if __name__ == "__main__":
     build_consensus_EDA('best_ED_classify_test',ED_attn_file_list,coding=True)
     
     # build multi_IG consensus
-    #build_consensus_multi_IG('best_seq2seq_test',seq_four_test_new,'summed_attr',coding=False)
-    #build_consensus_multi_IG('best_ED_classify_test',ED_file_list,'summed_attr',coding=False)
-    #build_consensus_multi_IG('best_seq2seq_test',seq_four_test_new,'summed_attr',coding=True)
-    #build_consensus_multi_IG('best_ED_classify_test',ED_file_list,'summed_attr',coding=True)
-     
+    #build_consensus_multi_IG('best_seq2seq_test_sum',seq_four_test_new,'summed_attr',coding=False)
+    #build_consensus_multi_IG('best_ED_classify_test_sum',ED_file_list,'summed_attr',coding=False)
+    #build_consensus_multi_IG('best_seq2seq_test_sum',seq_four_test_new,'summed_attr',coding=True)
+    #build_consensus_multi_IG('best_ED_classify_test_sum',ED_file_list,'summed_attr',coding=True)
+    '''
     # load example transcripts
     examples = np.load('example_ids.npz',allow_pickle=True)
     id_list = examples['ids'].tolist()
@@ -585,13 +587,15 @@ if __name__ == "__main__":
     '''
     consensus = np.load('best_seq2seq_test_PC_EDA_consensus.npz')['consensus']
     plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_PC_EDA_spectrum.svg",mode='attn')
-
-    #consensus = np.load('best_seq2seq_test_PC_multi_consensus.npz')['consensus']
-    #plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_PC_IG_spectrum.svg",mode='IG')
+    consensus = np.load('best_seq2seq_test_NC_EDA_consensus.npz')['consensus']
+    plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_NC_EDA_spectrum.svg",mode='attn')
+    
+    #consensus = np.load('best_seq2seq_test_sum_PC_multi_consensus.npz')['consensus']
+    #plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_sum_PC_IG_spectrum.svg",mode='IG')
     #plot_heatmap(-np.transpose(consensus),18,"bioseq2seq_test","best_seq2seq_test_PC_MDIG_heatmap.svg","best_seq2seq_test_PC_MDIG_hist.svg")
     
-    #consensus = np.load('best_seq2seq_test_NC_multi_consensus.npz')['consensus']
-    #plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_NC_IG_spectrum.svg",mode='IG')
+    #consensus = np.load('best_seq2seq_test_sum_NC_multi_consensus.npz')['consensus']
+    #plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_sum_NC_IG_spectrum.svg",mode='IG')
     #plot_heatmap(-np.transpose(consensus),106,"bioseq2seq_test","best_seq2seq_test_NC_MDIG_heatmap.svg","best_seq2seq_test_NC_MDIG_hist.svg")
     
     #consensus = np.load('best_seq2seq_test_PC_multi_consensus.npz')['consensus']
@@ -600,13 +604,13 @@ if __name__ == "__main__":
     consensus = np.load("best_ED_classify_test_PC_EDA_consensus.npz")['consensus']
     plot_power_spectrum(consensus,"EDC","best_EDC_test_PC_EDA_spectrum.svg",mode='attn')
    
-    #consensus = np.load("best_ED_classify_test_NC_EDA_consensus.npz")['consensus']
-    #plot_power_spectrum(consensus,"EDC","best_EDC_test_NC_EDA_spectrum.svg",mode='attn')
+    consensus = np.load("best_ED_classify_test_NC_EDA_consensus.npz")['consensus']
+    plot_power_spectrum(consensus,"EDC","best_EDC_test_NC_EDA_spectrum.svg",mode='attn')
 
-    #consensus = np.load("best_ED_classify_test_PC_multi_consensus.npz")['consensus']
-    #plot_power_spectrum(consensus,"EDC","best_EDC_test_PC_IG_spectrum.svg",mode='IG')
+    #consensus = np.load("best_ED_classify_test_sum_NC_multi_consensus.npz")['consensus']
+    #plot_power_spectrum(consensus,"EDC","best_EDC_test_sum_NC_IG_spectrum.svg",mode='IG')
     #plot_heatmap(-np.transpose(consensus),12,"EDC_test","best_EDC_test_PC_MDIG_heatmap.svg","best_EDC_test_PC_MDIG_hist.svg")
 
-    #consensus = np.load("best_ED_classify_test_NC_multi_consensus.npz")['consensus']
-    #plot_power_spectrum(consensus,"EDC","best_EDC_test_NC_IG_spectrum.svg",mode='IG')
+    #consensus = np.load("best_ED_classify_test_norm_NC_multi_consensus.npz")['consensus']
+    #plot_power_spectrum(consensus,"EDC","best_EDC_test_norm_NC_IG_spectrum.svg",mode='IG')
     #plot_heatmap(-np.transpose(consensus),104,"EDC_test","best_EDC_test_NC_MDIG_heatmap.svg","best_EDC_test_NC_MDIG_hist.svg")

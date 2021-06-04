@@ -4,6 +4,7 @@ import pandas as pd
 import torch
 import random
 import time
+import numpy as np
 
 from bioseq2seq.inputters import TextDataReader,get_fields
 from bioseq2seq.inputters.text_dataset import TextMultiField
@@ -13,7 +14,7 @@ from bioseq2seq.modules.embeddings import PositionalEncoding
 
 from torchtext.data import RawField
 from bioseq2seq.bin.batcher import train_test_val_split
-from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition,train_test_val_split
+from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, train_test_val_split
 from bioseq2seq.bin.batcher import train_test_val_split
 
 
@@ -30,9 +31,9 @@ def parse_args():
     parser.add_argument("--output_name","--o", default = "translation",help = "Name of file for saving predicted translations")
     parser.add_argument("--checkpoint", "--c",help="ONMT checkpoint (.pt)")
     parser.add_argument("--mode",default = "translate",help="translate|classify|combined")
-    parser.add_argument("--dataset",default="validation",help="train|validation|test")
-    parser.add_argument("--rank",default=0)
-    
+    parser.add_argument("--rank",type=int,default=0)
+    parser.add_argument("--num_gpus",type=int,default=1)
+
     # translate optional args
     parser.add_argument("--beam_size","--b",type = int, default = 8, help ="Beam size for decoding")
     parser.add_argument("--n_best", type = int, default = 4, help = "Number of beams to wait for")
@@ -83,14 +84,14 @@ def make_vocab(fields,src,tgt):
 
 def arrange_data_by_mode(df, mode):
 
-    if args.mode == "translate":
+    if mode == "translate":
         # in translate-only mode, only protein coding are considered
         df = df[df['Type'] == "<PC>"]
         protein = df['Protein'].tolist()
-    elif args.mode == "combined":
+    elif mode == "combined":
         # identify and translate coding, identify non coding
         protein = (df['Type'] + df['Protein']).tolist()
-    elif args.mode == "ED_classify":
+    elif mode == "ED_classify":
         # regular binary classifiation coding/noncoding
         protein = df['Type'].tolist()
 
@@ -100,64 +101,74 @@ def arrange_data_by_mode(df, mode):
     
     return protein,ids,rna,cds
 
-def translate_from_transformer_checkpt(args,use_splits=False):
+def exclude_transcripts(data):
+
+    # hack to process seqs that failed on GPU
+    failed = pd.read_csv('../Fa/mammalian_1k_to_2k_RNA_reduced_80_ids.txt',sep='\n',names=['ID'])
+    failed = failed.set_index("ID")
+    print(failed)
+    data = data.set_index("ID")
+    #data = data.drop(labels=data.index.difference(failed.index))
+    data = data.drop(labels=failed.index)
+    data = data.reset_index()
+    print(data)
+    return data
+
+def partition(df,split_ratios,random_seed):
+
+    df = df.sample(frac=1.0, random_state=random_seed).reset_index(drop=True)
+    N = df.shape[0]
+
+    cumulative = [split_ratios[0]]
+    # splits to cumulative percentages
+    for i in range(1,len(split_ratios) -1):
+        cumulative.append(cumulative[i-1]+split_ratios[i])
+
+    split_points = [int(round(x*N)) for x in cumulative]
+
+    # split dataframe at split points
+    return np.split(df,split_points)
+
+def run_helper(rank,model,vocab,args):
 
     random_seed = 65
     random.seed(random_seed)
     state = random.getstate()
+    file_prefix = args.output_name
+    device = "cuda:{}".format(rank)
+    #device = 'cpu'
 
     data = pd.read_csv(args.input,sep="\t")
-    
-    '''
-    # hack to process seqs that failed on GPU
-    failed = pd.read_csv('seq2seq_4_zebrafish.failures',names=['ID'])
-    failed = failed.set_index("ID")
-    data = data.set_index("ID")
-    data = data.drop(labels=data.index.difference(failed.index))
-    data = data.reset_index()
-    print(data) 
-    ''' 
+    data = exclude_transcripts(data)
     data["CDS"] = ["-1" for _ in range(data.shape[0])]
+    
+    if args.num_gpus > 1:
+        file_prefix += '.rank_{}'.format(rank)
+
+    if args.num_gpus > 0:
+        # One CUDA device per process
+        torch.cuda.set_device(device)
+        model.cuda()
+        split_ratios = [1.0/args.num_gpus] * args.num_gpus
+        df_partitions = partition(data,split_ratios,random_seed)
+        data = df_partitions[rank]
+
     protein,ids,rna,cds = arrange_data_by_mode(data,args.mode)
+    text_fields = make_vocab(vocab,rna,protein)
     
-    '''
-    # replicate splits
-    if use_splits:
-        train,test,dev = train_test_val_split(data,2000,random_seed,min_len=1000,splits=[0.0,0.9454,0.0546])
-        #train,test,dev = train_test_val_split(data,1000,random_seed,splits=[0.0,0.0,1.00])
-        total = len(train)+len(test)+len(dev)
-        print(total,len(dev))
-        if args.dataset == "validation":
-            protein,ids,rna,cds = arrange_data_by_mode(dev,args.mode)
-        elif args.dataset == "test":
-            protein,ids,rna,cds = arrange_data_by_mode(test,args.mode)
-        elif args.dataset == "train":
-            protein,ids,rna,cds = arrange_data_by_mode(train,args.mode)
-    else:
-        protein,ids,rna,cds = arrange_data_by_mode(data,args.mode)
-    '''
-    device = "cuda:{}".format(args.rank)
-    #device = "cpu"
-    
-    checkpoint = torch.load(args.checkpoint,map_location = device)
-    options = checkpoint['opt']
-    vocab = checkpoint['vocab']
-    print(vocab['tgt'].vocab.stoi)
-    print(vocab['src'].vocab.stoi)
-
-    if not options is None:
-        model_name = ""
-        print("----------- Saved Parameters for ------------ {}".format("SAVED MODEL"))
-        for k,v in vars(options).items():
-            print(k,v)
- 
-    model = restore_transformer_model(checkpoint,device,options)
-    model.eval()
-
-    text_fields = make_vocab(checkpoint['vocab'],rna,protein)
-    translate(model,text_fields,rna,protein,ids,cds,device,beam_size=args.beam_size,
-            n_best=args.n_best,save_preds=True,save_attn=True,
-            attn_save_layer=args.attn_save_layer,file_prefix=args.output_name)
+    translate(model,
+            text_fields,
+            rna,
+            protein,
+            ids,
+            cds,
+            device,
+            beam_size=args.beam_size,
+            n_best=args.n_best,
+            save_preds=True,
+            save_attn=True,
+            attn_save_layer=args.attn_save_layer,
+            file_prefix=file_prefix)
 
 def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
                     n_best = 4,save_preds=False,save_attn=False,attn_save_layer=3,file_prefix= "temp"):
@@ -178,15 +189,8 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
                                    coverage_penalty = "none")
 
     MAX_LEN = 666
+    BATCH_SIZE = 1
 
-    # hack to expand positional encoding
-    '''
-    new_pe  = PositionalEncoding(0.0,128,max_len=MAX_LEN)
-    new_embedding = torch.nn.Sequential(*list(model.encoder.embeddings.make_embedding.children())[:-1])
-    new_embedding.add_module('pe',new_pe)
-    new_embedding.to(device)
-    model.encoder.embeddings.make_embedding = new_embedding
-    '''
     translator = Translator(model,
                             device = device,
                             src_reader = TextDataReader(),
@@ -204,13 +208,41 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
                                                       tgt = protein,
                                                       names = ids,
                                                       cds = cds,
-                                                      batch_size = 1,
+                                                      batch_size = BATCH_SIZE,
                                                       save_attn = save_attn,
                                                       save_preds = save_preds,
                                                       save_scores = False)
     return predictions,golds,scores
 
+def translate_from_transformer_checkpt(args):
+
+    device = 'cpu'
+    checkpoint = torch.load(args.checkpoint,map_location = device)
+    options = checkpoint['opt']
+    vocab = checkpoint['vocab']
+
+    if not options is None:
+        print(vocab['tgt'].vocab.stoi)
+        print(vocab['src'].vocab.stoi)
+        model_name = ""
+        print("----------- Saved Parameters for ------------ {}".format("SAVED MODEL"))
+        for k,v in vars(options).items():
+            print(k,v)
+    quit() 
+    model = restore_transformer_model(checkpoint,device,options)
+    model.eval()
+
+    vocab = checkpoint['vocab']
+
+    if args.num_gpus > 1:
+        print('Translating on {} GPUs'.format(args.num_gpus))
+        torch.multiprocessing.spawn(run_helper, nprocs=args.num_gpus, args=(model,vocab,args))
+    elif args.num_gpus > 0:
+        run_helper(args.rank,model,vocab,args)
+    else:
+        run_helper(args.rank,model,vocab,args)
+
 if __name__ == "__main__":
 
     args = parse_args()
-    translate_from_transformer_checkpt(args,use_splits=True)
+    translate_from_transformer_checkpt(args)

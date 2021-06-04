@@ -181,13 +181,13 @@ def summarize_positional_heads(saved_attn):
 
 def pipeline(seq_attn_file,ED_attn_file):
 
-    seq_df = summarize_positional_heads(seq_attn_file).reset_index()
-    seq_df['model'] = ['bioseq2seq' for _ in range(len(seq_df))]
-    seq_df.to_csv('bioseq2seq_self_attn_maxes.csv',sep='\t')
+    #seq_df = summarize_positional_heads(seq_attn_file).reset_index()
+    #seq_df['model'] = ['bioseq2seq' for _ in range(len(seq_df))]
+    #seq_df.to_csv('bioseq2seq_self_attn_maxes.csv',sep='\t')
     
-    ED_df = summarize_positional_heads(ED_attn_file).reset_index()
-    ED_df['model'] = ['EDC' for _ in range(len(ED_df))]
-    ED_df.to_csv('EDC_self_attn_maxes.csv',sep='\t')
+    #ED_df = summarize_positional_heads(ED_attn_file).reset_index()
+    #ED_df['model'] = ['EDC' for _ in range(len(ED_df))]
+    #ED_df.to_csv('EDC_self_attn_maxes.csv',sep='\t')
     
     seq_df = pd.read_csv('bioseq2seq_self_attn_maxes.csv',sep='\t')
     ED_df = pd.read_csv('EDC_self_attn_maxes.csv',sep='\t')
@@ -222,7 +222,7 @@ def self_attn_heatmap_relative(a,vmin,vmax,prefix):
     annotations = np.asarray(annotations).reshape(4,8)
     annotations[inconsistent] = ""
    
-    heatmap(rel_weights,"Blues",vmin,vmax,prefix,annotations=annotations)
+    heatmap(rel_weights,"Greens",vmin,vmax,prefix,annotations=annotations)
     plt.tight_layout()
     plt.savefig(prefix+'_self_attn_maxes_rel_pos.svg')
     plt.close()
@@ -231,7 +231,7 @@ def self_attn_heatmap_absolute(a,vmin,vmax,prefix):
 
     abs_weights = a['abs_weight_mean'].values.reshape(4,8)
     
-    heatmap(abs_weights,"Reds",vmin,vmax,prefix)
+    heatmap(abs_weights,"Oranges",vmin,vmax,prefix)
     plt.tight_layout()
     plt.savefig(prefix+'_self_attn_maxes_abs_pos.svg')
     plt.close()
