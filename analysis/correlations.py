@@ -7,7 +7,7 @@ import numpy as np
 from collections import defaultdict
 import matplotlib.pyplot as plt
 
-def multiple_correlation(attr_storage,attn_files,prefix):
+def multiple_correlation(attr_storage,attn_files,prefix,subset):
     
     scores = []
     file_handlers = []
@@ -22,25 +22,22 @@ def multiple_correlation(attr_storage,attn_files,prefix):
         for line in fh:
             fields = json.loads(line)
             tscript_id = fields["TSCRIPT_ID"]
-            #tscript_id = fields["ID"]
-            for h in range(8):
-                tgt_head = "layer{}head{}".format(l,h)
-                #tgt_head = "summed_attr"
-                attn = np.asarray(fields[tgt_head])
-                attn_storage[tscript_id].append(attn)
+            if tscript_id in subset:
+                #tscript_id = fields["ID"]
+                for h in range(8):
+                    tgt_head = "layer{}head{}".format(l,h)
+                    #tgt_head = "summed_attr"
+                    attn = np.asarray(fields[tgt_head])
+                    attn_storage[tscript_id].append(attn)
 
     types = []
     max_attns = defaultdict(list)
 
     # match attention with attribution and process
     for tscript_id ,features in attn_storage.items():
-
         attr = attr_storage[tscript_id]
-        #attr = np.abs(np.asarray(attr) / 1000)
         attr = np.asarray(attr) / 1000
-        
         features = np.vstack(features).T
-
         maximums = features.max(axis=0).tolist()
         for h,m in enumerate(maximums):
             max_attns[h].append(m)
@@ -77,22 +74,6 @@ def multiple_correlation(attr_storage,attn_files,prefix):
     median = np.nanmedian(scores)
     print(prefix,mu,std,median)
 
-    '''
-    max_means = []
-    for h,m in sorted(max_attns.items(),key = lambda x : x[0]):
-        print(h,sum(m)/len(m))
-        max_means.append(sum(m)/len(m))
-
-    max_means = np.asarray(max_means)
-    max_means = max_means.reshape(4,8)
-    
-    ax = sns.heatmap(max_means,cmap="Blues",annot=True)
-    ax.set(xlabel="Head",ylabel="Layer")
-    plt.title("Maximum Attention Weight (mean)")
-    heat_plot = prefix+"_heatmap.pdf"
-    plt.savefig(heat_plot)
-    plt.close()
-    '''
     textstr = '\n'.join((
     r'$\mu=%.3f$' % (mu, ),
     r'$\mathrm{median}=%.3f$' % (median, ),
@@ -104,7 +85,7 @@ def multiple_correlation(attr_storage,attn_files,prefix):
     ax.text(0.075, 0.95, textstr, transform=ax.transAxes, fontsize=14,
     verticalalignment='top', bbox=props)
     ax.set(xlabel="Multiple Correlation (R)", ylabel='Density')
-    corr_plot = prefix +"_kendall_corrs.svg"
+    corr_plot = prefix +"_corrs.svg"
     plt.savefig(corr_plot)
     plt.close()
 
@@ -148,7 +129,6 @@ def strip_padding(src):
 
 if __name__ == "__main__":
 
-    attr_storage = {}
     
     '''
     avg_seq = "output/test/seq2seq/best_seq2seq_avg_pos_test.ig"
@@ -166,56 +146,69 @@ if __name__ == "__main__":
     ''' 
     
     # collate IG consensus
-    #bases = ['A','C','G','T','avg','zero']
-    bases = ['A','C','G','T']
-
+    bases = ['avg','zero']
+    #bases = ['A','C','G','T']
+    
+    subset = set()
+    sub_file = "output/test/redundancy/test_reduced_80_ids.txt" 
+    with open(sub_file) as inFile:
+        for l in inFile:
+            subset.add(l.rstrip())
+    print(subset) 
     ED_file_list = ['output/test/ED_classify/best_ED_classify_'+b+'_pos.ig' for b in bases] 
     seq_file_list = ['output/test/seq2seq/best_seq2seq_'+b+'_pos.ig' for b in bases]
     
     attn_files = ["output/test/seq2seq/best_seq2seq_test_layer"+str(l)+".enc_dec_attns" for l in range(4)]
     avg_seq = "output/test/seq2seq/best_seq2seq_avg_pos_test.ig"
     zero_seq = "output/test/seq2seq/best_seq2seq_zero_pos_test.ig"
-
+    '''
+    attr_storage = {}
     with open(avg_seq) as inFile:
         for l in inFile:
             fields = json.loads(l)
             id = fields["ID"]
-            src = fields['src']
-            l = strip_padding(src)
-            attr_storage[id] = fields["normed_attr"][:l]
-    
-    multiple_correlation(attr_storage,attn_files,"seq2seq_normed_avg")
-    
+            if id in subset:
+                src = fields['src']
+                l = strip_padding(src)
+                attr_storage[id] = fields["summed_attr"][:l]
+    multiple_correlation(attr_storage,attn_files,"seq2seq_summed_avg",subset)
+    ''' 
+    attr_storage = {}
     with open(zero_seq) as inFile:
         for l in inFile:
             fields = json.loads(l)
-            id = fields["ID"]
-            src = fields['src']
-            l = strip_padding(src)
-            attr_storage[id] = fields["normed_attr"][:l]
-    
-    multiple_correlation(attr_storage,attn_files,"seq2seq_normed_zero")
+            if id in subset:
+                id = fields["ID"]
+                src = fields['src']
+                l = strip_padding(src)
+                attr_storage[id] = fields["summed_attr"][:l]
+    print(subset) 
+    multiple_correlation(attr_storage,attn_files,"seq2seq_summed_zero",subset)
 
     attn_files = ["output/test/ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns" for l in range(4)]
     avg_EDC = "output/test/ED_classify/best_ED_classify_avg_pos_test.ig"
     zero_EDC = "output/test/ED_classify/best_ED_classify_zero_pos_test.ig" 
 
+    attr_storage = {}
     with open(avg_EDC) as inFile:
         for l in inFile:
             fields = json.loads(l)
             id = fields["ID"]
-            src = fields['src']
-            l = strip_padding(src)
-            attr_storage[id] = fields["normed_attr"][:l]
+            if id in subset:
+                src = fields['src']
+                l = strip_padding(src)
+                attr_storage[id] = fields["summed_attr"][:l]
 
-    multiple_correlation(attr_storage,attn_files,"ED_classify_avg_normed")
+    multiple_correlation(attr_storage,attn_files,"ED_classify_avg_summed",subset)
 
+    attr_storage = {}
     with open(zero_EDC) as inFile:
         for l in inFile:
             fields = json.loads(l)
             id = fields["ID"]
-            src = fields['src']
-            l = strip_padding(src)
-            attr_storage[id] = fields["normed_attr"][:l]
+            if id in subset:
+                src = fields['src']
+                l = strip_padding(src)
+                attr_storage[id] = fields["summed_attr"][:l]
 
-    multiple_correlation(attr_storage,attn_files,"ED_classify_zero_normed")
+    multiple_correlation(attr_storage,attn_files,"ED_classify_zero_summed",subset)

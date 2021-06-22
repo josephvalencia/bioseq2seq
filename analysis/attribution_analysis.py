@@ -246,56 +246,6 @@ def make_chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
-
-def mutation_analysis(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significance_file,baseline,mode="attn"):
-    
-    extra = []
-    
-    with open(saved_file) as inFile:
-        for l in inFile:
-            fields = json.loads(l)
-            id_field = "TSCRIPT_ID" if mode == "attn" else "ID"
-            id = fields[id_field]
-            array = fields[tgt_field]
-            seq = df.loc[id,'RNA']
-            tscript_type = df.loc[id,'Type']
-
-            if tscript_type == "<PC>":               
-                # use provided CDS
-                cds = df.loc[id,'CDS']
-                if cds != "-1":
-                    splits = cds.split(":")
-                    clean = lambda x : x[1:] if x.startswith("<") or x.startswith(">") else x
-                    cds_start,cds_end = tuple([int(clean(x)) for x in splits])
-                else:
-                    cds_start,cds_end = getLongestORF(seq)
-            else:
-                # use start and end of longest ORF
-                cds_start,cds_end = getLongestORF(seq)
-            
-            array = [float(x) / 1000 for x in array]
-            inside = defaultdict(lambda : [])
-            outside = defaultdict(lambda : [])
-
-            legal_chars = {'A','C','G','T'}
-            allowed = lambda codon : all([x in legal_chars for x in codon])
-            inframe = lambda x : x >= cds_start and x<=cds_end-2 and (x-cds_start) % 3 == 0 
-            
-            # inside CDS
-            for i in range(cds_start,cds_end-3,3):
-                print("________________________")
-                codon = seq[i:i+3]
-                print(codon)
-                if allowed(codon):
-                    codon_scores = array[i:i+3]
-                    print("________________________")
-                    for j in range(len(codon_scores)):
-                        new_codon = list(codon)
-                        new_codon[j] = baseline
-                        new_codon = ''.join(new_codon)
-                        print(new_codon)
-                         
-
 def codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significance_file,mode="attn"):
 
     extra = []
@@ -442,7 +392,6 @@ def boxplot_fn(data, **kws):
             mybox.set_facecolor(palette[1])
 
 def scatter_plot(a,scatterplot_file):
-
     
     #start_stop = ['ATG','TAA','TAG','TGA']
     #a = a[~a['codon'].isin(start_stop)]
@@ -554,7 +503,6 @@ def significance(codon_df,significance_file):
         outFile.write("Coding : {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_coding,num_out_coding))
         outFile.write("Noncoding: {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_noncoding,num_out_noncoding))
 
-
 def IG_correlations(file_a,file_b):
 
     corrs = []
@@ -603,12 +551,11 @@ def run_attributions(saved_file,df,tgt_field,best_dir,mode="attn"):
     significance_file = prefix+"significance.txt"
     hist_file = prefix+"pos_hist.svg"
 
-    #top_indices(saved_file,tgt_field,coding_indices_file,noncoding_indices_file,mode=mode)
-    #top_k_to_substrings(coding_indices_file,coding_motifs_file,df)
-    #top_k_to_substrings(noncoding_indices_file,noncoding_motifs_file,df)
-    #get_positional_bias(coding_indices_file,noncoding_indices_file,hist_file)
-    #codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significance_file,mode)
-    mutation_analysis(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significance_file,'A',mode)
+    top_indices(saved_file,tgt_field,coding_indices_file,noncoding_indices_file,mode=mode)
+    top_k_to_substrings(coding_indices_file,coding_motifs_file,df)
+    top_k_to_substrings(noncoding_indices_file,noncoding_motifs_file,df)
+    get_positional_bias(coding_indices_file,noncoding_indices_file,hist_file)
+    codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significance_file,mode)
 
 def get_positional_bias(coding_indices_file,noncoding_indices_file,hist_file):
 
@@ -618,7 +565,7 @@ def get_positional_bias(coding_indices_file,noncoding_indices_file,hist_file):
     nc = pd.read_csv(noncoding_indices_file,names=['ID','start'])
     df_attn = pd.concat([pc,nc])
     
-    df_val = pd.read_csv('../Fa/test.csv',sep="\t")
+    df_val = pd.read_csv('../Fa/train.csv',sep="\t")
     df_val['cds_start'] = [get_CDS_start(cds,seq) for cds,seq in zip(df_val['CDS'].values.tolist(),df_val['RNA'].values.tolist())]
     df = pd.merge(df_attn,df_val,on='ID')
     df['rel_start'] = df['start'] - df['cds_start'] -1
@@ -741,6 +688,8 @@ if __name__ == "__main__":
     '''
 
     # best bioseq2seq test
+    run_attributions("seq2seq_4_avg_pos_train.ig",df_train,"summed_attr","new_train_attr/", "IG")
+    run_attributions("seq2seq_4_zero_pos_train.ig",df_train,"summed_attr","new_train_attr/","IG") 
     #run_attributions("seq2seq_4_avg_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
     #run_attributions("seq2seq_4_zero_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
     #run_attributions("seq2seq_4_A_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
@@ -752,14 +701,11 @@ if __name__ == "__main__":
     #run_attributions("output/test/seq2seq/best_seq2seq_avg_pos_train.ig",df_train,"summed_attr","train_attributions/","IG") 
     #run_attributions("output/test/seq2seq/best_seq2seq_zero_pos_train.ig",df_train,"summed_attr","train_attributions/","IG") 
 
-    print("bioseq2seq avg")
-    run_attributions("output/test/seq2seq/best_seq2seq_avg_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
+    #run_attributions("output/test/seq2seq/best_seq2seq_avg_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
     #print("bioseq2seq zero")
     #run_attributions("output/test/seq2seq/best_seq2seq_zero_pos_test.ig",df_test,"summed_attr","test_attributions/","IG") 
     
-    print("EDC avg")
     #run_attributions("output/test/ED_classify/best_ED_classify_avg_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
-    print("EDC zero")
     #run_attributions("output/test/ED_classify/best_ED_classify_zero_pos_test.ig",df_test,"summed_attr","test_attributions/", "IG")
     
     '''

@@ -13,7 +13,15 @@ def find_motif_locations(fimo_output,by='start',stat='count'):
 
     # ingest stored data
     df_val = pd.read_csv('../Fa/test.csv',sep="\t")
+    df_val = df_val.set_index('ID')
     
+    subset = []
+    sub_file = "output/test/redundancy/test_reduced_80_ids.txt" 
+    with open(sub_file) as inFile:
+        for l in inFile:
+            subset.append(l.rstrip())
+    
+    df_val = df_val.loc[subset]
     df_val['cds_start'] = [get_CDS_start(cds,seq)[0] for cds,seq in zip(df_val['CDS'].values.tolist(),df_val['RNA'].values.tolist())]
     df_val['cds_end'] = [get_CDS_start(cds,seq)[1] for cds,seq in zip(df_val['CDS'].values.tolist(),df_val['RNA'].values.tolist())]
     

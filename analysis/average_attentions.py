@@ -42,9 +42,7 @@ def summarize_head(cds_storage,saved_file,tgt_head,mode="IG",align_on="start",co
             fields = orjson.loads(l)
             id_field = "TSCRIPT_ID" if mode == "attn" else "ID"
             id = fields[id_field]
-
             is_pc = lambda x : x.startswith('NM_') or x.startswith('XM_')
-
             if id in cds_storage:
                 # case 1 : protein coding  case 2 : non coding 
                 if (coding and is_pc(id)) or (not coding and not is_pc(id)): 
@@ -54,16 +52,12 @@ def summarize_head(cds_storage,saved_file,tgt_head,mode="IG",align_on="start",co
                         clean = lambda x : x[1:] if x.startswith("<") or x.startswith(">") else x
                         splits = [clean(x) for x in splits]
                         start,end = tuple([int(x) for x in splits])
-                        
                         attn = [float(x) /1000 for x in fields[tgt_head]]
-
                         # IG has padding, strip it out
                         if mode == "IG":
                             src = fields['src'].split('<pad>')[0]
                             attn = attn[:len(src)]
-
-                        #print("MDIG {} , start codon {}, scores {}".format(saved_file,src[start:start+3], attn[start:start+3]))
-
+                        # align relative to start or stop codon 
                         if align_on == "start":
                             before_lengths.append(start)
                             after_lengths.append(len(attn) - start)
@@ -72,14 +66,12 @@ def summarize_head(cds_storage,saved_file,tgt_head,mode="IG",align_on="start",co
                             after_lengths.append(len(attn) - end)
                         else:
                             raise ValueError("align_on must be 'start' or 'end'")
-                        
                         sample_ids.append(id)
                         samples.append(attn)
 
     percentiles = [10*x for x in range(11)]
     after_percentiles = np.percentile(after_lengths,percentiles)
     before_percentiles = np.percentile(before_lengths,percentiles)
-
     max_before = max(before_lengths)
     max_after = max(after_lengths)
     domain = np.arange(-max_before,999).reshape(1,-1)
@@ -90,12 +82,10 @@ def summarize_head(cds_storage,saved_file,tgt_head,mode="IG",align_on="start",co
         samples = [align_on_end(attn,end,max_after) for attn,end in zip(samples,before_lengths)]
     
     samples = np.asarray(samples)
-    print(samples.shape)
     support = np.count_nonzero(~np.isnan(samples),axis=0)
     sufficient = support >= 0.70*samples.shape[0]
     samples = samples[:,sufficient]
     domain = domain[:,sufficient]
-    print(domain)
     consensus = np.nanmean(samples,axis=0)
     return consensus,domain.ravel()
 
@@ -131,7 +121,6 @@ def build_consensus_IG(ig_file,tgt,coding=True):
 
 def build_consensus_multi_IG(name,ig_file_list,tgt,coding=True):
 
-    #combined_file = "../Fa/refseq_combined_cds.csv.gz"
     combined_file = "../Fa/test.csv"
     include_lnc = not coding
     cds_storage = load_CDS(combined_file,include_lnc=include_lnc)
@@ -186,7 +175,6 @@ def plot_line(domain,consensus,name,plot_type,plt_std_error=False,labels=None):
     plt.axhline(y=0, color='gray', linestyle=':')     
     plt.xlabel("Pos. Relative to CDS")
     plt.ylabel("Mean IG Score")
-    #plt.title(name)
     plt.legend()
     plt.tight_layout(rect=[0,0.03, 1, 0.95])
     plt.savefig(name+"codingprofile.svg")
@@ -255,8 +243,8 @@ def mean_by_mod(attn,savefile):
 def load_CDS(combined_file,include_lnc=False):
 
     df = pd.read_csv(combined_file,sep="\t")
+    
     df = df.set_index('ID')
-
     subset = []
     sub_file = "output/test/redundancy/test_reduced_80_ids.txt" 
     with open(sub_file) as inFile:
@@ -317,7 +305,7 @@ def align_on_end(attn,cds_end,max_end):
     total = prefix+attn+suffix
     return total
 
-def plot_heatmap(consensus,cds_start,title,heatmap_file,hist_file):
+def plot_heatmap(consensus,cds_start,title,heatmap_file):
 
     plt.figure(figsize=(24, 6))
     palette = sns.cubehelix_palette(start=.5, rot=-.5, as_cmap=True)
@@ -342,6 +330,7 @@ def plot_heatmap(consensus,cds_start,title,heatmap_file,hist_file):
     #ax = sns.heatmap(consensus_df,cmap='bwr',vmin=-.15,vmax=0.1,center=0,square=True,robust=True,xticklabels=3)
     
     ax = sns.heatmap(consensus_df,cmap='bwr',center=0,square=True,vmin=-0.08,vmax=0.04,robust=True,xticklabels=3)
+    #ax = sns.heatmap(consensus_df,cmap='bwr',center=0,square=True,robust=True,xticklabels=3)
     ax.set_yticklabels(ax.get_yticklabels(), rotation = 0, fontsize = 18)
     ax.tick_params(axis='x',labelsize=28)
     ax.axhline(y=0, color='k',linewidth=2.5)
@@ -351,7 +340,6 @@ def plot_heatmap(consensus,cds_start,title,heatmap_file,hist_file):
     ax.add_patch(Rectangle((b,0),3, 4, fill=False, edgecolor='yellow', lw=2.5))
     cax = plt.gcf().axes[-1]
     cax.tick_params(labelsize=24)
-
     plt.savefig(heatmap_file)
     plt.close()
 
@@ -373,13 +361,13 @@ def plot_power_spectrum(consensus,title,spectrum_file,mode,units='freq'):
             #ax1.plot(x_vals,ps[:,i],label=i,alpha=0.6)
     else:
         #labels = ['A','C','G','T']
-        #labels = ['mean','zero']
+        labels = ['mean','zero']
         #labels = ['A','C','G','mean','zero']
-        #for i in range(len(labels)):
-        #    ax1.plot(x_vals,ps[:,i],color=palette[i],label=labels[i],alpha=0.6)
+        for i in range(len(labels)):
+            ax1.plot(x_vals,ps[:,i],color=palette[i],label=labels[i],alpha=0.6)
     
-        ax1.plot(x_vals,ps[:,4],color=palette[0],label='mean',alpha=0.6)
-        ax1.plot(x_vals,ps[:,5],color=palette[1],label='zero',alpha=0.6)
+        #ax1.plot(x_vals,ps[:,4],color=palette[0],label='mean',alpha=0.6)
+        #ax1.plot(x_vals,ps[:,5],color=palette[1],label='zero',alpha=0.6)
    
     tick_labels = ["0",r'$\frac{1}{10}$']+[r"$\frac{1}{"+str(x)+r"}$" for x in range(5,1,-1)]
     tick_locs =[0,1.0/10]+ [1.0 / x for x in range(5,1,-1)]
@@ -395,7 +383,6 @@ def plot_power_spectrum(consensus,title,spectrum_file,mode,units='freq'):
     
     ax1.set_xlabel(x_label)
     ax1.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
-    
     plt.savefig(spectrum_file)
     plt.close()
 
@@ -493,18 +480,9 @@ def scale_min_max(consensus):
     maxes = consensus.max(axis=0)
     return  (consensus - mins) / (maxes - mins)
 
-if __name__ == "__main__":
-    '''
-    # ingest raw data
-    data_file = "../Fa/refseq_combined_cds.csv.gz"
-    dataframe = pd.read_csv(data_file,sep="\t",compression = "gzip")
-    cds_storage = load_CDS(data_file,include_lnc=True)
-     
-    df_train,df_test,df_val = train_test_val_split(dataframe,1000,65)
-    df_val = df_val.set_index('ID')
-    df_train = df_train.set_index('ID')
-    '''
-    ''' 
+
+def build_all():
+
     test_file = "../Fa/test.csv"
     train_file = "../Fa/train.csv"
     val_file = "../Fa/val.csv"
@@ -512,7 +490,7 @@ if __name__ == "__main__":
     cds_storage = load_CDS(test_file,include_lnc=True)
     df_test = pd.read_csv(test_file,sep='\t')
     df_test = df_test.set_index('ID')
-    
+   
     subset = []
     sub_file = "output/test/redundancy/test_reduced_80_ids.txt" 
     with open(sub_file) as inFile:
@@ -520,9 +498,8 @@ if __name__ == "__main__":
             subset.append(l.rstrip())
     
     df_test = df_test.loc[subset]
-
     # IG data
-    seq_bases = ['A','C','G','T','avg','zero']
+    seq_bases = ['avg','zero','A','C','G','T']
     short_bases = ['avg','zero']
     
     seq_four_test_new = ['output/test/seq2seq/best_seq2seq_'+b+'_pos_test.ig' for b in seq_bases]
@@ -543,19 +520,26 @@ if __name__ == "__main__":
     np.savez('example_ids.npz',ids=id_list,protein=seqs,rna=rna,starts=starts,ends=ends) 
     
     # build multi_IG examples
-    #build_example_multi_IG('best_seq2seq_test',seq_four_test_new,'summed_attr',id_list)
-    #build_example_multi_IG('best_ED_classify_test',ED_file_list,'summed_attr',id_list)
+    build_example_multi_IG('best_seq2seq_test',seq_four_test_new,'summed_attr',id_list)
+    build_example_multi_IG('best_ED_classify_test',ED_file_list,'summed_attr',id_list)
 
     # build EDA consensus
     build_consensus_EDA('best_seq2seq_test',seq_attn_file_list,coding=True)
     build_consensus_EDA('best_ED_classify_test',ED_attn_file_list,coding=True)
+    build_consensus_EDA('best_seq2seq_test',seq_attn_file_list,coding=False)
+    build_consensus_EDA('best_ED_classify_test',ED_attn_file_list,coding=False)
     
     # build multi_IG consensus
-    #build_consensus_multi_IG('best_seq2seq_test_sum',seq_four_test_new,'summed_attr',coding=False)
-    #build_consensus_multi_IG('best_ED_classify_test_sum',ED_file_list,'summed_attr',coding=False)
-    #build_consensus_multi_IG('best_seq2seq_test_sum',seq_four_test_new,'summed_attr',coding=True)
-    #build_consensus_multi_IG('best_ED_classify_test_sum',ED_file_list,'summed_attr',coding=True)
-    '''
+    build_consensus_multi_IG('best_seq2seq_test_sum',seq_four_test_new,'summed_attr',coding=True)
+    build_consensus_multi_IG('best_ED_classify_test_sum',ED_file_list,'summed_attr',coding=True)
+    build_consensus_multi_IG('best_seq2seq_test_sum',seq_four_test_new,'summed_attr',coding=False)
+    build_consensus_multi_IG('best_ED_classify_test_sum',ED_file_list,'summed_attr',coding=False)
+
+if __name__ == "__main__":
+    
+    #build_all()
+
+    ''' 
     # load example transcripts
     examples = np.load('example_ids.npz',allow_pickle=True)
     id_list = examples['ids'].tolist()
@@ -563,11 +547,10 @@ if __name__ == "__main__":
     ends = examples['ends'].tolist()
     proteins = examples['protein'].tolist()
     rna = examples['rna'].tolist()
-    ED_transcripts = ['examples/'+t+'_best_ED_classify_test_multi.npz' for t in id_list]
+    #ED_transcripts = ['examples/'+t+'_best_ED_classify_test_multi.npz' for t in id_list]
     seq_transcripts = ['examples/'+t+'_best_seq2seq_test_multi.npz' for t in id_list]
     scaler = preprocessing.StandardScaler()
     
-    '''
     # seq2seq transcript examples
     for f,s,e,r,p in zip(seq_transcripts,starts,ends,rna,proteins):
         name = f.split('.npz')[0]
@@ -575,8 +558,8 @@ if __name__ == "__main__":
         #consensus = scaler.fit_transform(-loaded['total'])
         consensus = -loaded['total']
         plot_heatmap(np.transpose(consensus),s,"",name+"_heatmap.svg")
-        optimize(consensus,name,r,p,s,e)
-   
+        #optimize(consensus,name,r,p,s,e)
+    
     # ED_classify transcript examples
     for f,s,e,r,p in zip(ED_transcripts,starts,ends,rna,proteins):
         name = 'examples/'+f.split('.npz')[0]
@@ -584,31 +567,32 @@ if __name__ == "__main__":
         consensus = -loaded['total']
         plot_heatmap(np.transpose(consensus),s,"",name+"_heatmap.svg")
         plot_power_spectrum(consensus,"",name+"_spectrum.svg")
-    '''
-    consensus = np.load('best_seq2seq_test_PC_EDA_consensus.npz')['consensus']
-    plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_PC_EDA_spectrum.svg",mode='attn')
+    ''' 
+    
+    #consensus = np.load('best_seq2seq_test_PC_EDA_consensus.npz')['consensus']
+    #plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_PC_EDA_spectrum.svg",mode='attn')
     consensus = np.load('best_seq2seq_test_NC_EDA_consensus.npz')['consensus']
     plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_NC_EDA_spectrum.svg",mode='attn')
     
     #consensus = np.load('best_seq2seq_test_sum_PC_multi_consensus.npz')['consensus']
     #plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_sum_PC_IG_spectrum.svg",mode='IG')
-    #plot_heatmap(-np.transpose(consensus),18,"bioseq2seq_test","best_seq2seq_test_PC_MDIG_heatmap.svg","best_seq2seq_test_PC_MDIG_hist.svg")
+    #plot_heatmap(-np.transpose(consensus),18,"bioseq2seq_test","best_seq2seq_test_PC_MDIG_heatmap.svg")
     
-    #consensus = np.load('best_seq2seq_test_sum_NC_multi_consensus.npz')['consensus']
-    #plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_sum_NC_IG_spectrum.svg",mode='IG')
-    #plot_heatmap(-np.transpose(consensus),106,"bioseq2seq_test","best_seq2seq_test_NC_MDIG_heatmap.svg","best_seq2seq_test_NC_MDIG_hist.svg")
+    consensus = np.load('best_seq2seq_test_sum_NC_multi_consensus.npz')['consensus']
+    plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_sum_NC_IG_spectrum.svg",mode='IG')
+    #plot_heatmap(-np.transpose(consensus),106,"bioseq2seq_test","best_seq2seq_test_NC_MDIG_heatmap.svg")
     
     #consensus = np.load('best_seq2seq_test_PC_multi_consensus.npz')['consensus']
     #plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_PC_IG_zero_spectrum.svg",mode='IG')
 
-    consensus = np.load("best_ED_classify_test_PC_EDA_consensus.npz")['consensus']
-    plot_power_spectrum(consensus,"EDC","best_EDC_test_PC_EDA_spectrum.svg",mode='attn')
+    #consensus = np.load("best_ED_classify_test_PC_EDA_consensus.npz")['consensus']
+    #plot_power_spectrum(consensus,"EDC","best_EDC_test_PC_EDA_spectrum.svg",mode='attn')
    
     consensus = np.load("best_ED_classify_test_NC_EDA_consensus.npz")['consensus']
     plot_power_spectrum(consensus,"EDC","best_EDC_test_NC_EDA_spectrum.svg",mode='attn')
 
-    #consensus = np.load("best_ED_classify_test_sum_NC_multi_consensus.npz")['consensus']
-    #plot_power_spectrum(consensus,"EDC","best_EDC_test_sum_NC_IG_spectrum.svg",mode='IG')
+    consensus = np.load("best_ED_classify_test_sum_NC_multi_consensus.npz")['consensus']
+    plot_power_spectrum(consensus,"EDC","best_EDC_test_sum_NC_IG_spectrum.svg",mode='IG')
     #plot_heatmap(-np.transpose(consensus),12,"EDC_test","best_EDC_test_PC_MDIG_heatmap.svg","best_EDC_test_PC_MDIG_hist.svg")
 
     #consensus = np.load("best_ED_classify_test_norm_NC_multi_consensus.npz")['consensus']

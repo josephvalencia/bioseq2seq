@@ -27,14 +27,10 @@ all_ids = []
 all_golds = []
 all_preds = []
 
-
 for i in range(0,len(lines)-8,8):
-    
     id = lines[i].split("ID: ")[1].rstrip()
-    
     if subset is not None and id not in subset:
         continue
-    
     preds = [x.rstrip().split("PRED: ") for x in lines[i+2:i+6]]
     preds = [x[1] if len(x) ==2 else "?" for x in preds]
     gold = lines[i+6].rstrip().split("GOLD: ")[1]
@@ -43,7 +39,6 @@ for i in range(0,len(lines)-8,8):
     all_preds.append(preds)
 
 best_scores, best_n_scores = evaluator.calculate_stats(all_preds,all_golds,all_ids,log_all=True)
-
 for k,v in best_scores.items():
     vals = np.asarray(v)
     if  vals.size > 1:
