@@ -116,47 +116,27 @@ class TranslationIterator:
         batch_sizes = []
 
         for batch in self.iterator:
-
             src_size = torch.sum(batch.src[1])
             tgt_size = batch.tgt.size(0)*batch.tgt.size(1)
             batch_sizes.append(batch.tgt.size()[1])
             total_tokens = src_size+tgt_size
-
             memory = torch.cuda.memory_allocated() / (1024*1024)
 
         df = pd.DataFrame()
         df['BATCH_SIZE'] = batch_sizes
         print(df.describe())
 
-def filter_by_length(translation_table,max_len,min_len=0):
-    '''Filter dataframe to RNA within (min_len,max_len)'''
-    
-    translation_table['RNA_LEN'] = [len(x) for x in translation_table['RNA'].values]
-    translation_table['Protein_LEN'] = [len(x) for x in translation_table['Protein'].values]
-
-    percentiles = [0.1 * x for x in range(1,10)]
-    translation_table = translation_table[translation_table['RNA_LEN'] < max_len]
-
-    if min_len > 0:
-        translation_table =  translation_table[translation_table['RNA_LEN'] > min_len]
-    
-    print("total number =",len(translation_table)) 
-    return translation_table[['ID','RNA', 'CDS', 'Type','Protein']]
-
 def basic_tokenize(original):
-
     return [c for c in original]
 
 def src_tokenize(original):
     "Converts genome into list of nucleotides"
-
     return [c for c in original]
 
 def tgt_tokenize(original):
     "Converts protein into list of amino acids prepended with class label "
 
     splits = re.match("(<\w*>)(\w*)",original)
-
     if not splits is None:
         label = splits.group(1)
         protein = splits.group(2)
@@ -165,27 +145,6 @@ def tgt_tokenize(original):
         protein = original
     return [label]+[c for c in protein]
 
-def train_test_val_split(translation_table,max_len,random_seed,min_len=0,splits=[0.8,0.1,0.1]):
-    
-    # keep entries with RNA length < max_len
-    translation_table = filter_by_length(translation_table,max_len,min_len)
-    # shuffle
-    translation_table = translation_table.sample(frac=1.0, random_state=random_seed).reset_index(drop=True)
-    N = translation_table.shape[0]
-
-    cumulative = [splits[0]]
-
-    # splits to cumulative percentages
-    for i in range(1,len(splits) -1):
-        cumulative.append(cumulative[i-1]+splits[i])
-
-    # train,test,val
-    split_points = [int(round(x*N)) for x in cumulative]
-
-    # split dataframe at split points
-    train,test,val = np.split(translation_table,split_points)
-
-    return train,test,val
 
 def partition(dataset, split_ratios, random_state):
 

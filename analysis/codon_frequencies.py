@@ -32,7 +32,7 @@ def count_codons(df,K):
        
         coding = True if (id.startswith('NM') or id.startswith('XM')) else False
         codonPos = {}
-        
+       
         if coding:
             # inside CDS
             for i in range(cds_start,cds_end-3,3):
@@ -59,6 +59,7 @@ def count_codons(df,K):
                         kMerCount[kMer] += 1.0
                         kMerTotal += 1.0
         '''
+
         for i in range(cds_start,cds_end-1,3):
             codon = seq[i:i+K]
             #print i, codon, start, end
@@ -78,7 +79,8 @@ def count_codons(df,K):
                     # update the count
                     kMerCount[kMer] += 1.0
                     kMerTotal += 1.0
-        ''' 
+    '''
+
     for codon in codonCount:
         codonCount[codon] /= codonTotal
     for kMer in kMerCount:

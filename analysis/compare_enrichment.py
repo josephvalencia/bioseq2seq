@@ -20,21 +20,23 @@ def compare(centrality_file,frequency_file):
     tau_list = []
     pearson_list = []
     spearman_list = []
-
+    x_var = 'score'
+    y_var ='enrichment'
     by_partition = combined.groupby('partition')
-    ''' 
+    print(by_partition)    
     for partition, df_partition in by_partition:
         by_aa = df_partition.groupby('amino acid')
         for idx, (aa,df_aa) in enumerate(by_aa):
+            print('partition=',partition) 
             print(df_aa)
             res = stats.kendalltau(df_aa[x_var].values,df_aa[y_var].values)
-            #print("Kendall tau = {}, p-val = {}".format(res.correlation,res.pvalue))
+            print("Kendall tau = {}, p-val = {}".format(res.correlation,res.pvalue))
             tau_list.append(res.correlation)
             res = stats.linregress(df_aa[x_var].astype('float').values,df_aa[y_var].astype('float').values)
-            #print("R-squared = {}, p-val = {}".format(res.rvalue,res.pvalue))
+            print("R-squared = {}, p-val = {}".format(res.rvalue,res.pvalue))
             pearson_list.append(res.rvalue)
             rho,pvalue = stats.spearmanr(df_aa[x_var].values,df_aa[y_var].values)
-            #print("Spearman = {}, p-val = {}".format(rho,pvalue))
+            print("Spearman = {}, p-val = {}".format(rho,pvalue))
             spearman_list.append(rho)
 
         print('Mean Kendall tau = {}, mean Pearson R = {}, mean Spearman rho = {}'.format(np.mean(tau_list),np.mean(pearson_list),np.mean(spearman_list)))
@@ -44,7 +46,6 @@ def compare(centrality_file,frequency_file):
         print("Total R-square  = {}, p-val = {}".format(res.rvalue**2,res.pvalue))
         rho,pvalue = stats.spearmanr(combined[x_var].values,combined[y_var].values)
         print("Spearman = {}, p-val = {}".format(rho,pvalue))
-        '''
 
     g = sns.FacetGrid(combined,col="partition",height=8,aspect=1.7)
     g.map_dataframe(scatter_fn)
@@ -73,8 +74,8 @@ def scatter_fn(data, **kws):
     max_y = np.max(data[y_var].values)
     x_spread = max_x - min_x
     y_spread = max_y - min_y
-    #ax.set_xlim([min_x-x_spread*0.05,max_x+x_spread*0.05])
-    #ax.set_ylim([min_y-y_spread*0.05,max_y+y_spread*0.05])
+    ax.set_xlim([min_x-x_spread*0.05,max_x+x_spread*0.05])
+    ax.set_ylim([min_y-y_spread*0.05,max_y+y_spread*0.05])
     
     # R-squared annotation
     res = stats.linregress(data[x_var].astype('float').values,data[y_var].astype('float').values)

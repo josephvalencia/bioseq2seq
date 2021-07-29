@@ -181,13 +181,13 @@ def summarize_positional_heads(saved_attn):
 
 def pipeline(seq_attn_file,ED_attn_file):
 
-    #seq_df = summarize_positional_heads(seq_attn_file).reset_index()
-    #seq_df['model'] = ['bioseq2seq' for _ in range(len(seq_df))]
-    #seq_df.to_csv('bioseq2seq_self_attn_maxes.csv',sep='\t')
+    seq_df = summarize_positional_heads(seq_attn_file).reset_index()
+    seq_df['model'] = ['bioseq2seq' for _ in range(len(seq_df))]
+    seq_df.to_csv('bioseq2seq_self_attn_maxes.csv',sep='\t')
     
-    #ED_df = summarize_positional_heads(ED_attn_file).reset_index()
-    #ED_df['model'] = ['EDC' for _ in range(len(ED_df))]
-    #ED_df.to_csv('EDC_self_attn_maxes.csv',sep='\t')
+    ED_df = summarize_positional_heads(ED_attn_file).reset_index()
+    ED_df['model'] = ['EDC' for _ in range(len(ED_df))]
+    ED_df.to_csv('EDC_self_attn_maxes.csv',sep='\t')
     
     seq_df = pd.read_csv('bioseq2seq_self_attn_maxes.csv',sep='\t')
     ED_df = pd.read_csv('EDC_self_attn_maxes.csv',sep='\t')

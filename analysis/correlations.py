@@ -7,7 +7,7 @@ import numpy as np
 from collections import defaultdict
 import matplotlib.pyplot as plt
 
-def multiple_correlation(attr_storage,attn_files,prefix,subset):
+def multiple_correlation(attr_storage,attn_files,prefix):
     
     scores = []
     file_handlers = []
@@ -22,21 +22,20 @@ def multiple_correlation(attr_storage,attn_files,prefix,subset):
         for line in fh:
             fields = json.loads(line)
             tscript_id = fields["TSCRIPT_ID"]
-            if tscript_id in subset:
-                #tscript_id = fields["ID"]
-                for h in range(8):
-                    tgt_head = "layer{}head{}".format(l,h)
-                    #tgt_head = "summed_attr"
-                    attn = np.asarray(fields[tgt_head])
-                    attn_storage[tscript_id].append(attn)
+            #tscript_id = fields["ID"]
+            for h in range(8):
+                tgt_head = "layer{}head{}".format(l,h)
+                #tgt_head = "summed_attr"
+                attn = np.asarray(fields[tgt_head])
+                attn_storage[tscript_id].append(attn)
 
     types = []
     max_attns = defaultdict(list)
 
     # match attention with attribution and process
     for tscript_id ,features in attn_storage.items():
-        attr = attr_storage[tscript_id]
-        attr = np.asarray(attr) / 1000
+        attr = [float(x) for x in attr_storage[tscript_id]]
+        attr = np.asarray(attr) 
         features = np.vstack(features).T
         maximums = features.max(axis=0).tolist()
         for h,m in enumerate(maximums):
@@ -149,41 +148,32 @@ if __name__ == "__main__":
     bases = ['avg','zero']
     #bases = ['A','C','G','T']
     
-    subset = set()
-    sub_file = "output/test/redundancy/test_reduced_80_ids.txt" 
-    with open(sub_file) as inFile:
-        for l in inFile:
-            subset.add(l.rstrip())
-    print(subset) 
     ED_file_list = ['output/test/ED_classify/best_ED_classify_'+b+'_pos.ig' for b in bases] 
     seq_file_list = ['output/test/seq2seq/best_seq2seq_'+b+'_pos.ig' for b in bases]
     
     attn_files = ["output/test/seq2seq/best_seq2seq_test_layer"+str(l)+".enc_dec_attns" for l in range(4)]
     avg_seq = "output/test/seq2seq/best_seq2seq_avg_pos_test.ig"
     zero_seq = "output/test/seq2seq/best_seq2seq_zero_pos_test.ig"
-    '''
+    
     attr_storage = {}
     with open(avg_seq) as inFile:
         for l in inFile:
             fields = json.loads(l)
             id = fields["ID"]
-            if id in subset:
-                src = fields['src']
-                l = strip_padding(src)
-                attr_storage[id] = fields["summed_attr"][:l]
-    multiple_correlation(attr_storage,attn_files,"seq2seq_summed_avg",subset)
-    ''' 
+            src = fields['src']
+            l = strip_padding(src)
+            attr_storage[id] = fields["summed_attr"][:l]
+    multiple_correlation(attr_storage,attn_files,"seq2seq_summed_avg")
+    
     attr_storage = {}
     with open(zero_seq) as inFile:
         for l in inFile:
             fields = json.loads(l)
-            if id in subset:
-                id = fields["ID"]
-                src = fields['src']
-                l = strip_padding(src)
-                attr_storage[id] = fields["summed_attr"][:l]
-    print(subset) 
-    multiple_correlation(attr_storage,attn_files,"seq2seq_summed_zero",subset)
+            id = fields["ID"]
+            src = fields['src']
+            l = strip_padding(src)
+            attr_storage[id] = fields["summed_attr"][:l]
+    multiple_correlation(attr_storage,attn_files,"seq2seq_summed_zero")
 
     attn_files = ["output/test/ED_classify/best_ED_classify_layer"+str(l)+".enc_dec_attns" for l in range(4)]
     avg_EDC = "output/test/ED_classify/best_ED_classify_avg_pos_test.ig"
@@ -194,21 +184,17 @@ if __name__ == "__main__":
         for l in inFile:
             fields = json.loads(l)
             id = fields["ID"]
-            if id in subset:
-                src = fields['src']
-                l = strip_padding(src)
-                attr_storage[id] = fields["summed_attr"][:l]
-
-    multiple_correlation(attr_storage,attn_files,"ED_classify_avg_summed",subset)
+            src = fields['src']
+            l = strip_padding(src)
+            attr_storage[id] = fields["summed_attr"][:l]
+    multiple_correlation(attr_storage,attn_files,"ED_classify_avg_summed")
 
     attr_storage = {}
     with open(zero_EDC) as inFile:
         for l in inFile:
             fields = json.loads(l)
             id = fields["ID"]
-            if id in subset:
-                src = fields['src']
-                l = strip_padding(src)
-                attr_storage[id] = fields["summed_attr"][:l]
-
-    multiple_correlation(attr_storage,attn_files,"ED_classify_zero_summed",subset)
+            src = fields['src']
+            l = strip_padding(src)
+            attr_storage[id] = fields["summed_attr"][:l]
+    multiple_correlation(attr_storage,attn_files,"ED_classify_zero_summed")

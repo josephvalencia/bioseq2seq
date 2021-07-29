@@ -165,20 +165,18 @@ class BeamSearch(DecodeStrategy):
 
         # Multiply probs by the beam probability.
         log_probs += self.topk_log_probs.view(_B * self.beam_size, 1)
-
         self.block_ngram_repeats(log_probs)
 
         # if the sequence ends now, then the penalty is the current
         # length + 1, to include the EOS token
         length_penalty = self.global_scorer.length_penalty(
             step + 1, alpha=self.global_scorer.alpha)
-
         # Flatten probs into a list of possibilities.
         curr_scores = log_probs / length_penalty
         curr_scores = curr_scores.reshape(_B, self.beam_size * vocab_size)
         torch.topk(curr_scores,  self.beam_size, dim=-1,
                    out=(self.topk_scores, self.topk_ids))
-
+        
         # Recover log probs.
         # Length penalty is just a scalar. It doesn't matter if it's applied
         # before or after the topk.

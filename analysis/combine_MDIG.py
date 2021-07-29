@@ -12,11 +12,10 @@ def combine(in_file_list,combined_file):
                 id = fields['ID']
                 # IG has padding, strip it out
                 src = fields['src'].split('<pad>')[0]
-                scores = fields['summed_attr']
+                scores = [float(x) for x in fields['summed_attr']]
                 scores = np.asarray(scores[:len(src)])
                 
                 if id not in storage:
-                    #entry = {'ID' : id , 'summed_attr' : scores , 'src' : src} 
                     entry = {'ID' : id , 'summed_attr' : [scores] , 'src' : src} 
                     storage[id] = entry
                 else :
@@ -27,16 +26,25 @@ def combine(in_file_list,combined_file):
     with open(combined_file,'w') as outFile:
         for tscript,entry in storage.items():
             all_MDIG = np.stack(entry['summed_attr'])
-            print(all_MDIG.shape)
-            maxes = all_MDIG.max(axis=0)
-            arg_maxes = all_MDIG.argmax(axis=0)
-            top_base = [chars[x] for x in arg_maxes.tolist()]
-            entry['summed_attr'] = maxes.tolist()
-            entry['top_bases']  = ''.join(top_base)
+            coding = tscript.startswith('XM') or tscript.startswith('NM')
+            
+            if coding:
+                maxes = all_MDIG.max(axis=0)
+                arg_maxes = all_MDIG.argmax(axis=0)
+                top_base = [chars[x] for x in arg_maxes.tolist()]
+                entry['summed_attr'] = maxes.tolist()
+                entry['top_bases']  = ''.join(top_base)
+            else:
+                mins = all_MDIG.min(axis=0)
+                arg_mins = all_MDIG.argmin(axis=0)
+                top_base = [chars[x] for x in arg_mins.tolist()]
+                entry['summed_attr'] = mins.tolist()
+                entry['top_bases']  = ''.join(top_base)
+            
             outFile.write(json.dumps(entry)+'\n') 
 
 if __name__ == "__main__":
     
     seq_bases = ['A','C','G','T']
-    seq_four_test_new = ['output/test/seq2seq/best_seq2seq_'+b+'_pos_test.ig' for b in seq_bases]
-    combine(seq_four_test_new,'max_MDIG.ig')
+    seq_three_test = ['new_output/IG/seq2seq_3_'+b+'_pos_test.ig' for b in seq_bases]
+    combine(seq_three_test,'max_MDIG.ig')

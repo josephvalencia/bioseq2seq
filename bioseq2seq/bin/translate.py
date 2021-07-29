@@ -13,9 +13,7 @@ from bioseq2seq.bin.models import make_transformer_seq2seq
 from bioseq2seq.modules.embeddings import PositionalEncoding
 
 from torchtext.data import RawField
-from bioseq2seq.bin.batcher import train_test_val_split
-from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, train_test_val_split
-from bioseq2seq.bin.batcher import train_test_val_split
+from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset
 
 
 def parse_args():
@@ -25,6 +23,8 @@ def parse_args():
 
     # optional flags
     parser.add_argument("--verbose",action="store_true")
+    parser.add_argument("--save_SA", action="store_true")
+    parser.add_argument("--save_EDA", action="store_true")
 
     # translate required args
     parser.add_argument("--input",help="File for translation")
@@ -38,8 +38,7 @@ def parse_args():
     parser.add_argument("--beam_size","--b",type = int, default = 8, help ="Beam size for decoding")
     parser.add_argument("--n_best", type = int, default = 4, help = "Number of beams to wait for")
     parser.add_argument("--alpha","--a",type = float, default = 1.0)
-    parser.add_argument("--attn_save_layer", type = int,default=0)
-    
+    parser.add_argument("--attn_save_layer", type = int,default=0,help="If --save_attn flag is used, which layer of EDA to save")
     return parser.parse_args()
 
 def restore_transformer_model(checkpoint,machine,opts):
@@ -98,7 +97,6 @@ def arrange_data_by_mode(df, mode):
     ids = df['ID'].tolist() 
     rna = df['RNA'].tolist()
     cds = df['CDS'].tolist()
-    
     return protein,ids,rna,cds
 
 def exclude_transcripts(data):
@@ -106,7 +104,6 @@ def exclude_transcripts(data):
     # hack to process seqs that failed on GPU
     failed = pd.read_csv('../Fa/mammalian_1k_to_2k_RNA_reduced_80_ids.txt',sep='\n',names=['ID'])
     failed = failed.set_index("ID")
-    print(failed)
     data = data.set_index("ID")
     #data = data.drop(labels=data.index.difference(failed.index))
     data = data.drop(labels=failed.index)
@@ -119,11 +116,10 @@ def partition(df,split_ratios,random_seed):
     df = df.sample(frac=1.0, random_state=random_seed).reset_index(drop=True)
     N = df.shape[0]
 
-    cumulative = [split_ratios[0]]
     # splits to cumulative percentages
+    cumulative = [split_ratios[0]]
     for i in range(1,len(split_ratios) -1):
         cumulative.append(cumulative[i-1]+split_ratios[i])
-
     split_points = [int(round(x*N)) for x in cumulative]
 
     # split dataframe at split points
@@ -139,7 +135,7 @@ def run_helper(rank,model,vocab,args):
     #device = 'cpu'
 
     data = pd.read_csv(args.input,sep="\t")
-    data = exclude_transcripts(data)
+    #data = exclude_transcripts(data)
     data["CDS"] = ["-1" for _ in range(data.shape[0])]
     
     if args.num_gpus > 1:
@@ -166,12 +162,13 @@ def run_helper(rank,model,vocab,args):
             beam_size=args.beam_size,
             n_best=args.n_best,
             save_preds=True,
-            save_attn=True,
+            save_SA=args.save_SA,
+            save_EDA=args.save_EDA,
             attn_save_layer=args.attn_save_layer,
             file_prefix=file_prefix)
 
 def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
-                    n_best = 4,save_preds=False,save_attn=False,attn_save_layer=3,file_prefix= "temp"):
+                    n_best = 4,save_preds=False,save_SA=False,save_EDA=False,attn_save_layer=3,file_prefix= "temp"):
     """ Translate raw data
     Args:
         model (bioseq2seq.translate.NMTModel): Encoder-Decoder + generator for translation
@@ -182,15 +179,15 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
         args (argparse.Namespace | dict): config arguments
         device (torch.device | str): device for translation.
     """
-    # global scorer for beam decoding
-    beam_scorer = GNMTGlobalScorer(alpha = 1.0,
-                                   beta = 0.0,
-                                   length_penalty = "avg",
-                                   coverage_penalty = "none")
-
-    MAX_LEN = 666
+    MAX_LEN = 333
     BATCH_SIZE = 1
-
+    
+    # global scorer for beam decoding
+    beam_scorer = GNMTGlobalScorer(alpha = 0.0,
+                                   beta = 0.0,
+                                   length_penalty = "none",
+                                   coverage_penalty = "none")
+    
     translator = Translator(model,
                             device = device,
                             src_reader = TextDataReader(),
@@ -203,16 +200,16 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
                             verbose = False,
                             attn_save_layer=attn_save_layer,
                             max_length = MAX_LEN)
-
-    predictions, golds, scores = translator.translate(src = rna,
-                                                      tgt = protein,
-                                                      names = ids,
-                                                      cds = cds,
-                                                      batch_size = BATCH_SIZE,
-                                                      save_attn = save_attn,
-                                                      save_preds = save_preds,
-                                                      save_scores = False)
-    return predictions,golds,scores
+    
+    translator.translate(src = rna,
+                          tgt = protein,
+                          names = ids,
+                          cds = cds,
+                          batch_size = BATCH_SIZE,
+                          save_SA = save_SA,
+                          save_EDA= save_EDA,
+                          save_preds = save_preds,
+                          save_scores = False)
 
 def translate_from_transformer_checkpt(args):
 
@@ -228,12 +225,11 @@ def translate_from_transformer_checkpt(args):
         print("----------- Saved Parameters for ------------ {}".format("SAVED MODEL"))
         for k,v in vars(options).items():
             print(k,v)
-    quit() 
+    
     model = restore_transformer_model(checkpoint,device,options)
     model.eval()
 
     vocab = checkpoint['vocab']
-
     if args.num_gpus > 1:
         print('Translating on {} GPUs'.format(args.num_gpus))
         torch.multiprocessing.spawn(run_helper, nprocs=args.num_gpus, args=(model,vocab,args))

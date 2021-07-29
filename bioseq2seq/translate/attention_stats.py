@@ -103,10 +103,8 @@ class EncoderDecoderAttentionDistribution(AttentionDistribution):
 
         for h in range(heads):
             field = "layer{}head{}".format(self.attn_save_layer,h)
-            slice = attn[0,h,0,:len(self.seq)]
-            entry[field] = slice.tolist()
-        
-        #entry['attn'] = attn[0,:len(self.seq)].tolist()
+            dist = attn[0,h,0,:len(self.seq)]
+            entry[field] = ['{:.3e}'.format(x) for x in dist.tolist()]
         return json.dumps(entry)
 
     def plot_heatmap(self):

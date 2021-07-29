@@ -93,7 +93,6 @@ class TranslationBuilder(object):
         
         for b in range(batch_size):
             if self._has_text_src:
-             
                 src_vocab = self.data.src_vocabs[inds[b]] \
                     if self.data.src_vocabs else None
                 src_raw = self.data.examples[inds[b]].src[0]
@@ -113,11 +112,12 @@ class TranslationBuilder(object):
                     src[:, b] if src is not None else None,
                     src_vocab, src_raw,
                     tgt[1:, b] if tgt is not None else None, None)
-           
-
+        
+            #pred_score_probs = [torch.exp(x) for x in pred_score[b]]
             translation = Translation(inds[b],
                 src[:, b] if src is not None else None,
-                                    src_raw, pred_sents, self_attn[0].permute(3,0,1,2), context_attn[b], pred_score[b],
+                        src_raw, pred_sents, self_attn[0].permute(3,0,1,2), context_attn[b], pred_score[b],
+                #src_raw, pred_sents, self_attn[0].permute(3,0,1,2), context_attn[b], pred_score_probs,
                 gold_sent, gold_score[b], align[b], coding_probs[b]
             )
             translations.append(translation)

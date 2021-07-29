@@ -12,14 +12,14 @@ import math
 import scipy
 import warnings
 
-from captum.attr import IntegratedGradients,DeepLift, Saliency
+from captum.attr import IntegratedGradients,DeepLift,DeepLiftShap, Saliency
 from captum.attr import configure_interpretable_embedding_layer, remove_interpretable_embedding_layer
 
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from bioseq2seq.modules import PositionalEncoding
 from bioseq2seq.bin.translate import make_vocab, restore_transformer_model
-from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition,train_test_val_split
+from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition
 
 
 class PredictionWrapper(torch.nn.Module):
@@ -181,46 +181,69 @@ class FeatureAttributor:
     def run_deeplift(self,savefile,val_iterator,target_pos,reduction,baseline):
 
         dl = DeepLift(self.predictor)
-
+       
         with open(savefile,'w') as outFile:
             for batch in tqdm.tqdm(val_iterator):
-
                 ids = batch.id
                 src, src_lens = batch.src
                 src = src.transpose(0,1)
-                batch_size = batch.batch_size
-                print(src.shape)        
-                #decoder_input, baseline_embed, src_embed = self.average_embed(src,batch_size)
-                baseline_embed, src_embed = self.zero_embed(src,batch_size)
-                decoder_input = self.decoder_input(batch_size)
-                #decoder_input, baseline_embed, src_embed = self.nucleotide_embed(src,batch_size)
-
-                pred_classes = self.predictor(src_embed,src_lens,decoder_input,batch_size)
-                pred,answer_idx = pred_classes.data.max(dim=-1)
-
-                attributions = dl.attribute(inputs=src_embed,
-                                            target=answer_idx,
-                                            baselines=baseline_embed,
-                                            return_convergence_delta=False,
-                                            additional_forward_args=(src_lens,decoder_input,batch_size)) 
                 
-                attributions = attributions.detach().cpu().numpy()
-
+                # can only do one batch at a time
+                batch_size = batch.batch_size
                 for j in range(batch_size):
-                    curr_attributions = attributions[j,:,:]
+                    
+                    curr_src = torch.unsqueeze(src[j,:,:],0)
+                    curr_src_embed = self.src_embed(curr_src)
+                    
+                    if baseline == "zero":
+                        baseline_embed = self.zero_embed(curr_src)
+                    elif baseline == "avg":
+                        baseline_embed = self.average_embed(curr_src)
+                    elif baseline in ['A','C','G','T']:
+                        baseline_embed = self.nucleotide_embed(curr_src,baseline)
+                    else:
+                        raise ValueError('Invalid IG baseline given')
 
-                    if reduction == "sum":
-                        curr_attributions = np.sum(curr_attributions,axis=1)
-                    else: 
-                        curr_attributions = np.linalg.norm(curr_attributions,2,axis=1)
+                    decoder_input = self.decoder_input(1) 
+                    curr_ids = batch.id
+                    curr_tgt = batch.tgt[target_pos,j,:]
+                    curr_tgt = torch.unsqueeze(curr_tgt,0)
+                    curr_tgt = torch.unsqueeze(curr_tgt,2)
+
+                    curr_src_lens = torch.max(src_lens)
+                    curr_src_lens = torch.unsqueeze(curr_src_lens,0)
+                    pred_classes = self.predictor(curr_src_embed,curr_src_lens,decoder_input,1)
+                    pred,answer_idx = pred_classes.data.cpu().max(dim=-1)
+                    pc_class = torch.tensor([[[self.pc_token]]]).to(self.device)
                     
-                    attr = [round(x,3) for x in curr_attributions.tolist()]
+                    n_steps = 50
+                    saved_src = np.squeeze(np.squeeze(curr_src.detach().cpu().numpy(),axis=0),axis=1).tolist()
+                    saved_src = "".join([self.vocab.itos[x] for x in saved_src])
+                     
+                    attributions,convergence_delta = dl.attribute(inputs=curr_src_embed,
+                                                target=pc_class,
+                                                baselines=baseline_embed,
+                                                return_convergence_delta=True,
+                                                additional_forward_args = (curr_src_lens,decoder_input,1))
                     
-                    entry = {"ID" : ids[j] , "attr" : attr}
+                    attributions = np.squeeze(attributions.detach().cpu().numpy(),axis=0)
+                    pct_error = convergence_delta.item() / np.sum(attributions)
+                   
+                    summed = np.sum(attributions,axis=1)
+                    normed = np.linalg.norm(attributions,2,axis=1)
+
+                    # MDIG
+                    if baseline in ['A','C','G','T']:
+                        summed = -summed
+                        normed = -normed
+
+                    true_len = len(saved_src)
+                    summed_attr = ['{:.3e}'.format(x) for x in summed.tolist()[:true_len]]
+                    normed_attr = ['{:.3e}'.format(x) for x in normed.tolist()[:true_len]]
+
+                    entry = {"ID" : ids[j] , "summed_attr" : summed_attr, "normed_attr" : normed_attr, "src" : saved_src}
                     summary = json.dumps(entry)
                     outFile.write(summary+"\n")
-                
-        remove_interpretable_embedding_layer(self.model,self.interpretable_emb)
 
     def run_integrated_gradients(self,savefile,val_iterator,target_pos,reduction,baseline):
 
@@ -250,7 +273,6 @@ class FeatureAttributor:
 
                     decoder_input = self.decoder_input(1) 
                     curr_ids = batch.id
-
                     curr_tgt = batch.tgt[target_pos,j,:]
                     curr_tgt = torch.unsqueeze(curr_tgt,0)
                     curr_tgt = torch.unsqueeze(curr_tgt,2)
@@ -260,16 +282,12 @@ class FeatureAttributor:
                     pred_classes = self.predictor(curr_src_embed,curr_src_lens,decoder_input,1)
                     pred,answer_idx = pred_classes.data.cpu().max(dim=-1)
                     pc_class = torch.tensor([[[self.pc_token]]]).to(self.device)
-
-                    #prob_pc = np.exp(pred_classes[0,24].item())
-                    #prob_nc = np.exp(pred_classes[0,25].item())
-                    #msg = "{}\t{}\t{}\t{}\t{}".format(ids[j],answer_idx.item(),curr_tgt.item(),prob_pc,prob_nc)
-                    #print(msg)
                     
                     n_steps = 50
                     saved_src = np.squeeze(np.squeeze(curr_src.detach().cpu().numpy(),axis=0),axis=1).tolist()
                     saved_src = "".join([self.vocab.itos[x] for x in saved_src])
-                     
+                    saved_src = saved_src.split('<pad>')[0]
+
                     attributions,convergence_delta = ig.attribute(inputs=curr_src_embed,
                                                 target=pc_class,
                                                 baselines=baseline_embed,
@@ -280,11 +298,18 @@ class FeatureAttributor:
                     
                     attributions = np.squeeze(attributions.detach().cpu().numpy(),axis=0)
                     pct_error = convergence_delta.item() / np.sum(attributions)
-                    
-                    summed  = 1000*np.sum(attributions,axis=1)
-                    normed = 1000*np.linalg.norm(attributions,2,axis=1)
-                    summed_attr = [round(x,3) for x in summed.tolist()]
-                    normed_attr = [round(x,3) for x in normed.tolist()]
+                   
+                    summed = np.sum(attributions,axis=1)
+                    normed = np.linalg.norm(attributions,2,axis=1)
+
+                    # MDIG
+                    if baseline in ['A','C','G','T']:
+                        summed = -summed
+                        normed = -normed
+
+                    true_len = len(saved_src)
+                    summed_attr = ['{:.3e}'.format(x) for x in summed.tolist()[:true_len]]
+                    normed_attr = ['{:.3e}'.format(x) for x in normed.tolist()[:true_len]]
 
                     entry = {"ID" : ids[j] , "summed_attr" : summed_attr, "normed_attr" : normed_attr, "src" : saved_src}
                     summary = json.dumps(entry)
@@ -371,7 +396,7 @@ def parse_args():
     
     return parser.parse_args()
 
-def run_helper(rank,args,model,vocab,use_splits=True):
+def run_helper(rank,args,model,vocab,use_splits=False):
     
     random_seed = 65
     random.seed(random_seed)
@@ -385,25 +410,10 @@ def run_helper(rank,args,model,vocab,use_splits=True):
     pc_token = vocab['tgt'].vocab['<PC>']
     print(vocab['tgt'].vocab.stoi)
 
-    if use_splits:
-        # replicate splits
-        df_train,df_test,df_dev = train_test_val_split(df,1000,random_seed)
-        train,test,dev = dataset_from_df([df_train.copy(),df_test.copy(),df_dev.copy()],mode=args.inference_mode,saved_vocab=vocab)
-        if args.dataset == "train":
-            dataset = train
-        elif args.dataset == "test":
-            dataset = test
-        elif args.dataset == "val":
-            dataset = dev
-        else:
-            raise ValueError('Invalid dataset argument')
-    else:
-        dataset = data
-    
-    #dataset = dataset_from_df([df],mode=args.inference_mode,saved_vocab=vocab)
+    dataset = dataset_from_df([df],mode=args.inference_mode,saved_vocab=vocab)[0]
     max_tokens_in_batch = 1000
     device = "cpu"
-    savefile = "{}.{}_{}.rank_{}".format(args.name,args.attribution_mode,args.reduction,rank)
+    savefile = "{}.{}.rank_{}".format(args.name,args.attribution_mode,rank)
 
     if args.num_gpus > 0: # GPU training
         # One CUDA device per process
@@ -415,7 +425,6 @@ def run_helper(rank,args,model,vocab,use_splits=True):
         splits = [1.0/args.num_gpus for _ in range(args.num_gpus)]
         dev_partitions = partition(dataset,split_ratios = splits,random_state = random_state)
         local_slice = dev_partitions[rank]
-
         # iterator over evaluation batches
         val_iterator = iterator_from_dataset(local_slice,max_tokens_in_batch,device,train=False)
         attributor = FeatureAttributor(model,device,sos_token,pad_token,pc_token,vocab['src'].vocab,rank=rank,world_size=args.num_gpus)

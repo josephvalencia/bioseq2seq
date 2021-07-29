@@ -6,9 +6,15 @@
 *.ig
 *.npz
 *.out
+*.txt
+*.dat
 *.pdf
 *.self_attns
 *.enc_dec_attns
+*.ensemble
+*.gz
+*.fasta
+*.json
 *.scores
 *.csv
 *.tsv
@@ -16,6 +22,7 @@
 *.fa
 *.svg
 *.txt
+*.hdf5
 *.attr
 *.pt
 *.failures
@@ -24,6 +31,7 @@
 .DS_Store
 data/
 /output/
+/new_output/
 /results/
 /checkpoints/
 # Byte-compiled / optimized / DLL files

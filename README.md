@@ -1,10 +1,9 @@
 # BioSeq2Seq: Open-Source Neural Machine Translation of biologial sequence.
 
-This repo is an extension of [OpenNMT](https://github.com/OpenNMT/OpenNMT),
-a neural machine translation system. It is designed to be research friendly to try out new ideas in translation, summary, image-to-text, morphology, and many other domains. Some companies have proven the code to be production ready.
+This repo adapts [OpenNMT](https://github.com/OpenNMT/OpenNMT),
+a neural machine translation system, to perform biological translation.
 
-
-## Requirements
+## Installation
 
 Install `OpenNMT-py` from `pip`:
 ```bash
@@ -77,5 +76,5 @@ Now you have a model which you can use to predict on new data. We do this by run
 
 ## Citation
 
-[OpenNMT: Neural Machine Translation Toolkit](https://arxiv.org/pdf/1805.11462)
+[Learning to translate improves prediction and interpretbility of Transformer neural networks for protein coding potential](https://arxiv.org/pdf/1805.11462)
 
