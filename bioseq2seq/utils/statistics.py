@@ -16,7 +16,7 @@ class Statistics(object):
     * elapsed time
     """
 
-    def __init__(self, loss=0, n_words=0, n_correct=0):
+    def __init__(self, loss=0, n_words=0, n_correct=0,n_batches=0,n_correct_class=0):
 
         # Unstructured Metrics
         self.loss = loss
@@ -24,6 +24,8 @@ class Statistics(object):
         self.n_correct = n_correct
         self.n_src_words = 0
         self.start_time = time.time()
+        self.n_batches = n_batches
+        self.n_correct_class = n_correct_class
 
         # Structured metrics (Top1)
         self.kmer_precision_best = None
@@ -32,11 +34,6 @@ class Statistics(object):
         self.align_id_best = None
         self.f1 = None
 
-        # Structured metrics (TopN)
-        self.kmer_precision_best_n = None
-        self.kmer_recall_best_n = None
-        self.exact_match_best_n = None
-        self.align_id_best_n = None
 
     @staticmethod
     def all_gather_stats(stat, max_size=4096):
@@ -95,6 +92,8 @@ class Statistics(object):
         self.loss += stat.loss
         self.n_words += stat.n_words
         self.n_correct += stat.n_correct
+        self.n_correct_class += stat.n_correct_class
+        self.n_batches += stat.n_batches
 
         if update_n_src_words:
             self.n_src_words += stat.n_src_words
@@ -103,23 +102,18 @@ class Statistics(object):
 
         self.kmer_recall_best = best_results['avg_kmer_recall']
         self.kmer_precision_best = best_results['avg_kmer_precision']
-
         if 'avg_align_id' in best_results:
             self.align_id_best = best_results['avg_align_id']
-
         if 'exact_match_rate' in best_results:
             self.exact_match_best = best_results['exact_match_rate']
 
         self.f1 = best_results["F1"]
 
         if best_n_results is not None:
-
             self.kmer_recall_best_n = best_results['avg_kmer_recall']
             self.kmer_precision_best_n = best_n_results['avg_kmer_precision']
-
             if 'avg_align_id' in best_results:
                 self.align_id_best_n = best_n_results['avg_align_id']
-
             if 'exact_match_rate' in best_results:
                 self.exact_match_best_n = best_n_results['exact_match_rate']
 
@@ -128,6 +122,10 @@ class Statistics(object):
         """ compute accuracy """
         return 100 * (self.n_correct / self.n_words)
 
+    def class_accuracy(self):
+        """ compute accuracy """
+        return 100 * (self.n_correct_class / self.n_batches)
+    
     def xent(self):
         """ compute cross entropy """
         return self.loss / self.n_words
@@ -171,6 +169,7 @@ class Statistics(object):
         writer.add_scalar(prefix + "/xent", self.xent(), step)
         writer.add_scalar(prefix + "/ppl", self.ppl(), step)
         writer.add_scalar(prefix + "/accuracy", self.accuracy(), step)
+        writer.add_scalar(prefix + "/class_accuracy", self.class_accuracy(), step)
         writer.add_scalar(prefix + "/tgtper", self.n_words / t, step)
         writer.add_scalar(prefix + "/lr", learning_rate, step)
 
@@ -190,18 +189,6 @@ class Statistics(object):
 
         if self.f1 is not None:
             writer.add_scalar(prefix + "/class_f1",self.f1,step)
-
-        if self.kmer_recall_best_n is not None:
-            writer.add_scalar(prefix + "/krecalltop4", self.kmer_recall_best, step)
-
-        if self.kmer_precision_best_n is not None:
-            writer.add_scalar(prefix + "/kprecisiontop4", self.kmer_precision_best, step)
-
-        if self.exact_match_best_n is not None:
-            writer.add_scalar(prefix + "/exactmatchtop4",self.exact_match_best_n,step)
-
-        if self.align_id_best_n is not None:
-            writer.add_scalar(prefix + "/alignidtop4",self.align_id_best_n,step)
 
 
 

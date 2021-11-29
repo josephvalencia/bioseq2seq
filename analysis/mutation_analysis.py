@@ -130,9 +130,9 @@ def mutation_analysis(saved_file,df,tgt_field,baseline):
                             substitution = '{}-{}'.format(j+1,baseline)
                             
                             # MDIG is negative of IG
-                            delta = codon_scores[j] / (cds_end-cds_start) 
-                            #delta = codon_scores[j]
-                            #delta = -codon_scores[j] / 1000
+                            #delta = codon_scores[j] / (cds_end-cds_start) 
+                            delta = codon_scores[j]
+                            
                             if delta > 0:
                                 positive_component+=delta
                             elif delta < 0:
@@ -241,7 +241,6 @@ def build_score_change_file(df):
     
     storage = []
     
-    
     for b in ['A','G','C','T']:
         #mdig_file = "seq2seq_3_{}_pos_test.deeplift".format(b)
         mdig_file = "new_output/IG/seq2seq_3_{}_pos_test.ig".format(b)
@@ -250,7 +249,6 @@ def build_score_change_file(df):
         storage += mutation_analysis(mdig_file,df,"summed_attr",b)
     
     summary = pd.DataFrame(storage) 
-    summary['abs_delta'] = [np.abs(x) for x in summary['delta'].tolist()]
     summary['aa_original'] = [codonMap[c] for c in summary['original'].tolist()] 
     summary['aa_mutated'] = [codonMap[c] for c in summary['mutated'].tolist()] 
     summary.to_csv('MDIG_scores_by_codon.csv',sep="\t")
@@ -281,54 +279,93 @@ def synonymous_graph_centralities(synonymous):
     trials = pd.DataFrame(entries)
     trials.to_csv('weighted_degree.csv',sep="\t")
 
+def analyze_stops(missense):
+
+    plt.figure(figsize=(10,6))
+    by_partition = missense.groupby(['partition_rel'])
+    #sns.violinplot(data=missense,x='partition',y='delta')
+    g = sns.lineplot(data=missense,x='partition',y='delta',ci=95,err_style='band')
+
+    step = 150
+    partitions = sorted(missense['partition_rel'].unique())
+    bins = [f'[{x*step},{(x+1)*step})' for x in partitions]
+    bins[-1] = '[900-1000)'
+    print(partitions,bins)
+    
+    plt.xticks(partitions,bins)
+    plt.ylabel('Mean MDIG of missense mutation')
+    plt.xlabel('partition')
+    plt.tight_layout()
+    plt.savefig('missense_scores_new.svg')
+    plt.close()
+
+    '''
+    for partition, df_p in by_partition:
+        by_mutations_mean = df_p['delta'].mean()
+        avoidance_scores.append(by_mutations_mean)
+    '''
+
 def mdig_pipeline():
 
     summary = pd.read_csv('MDIG_scores_by_codon.csv',sep="\t") 
     summary = summary.sort_values(by=['aa_original','original','substitution'],ascending=[True,False,True]) 
-    #summary['partition'] = [round(x/y,1) for x,y in zip(summary['loc'].tolist(),summary['cds_length'].tolist())] 
-    summary['partition']  = [x // 150 for x in summary['loc'].tolist()] 
-    
-    by_partition = summary.groupby('partition').count()
-    is_synonymous = (summary['aa_original'] == summary['aa_mutated']) 
-    summary['class'] = np.where(is_synonymous,'Synonymous','Nonsynonymous')
-    synonymous = summary[(summary['class'] == 'Synonymous') & (summary['delta'] != 0.0)]
-    non_synonymous = summary[(summary['class'] == 'Nonsynonymous') & (summary['delta'] != 0.0)]
    
-    # build codon graphs and calculate centralities
-    synonymous_graph_centralities(synonymous)
+    # relative is a percentile location in the CDS, absolute is a fixed window size 
+    summary['partition_rel'] = [round(x/y,1) for x,y in zip(summary['loc'].tolist(),summary['cds_length'].tolist())] 
+    summary['partition_abs']  = [x // 150 for x in summary['loc'].tolist()] 
 
-    '''
-    sns.histplot(data=summary_nonzero,x='delta',hue='class')
-    plt.savefig('substitution_changes.svg')
+    # plot relative
+    by_frame = summary.groupby(['frame','partition_rel']).mean().reset_index()
+    sns.barplot(data=by_frame,x='partition_rel',y='delta',hue='frame') 
+    plt.savefig('by_frame_partition_rel.svg')
     plt.close()
-    by_class_a = summary_nonzero.groupby('class')[['class','delta']].mean()
-    print("by_class_a",by_class_a)
-    by_frame_synonymous = synonymous.groupby('substitution')[['substitution','delta']].mean()
-    by_frame_nonsynonymous = non_synonymous.groupby('substitution')[['substitution','delta']].mean()
+
+    # plot absolute
+    by_frame = summary.groupby(['frame','partition_abs']).mean().reset_index()
+    sns.barplot(data=by_frame,x='partition_abs',y='delta',hue='frame') 
+    plt.savefig('by_frame_partition_abs.svg')
+    plt.close()
+
+    # analyze missense mutations
+    is_missense = ((summary['aa_original'] != '*' ) & (summary['aa_mutated'] == '*'))  & (summary['delta'] != 0.0)
+    missense = summary[is_missense]
+    analyze_stops(missense)
+    
+    # build codon graphs and calculate centralities
+    is_synonymous = (summary['aa_original'] == summary['aa_mutated']) 
+    synonymous = summary[(is_synonymous) & (summary['delta'] != 0.0)]
+    non_synonymous = summary[(~is_synonymous) & (summary['delta'] != 0.0)]
+    synonymous_graph_centralities(synonymous)
+  
+    '''
+    # synonymous difference
+    by_frame_synonymous = synonymous.groupby('original')[['original','delta']].mean()
+    by_frame_nonsynonymous = non_synonymous.groupby('original')[['original','delta']].mean()
     both = by_frame_nonsynonymous.merge(by_frame_synonymous,left_index=True,right_index=True,suffixes=('_nonsynonymous','_synonymous'))
     both['synonymous_diff'] = both['delta_synonymous'] - both['delta_nonsynonymous']
-    print("difference",both)
+    both = both.sort_values(by='synonymous_diff',ascending=False).reset_index()
+    original = both['original'].values.tolist()
+    diff = both['synonymous_diff'].values.tolist()
     '''
     
     # mask zeros with NaNs as they should not count towards median
     nonzero = summary.replace(0,np.NaN)
-    overall = nonzero.groupby(['aa_original','original','substitution'])[['delta','abs_delta']].median()
-    print(overall) 
+    nonzero['status'] = np.where(is_synonymous,'Synonymous','Nonsynonymous')
+    
     # build norm
+    overall = nonzero.groupby(['aa_original','original','substitution'])[['delta']].mean()
     vmin = overall['delta'].min()
     vmax = overall['delta'].max()
     
-    for x in range(0,11):
-        percentile = 0.1*x
-        print("{} : {}".format(percentile,overall['delta'].quantile(percentile)))
-
     five = overall['delta'].quantile(0.05)
     ninety_five = overall['delta'].quantile(0.95)
-    norm = MidpointNormalize(vmin=vmin,vmax=vmax,midpoint=0.0)
+    
+    #norm = MidpointNormalize(vmin=vmin,vmax=vmax,midpoint=0.0)
     #norm = MidpointNormalize(vmin=five,vmax=ninety_five,midpoint=0.0) 
-    cmap = sns.diverging_palette(220, 10, s=80, l=50, as_cmap=True)
-
+    norm = mcolors.SymLogNorm(linthresh=1e-7,vmin=vmin,vmax=vmax)
+    
     # plot colorbar
+    cmap = sns.diverging_palette(220, 10, s=80, l=50, as_cmap=True)
     colorbar(cmap,norm)
 
     # overall plot
@@ -336,13 +373,14 @@ def mdig_pipeline():
     bubble_plot(overall,norm,cmap,overall_filename)
 
     # by partition
-    for p in summary['partition'].unique():
-        group = summary[summary['partition'] == p]
-        group = group.replace(0,np.NaN)
-        group = group.groupby(['aa_original','original','substitution'])[['delta','abs_delta']].median()
-        group = group.sort_values(by=['aa_original','original','substitution'],ascending=[True,False,True]) 
-        group_filename = 'MDIG_changes_heatmap_partition_{}.svg'.format(p)
-        bubble_plot(group,norm,cmap,group_filename)
+    for m in ['partition_abs','partition_rel']:
+        for p in summary[m].unique():
+            group = summary[summary[m] == p]
+            group = group.replace(0,np.NaN)
+            group = group.groupby(['aa_original','original','substitution'])[['delta']].mean()
+            group = group.sort_values(by=['aa_original','original','substitution'],ascending=[True,False,True]) 
+            group_filename = 'MDIG_changes_heatmap_{}_{}.svg'.format(m,p)
+            bubble_plot(group,norm,cmap,group_filename)
 
 def colorbar(cmap,norm):
 
@@ -358,6 +396,7 @@ def colorbar(cmap,norm):
 def bubble_plot(df,norm,cmap,filename):
 
     # Draw each cell as a scatter point with varying size and color
+    df['abs_delta'] = [np.abs(x) for x in df['delta'].tolist()]
     g = sns.relplot(data=df,
             x="original",
            y="substitution",
@@ -388,6 +427,8 @@ def mutation_resistant_locations(saved_file,df,tgt_field):
     pct_storage = []
     coding_seqs = []
     noncoding_seqs = []
+    counter = Counter()
+    c = 0
 
     with open(saved_file) as inFile:
         for l in inFile:
@@ -405,45 +446,43 @@ def mutation_resistant_locations(saved_file,df,tgt_field):
                     splits = cds.split(":")
                     clean = lambda x : x[1:] if x.startswith("<") or x.startswith(">") else x
                     cds_start,cds_end = tuple([int(clean(x)) for x in splits])
-                else:
-                    cds_start,cds_end = getLongestORF(seq)
-            else:
-                # use start and end of longest ORF
-                cds_start,cds_end = getLongestORF(seq)
-           
-            L = len(array)
-            array = np.asarray(array)
-            zero_max = array == 0.0
-            zeros = np.where(zero_max)[0].tolist()
-            
-            contiguous = continuous_sections(zeros)
-            for i,(s,e) in enumerate(contiguous):
-                if s > L-10:
-                    substr = seq[-20:]
-                elif s < 10:
-                    substr = seq[:20]
-                else:
-                    substr = seq[s-10:s+11]
-                description = "loc[{}:{}]".format(s+1,e+1)
-                record = SeqRecord(Seq(substr),
-                                        id=id+"_"+str(i),
-                                        description=description)
-                coding = id.startswith('NM') or id.startswith('XM') 
-                if coding:
-                    coding_seqs.append(record)
-                else:
-                    noncoding_seqs.append(record)
-            
-            for z in zeros:
-                loc = z - cds_start   
-                max_base = top_bases[z] 
-                entry = {"transcript" : id , "type" : tscript_type , "location" : loc, 'max_base' : max_base} 
-                loc_storage.append(entry)
-            
-            stats = {"transcript" : id ,"type" : tscript_type , "n_zeros" : len(zeros) , "len" : L , "CDS_len" : cds_end-cds_start}
-            pct_storage.append(stats)
+                    c+=1 
+                    L = len(array)
+                    array = np.asarray(array)
+                    zero_max = array == 0.0
+                    zeros = np.where(zero_max)[0].tolist()
+                    frames = [(z-cds_start) % 3 for z in zeros]
 
-
+                    contiguous = continuous_sections(zeros)
+                    ''' 
+                    for i,(s,e) in enumerate(contiguous):
+                        if s > L-10:
+                            substr = seq[-20:]
+                        elif s < 10:
+                            substr = seq[:20]
+                        else:
+                            substr = seq[s-10:s+11]
+                        description = "loc[{}:{}]".format(s+1,e+1)
+                        record = SeqRecord(Seq(substr),
+                                                id=id+"_"+str(i),
+                                                description=description)
+                        coding = id.startswith('NM') or id.startswith('XM') 
+                        if coding:
+                            coding_seqs.append(record)
+                        else:
+                            noncoding_seqs.append(record)
+                    
+                    for z in zeros:
+                        loc = z - cds_start   
+                        max_base = top_bases[z] 
+                        entry = {"transcript" : id , "type" : tscript_type , "location" : loc, 'max_base' : max_base} 
+                        loc_storage.append(entry)
+                    
+                    stats = {"transcript" : id ,"type" : tscript_type , "n_zeros" : len(zeros) , "len" : L , "CDS_len" : cds_end-cds_start}
+                    pct_storage.append(stats)
+                    '''
+                    counter.update(frames)
+    '''
     with open('NC_motifs_MDIG.fa','w') as outFile:
         SeqIO.write(noncoding_seqs, outFile, "fasta")
 
@@ -462,6 +501,12 @@ def mutation_resistant_locations(saved_file,df,tgt_field):
     sns.displot(data=pos_df,col='max_base',hue="type",x="location",common_bins=True,stat="count",element='step')
     plt.savefig("zero_positions.svg")
     plt.close()
+    '''
+    
+    print('Constrained positions')
+    for i in range(3):
+        print(i,counter[i])
+    print(c)
 
 def continuous_sections(zeros):
 
@@ -473,7 +518,7 @@ def continuous_sections(zeros):
             temp[0] = z
         else:
             if temp[1] is None:
-                f z == temp[0]+1:
+                if z == temp[0]+1:
                     temp[1] = z
                 else:
                     temp[0] = None
@@ -486,14 +531,13 @@ def continuous_sections(zeros):
 
     return continuous
 
-
 if __name__ == "__main__":
 
     test_file = "data/mammalian_1k_test_nonredundant_80.csv" 
-    #test_file = "../Fa/test.csv" 
+    
     df = pd.read_csv(test_file,sep="\t")
     df = df.set_index('ID')
-    build_score_change_file(df)
-    #sns.set_theme(style="whitegrid")
-    #mutation_resistant_locations('max_MDIG.ig',df,'summed_attr')
+    
+    #build_score_change_file(df)
+    mutation_resistant_locations('seq2seq_3_combined_MDIG.ig',df,'summed_attr')
     mdig_pipeline()

@@ -14,10 +14,13 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.proj = nn.Linear(d_model, vocab)
 
-    def forward(self,x):
+    def forward(self,x,softmax=True):
 
-        logits = F.log_softmax(self.proj(x), dim=-1)
-        return logits
+        linear = self.proj(x)
+        if softmax:
+            return F.log_softmax(linear,dim=-1)
+        else:
+            return linear
 
 class Classifier(nn.Module):
 
@@ -31,25 +34,22 @@ class Classifier(nn.Module):
         
         enc_state, memory_bank, lengths, enc_self_attn = self.encoder(src,lengths)
         pooled = memory_bank.mean(dim=0)
-
         logits = self.generator(pooled)
         return logits
 
-def make_transformer_seq2seq(n_enc=4,n_dec=4,model_dim=128,dim_ff=2048, heads=8, dropout=0.1,max_rel_pos=10):
+def make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dim_ff=2048, heads=8, dropout=0.1,max_rel_pos=10):
 
     '''construct Transformer encoder-decoder from hyperparameters'''
 
     attention_dropout = 0.1
-    NUM_INPUT_CLASSES = 19
-    NUM_OUTPUT_CLASSES = 29
 
     nucleotide_embeddings = Embeddings(word_vec_size = model_dim,
-                                       word_vocab_size = NUM_INPUT_CLASSES,
+                                       word_vocab_size = n_input_classes,
                                        word_padding_idx = 1,
                                        position_encoding = True)
 
     protein_embeddings = Embeddings(word_vec_size = model_dim,
-                                    word_vocab_size = NUM_OUTPUT_CLASSES,
+                                    word_vocab_size = n_output_classes,
                                     word_padding_idx = 1,
                                     position_encoding = True)
 
@@ -77,7 +77,7 @@ def make_transformer_seq2seq(n_enc=4,n_dec=4,model_dim=128,dim_ff=2048, heads=8,
                                        alignment_heads = None,
                                        alignment_layer = None)
 
-    generator = Generator(model_dim,NUM_OUTPUT_CLASSES)
+    generator = Generator(model_dim,n_output_classes)
 
     model = NMTModel(encoder_stack,decoder_stack)
     model.generator = generator
@@ -88,13 +88,10 @@ def make_transformer_seq2seq(n_enc=4,n_dec=4,model_dim=128,dim_ff=2048, heads=8,
 
     return model
 
-def make_transformer_classifier(n_enc=4,model_dim=128,dim_ff=2048, heads=8, dropout=0.1,max_rel_pos=10):
-
-    NUM_INPUT_CLASSES = 19
-    NUM_OUTPUT_CLASSES = 29
+def make_transformer_classifier(n_input_classes,n_output_classes,n_enc=4,model_dim=128,dim_ff=2048,heads=8,dropout=0.1,max_rel_pos=10):
 
     nucleotide_embeddings = Embeddings(word_vec_size = model_dim,
-                                       word_vocab_size = NUM_INPUT_CLASSES,
+                                       word_vocab_size = n_input_classes,
                                        word_padding_idx = 1,
                                        position_encoding = True)
 
@@ -107,7 +104,7 @@ def make_transformer_classifier(n_enc=4,model_dim=128,dim_ff=2048, heads=8, drop
                                     max_relative_positions = max_rel_pos,
                                     attention_dropout = dropout)
 
-    generator = Generator(model_dim,NUM_OUTPUT_CLASSES)
+    generator = Generator(model_dim,n_output_classes)
     model = Classifier(encoder_stack,generator)
 
     for p in model.parameters():

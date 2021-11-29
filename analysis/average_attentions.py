@@ -1,3 +1,4 @@
+import logomaker
 import orjson
 import sys
 import gzip
@@ -12,7 +13,6 @@ from collections import Counter
 from scipy import stats , signal
 import re,random
 from scipy.stats import pearsonr, kendalltau
-from bioseq2seq.bin.batcher import train_test_val_split
 from Bio.Seq import Seq
 from Bio import motifs
 from sklearn import preprocessing
@@ -154,7 +154,7 @@ def example_attributions(saved_file,tgt,transcript):
                 return np.asarray(array) 
     return None
 
-def plot_line(domain,consensus,name,plot_type,plt_std_error=False,labels=None):
+def plot_line(domain,consensus,title,name,plot_type,plt_std_error=False,labels=None):
 
     plt.figure(figsize=(12,6))
 
@@ -165,12 +165,12 @@ def plot_line(domain,consensus,name,plot_type,plt_std_error=False,labels=None):
         if plot_type == "stem":
             markerline, stemlines, baseline  = plt.stem(domain,consensus[:,i],label=labels[i],use_line_collection=True,basefmt=" ")
         elif plot_type == "line":
-            plt.plot(domain,consensus[:,i],color=palette[i],label=labels[i],alpha=0.6,linewidth=1)
+            plt.plot(domain,consensus[:,i],color=palette[i],label=labels[i],alpha=0.8,linewidth=1)
             if plt_std_error:
                 plt.fill_between(domain,consensus-2*error,consensus+2*error,alpha=0.5,edgecolor='#CC4F1B',facecolor='#FF9848')
     
     ax = plt.gca()
-    plt.legend()
+    plt.legend(title=title+' IG baseline')
     
     # inset at 150-200
     inset_start = 50
@@ -179,10 +179,10 @@ def plot_line(domain,consensus,name,plot_type,plt_std_error=False,labels=None):
     s = inset_start - domain.min()
     width = inset_stop - inset_start
     inset_range = consensus[s:s+width,:]
-    axins = ax.inset_axes([0.4, 0.2, 0.6, 0.4])
+    axins = ax.inset_axes([0.4, 0.2, 0.5, 0.5])
     axins.axhline(y=0, color='gray', linestyle=':')     
     for i in range(n_heads): 
-        axins.plot(inset_domain,inset_range[:,i],color=palette[i],label=labels[i],alpha=0.5,linewidth=0.8)
+        axins.plot(inset_domain,inset_range[:,i],color=palette[i],label=labels[i],alpha=0.8,linewidth=2.5)
     ax.indicate_inset_zoom(axins, edgecolor="black")
     
     plt.axhline(y=0, color='gray', linestyle=':')     
@@ -314,16 +314,14 @@ def plot_heatmap(consensus,cds_start,title,heatmap_file):
     palette = sns.cubehelix_palette(start=.5, rot=-.5, as_cmap=True)
 
     b = 12 if cds_start > 12 else cds_start 
-
-    consensus = consensus[:4,cds_start-b:cds_start+60]
     
+    consensus = consensus[:4,cds_start-b:cds_start+60]
     min_val = np.min(consensus)
     max_val = np.max(consensus) 
     print(min_val,max_val)
 
     domain = list(range(-b,60)) 
-    #consensus = consensus[:4,:] 
-    consensus_df = pd.DataFrame(data=consensus,index=['A','C','G','T'],columns=domain)
+    consensus_df = pd.DataFrame(data=consensus,index=['A','C','G','T'],columns=domain).T
     
     #df_melted = consensus_df.T.melt(var_name='MDIG baseline')
     #sns.displot(df_melted,x='value',hue='MDIG baseline',common_bins=True,bins=np.arange(-0.05,0.025,0.001))
@@ -332,6 +330,15 @@ def plot_heatmap(consensus,cds_start,title,heatmap_file):
     #quit()
     #ax = sns.heatmap(consensus_df,cmap='bwr',vmin=-.15,vmax=0.1,center=0,square=True,robust=True,xticklabels=3)
     
+    crp_logo = logomaker.Logo(consensus_df,flip_below=False)
+    crp_logo.style_spines(visible=False)
+    crp_logo.style_spines(spines=['left', 'bottom'], visible=True)
+    
+    threes = [x for x in domain if x % 3 == 0]
+    crp_logo.ax.set_xticks(threes)
+    crp_logo.ax.set_xticklabels(threes)
+
+    '''
     ax = sns.heatmap(consensus_df,cmap='bwr',center=0,square=True,vmin=-0.15,vmax=0.1,robust=True,xticklabels=3)
     #ax = sns.heatmap(consensus_df,cmap='bwr',center=0,square=True,robust=True,xticklabels=3)
     ax.set_yticklabels(ax.get_yticklabels(), rotation = 0, fontsize = 18)
@@ -343,6 +350,7 @@ def plot_heatmap(consensus,cds_start,title,heatmap_file):
     ax.add_patch(Rectangle((b,0),3, 4, fill=False, edgecolor='yellow', lw=2.5))
     cax = plt.gcf().axes[-1]
     cax.tick_params(labelsize=24)
+    '''
     plt.savefig(heatmap_file)
     plt.close()
 
@@ -350,7 +358,9 @@ def plot_power_spectrum(consensus,title,spectrum_file,mode,units='freq',labels=N
 
     palette = sns.color_palette()
     freq,ps = signal.welch(consensus,axis=0,scaling='density',average='median')
-    fig, ax1 = plt.subplots()
+    plt.figure(figsize=(5,3))
+    ax1 = plt.gca() 
+    #fig, ax1 = plt.subplots()
     n_freq_bins, n_heads = ps.shape
    
     x_label = "Period (nt.)" if units == "period" else "Frequency (cycles/nt.)"
@@ -361,19 +371,15 @@ def plot_power_spectrum(consensus,title,spectrum_file,mode,units='freq',labels=N
             layer = i // 8
             label = layer if i % 8 == 0 else None
             ax1.plot(x_vals,ps[:,i],color=palette[layer],label=label,alpha=0.6)
-            #ax1.plot(x_vals,ps[:,i],label=i,alpha=0.6)
     else:
         for i in range(n_heads):
             label = labels[i] if labels is not None else None
             ax1.plot(x_vals,ps[:,i],color=palette[i],label=label,alpha=0.6)
-    
-        #ax1.plot(x_vals,ps[:,4],color=palette[0],label='mean',alpha=0.6)
-        #ax1.plot(x_vals,ps[:,5],color=palette[1],label='zero',alpha=0.6)
    
     tick_labels = ["0",r'$\frac{1}{10}$']+[r"$\frac{1}{"+str(x)+r"}$" for x in range(5,1,-1)]
     tick_locs =[0,1.0/10]+ [1.0 / x for x in range(5,1,-1)]
     ax1.set_xticks(tick_locs)
-    ax1.set_xticklabels(tick_labels,fontsize=12)
+    ax1.set_xticklabels(tick_labels,fontsize=14)
 
     if mode == 'attn':
         ax1.legend(title=title+" attention layer")
@@ -384,6 +390,7 @@ def plot_power_spectrum(consensus,title,spectrum_file,mode,units='freq',labels=N
     
     ax1.set_xlabel(x_label)
     ax1.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
+    plt.tight_layout()
     plt.savefig(spectrum_file)
     plt.close()
 
@@ -510,36 +517,36 @@ def build_all():
     seq_bases = ['avg','zero','A','C','G','T']
     
     seq_three_test_new = ['new_output/IG/seq2seq_3_'+b+'_pos_test.ig' for b in seq_bases]
-    seq_attn_file_list = ['new_output/IG/seq2seq_3_test_layer{}.enc_dec_attns'.format(l) for l in range(4)]
+    seq_attn_file_list = ['new_output/test/seq2seq_3_test_layer{}.enc_dec_attns'.format(l) for l in range(4)]
     ED_file_list = ['new_output/IG/EDC_3_'+b+'_pos_test.ig' for b in seq_bases] 
-    ED_attn_file_list = ['new_output/IG/EDC_3_test_layer{}.enc_dec_attns'.format(l) for l in range(4)] 
+    ED_attn_file_list = ['new_output/test/EDC_3_test_layer{}.enc_dec_attns'.format(l) for l in range(4)] 
    
     # generate examples
     sample_examples(df_test,test_cds)
     examples = np.load('example_ids.npz',allow_pickle=True)
-    id_list = examples['ids'].tolist()
-    
+    id_list = examples['ids'].tolist()+['NM_152444.4']
+    print(id_list)
+
     # build multi_IG examples
     build_example_multi_IG('best_seq2seq_test',seq_three_test_new,'summed_attr',id_list)
     build_example_multi_IG('best_EDC_test',ED_file_list,'summed_attr',id_list)
 
     # build EDA consensus
-    build_consensus_EDA('best_seq2seq_test',seq_attn_file_list,coding=True)
-    build_consensus_EDA('best_EDC_test',ED_attn_file_list,coding=True)
-    build_consensus_EDA('best_seq2seq_test',seq_attn_file_list,coding=False)
-    build_consensus_EDA('best_EDC_test',ED_attn_file_list,coding=False)
+    #build_consensus_EDA(test_cds,'best_seq2seq_test_sum',seq_attn_file_list,coding=True)
+    #build_consensus_EDA(test_cds,'best_EDC_test_sum',ED_attn_file_list,coding=True)
+    #build_consensus_EDA(test_cds,'best_seq2seq_test_sum',seq_attn_file_list,coding=False)
+    #build_consensus_EDA(test_cds,'best_EDC_test_sum',ED_attn_file_list,coding=False)
     
     # build multi_IG consensus
-    build_consensus_multi_IG(test_cds,'best_seq2seq_test_sum',seq_three_test_new,'summed_attr',coding=True)
-    build_consensus_multi_IG(test_cds,'best_EDC_test_sum',ED_file_list,'summed_attr',coding=True)
-    build_consensus_multi_IG(test_cds,'best_seq2seq_test_sum',seq_three_test_new,'summed_attr',coding=False)
-    build_consensus_multi_IG(test_cds,'best_EDC_test_sum',ED_file_list,'summed_attr',coding=False)
+    #build_consensus_multi_IG(test_cds,'best_seq2seq_test_sum',seq_three_test_new,'summed_attr',coding=True)
+    #build_consensus_multi_IG(test_cds,'best_EDC_test_sum',ED_file_list,'summed_attr',coding=True)
+    #build_consensus_multi_IG(test_cds,'best_seq2seq_test_sum',seq_three_test_new,'summed_attr',coding=False)
+    #build_consensus_multi_IG(test_cds,'best_EDC_test_sum',ED_file_list,'summed_attr',coding=False)
 
 if __name__ == "__main__":
     
     build_all()
 
-    ''' 
     # load example transcripts
     examples = np.load('example_ids.npz',allow_pickle=True)
     id_list = examples['ids'].tolist()
@@ -555,20 +562,20 @@ if __name__ == "__main__":
     for f,s,e,r,p in zip(seq_transcripts,starts,ends,rna,proteins):
         name = f.split('.npz')[0]
         loaded = np.load(f)
-        #consensus = scaler.fit_transform(-loaded['total'])
-        consensus = -loaded['total']
-        plot_heatmap(np.transpose(consensus),s,"",name+"_heatmap.svg")
+        consensus = loaded['total']
+        plot_heatmap(np.transpose(consensus)[:,2:],s,"",name+"_heatmap.svg")
         #optimize(consensus,name,r,p,s,e)
     
+    '''
     # ED_classify transcript examples
     for f,s,e,r,p in zip(ED_transcripts,starts,ends,rna,proteins):
         name = 'examples/'+f.split('.npz')[0]
         loaded = np.load(f)
         consensus = -loaded['total']
         plot_heatmap(np.transpose(consensus),s,"",name+"_heatmap.svg")
-        plot_power_spectrum(consensus,"",name+"_spectrum.svg")
-    ''' 
-  
+        #plot_power_spectrum(consensus,"",name+"_spectrum.svg")
+    '''
+
     all_bases = ['avg','zero','A','C','G','T']
     mdig_bases = ['A','C','G','T']
     ig_bases = ['avg','zero']
@@ -576,27 +583,41 @@ if __name__ == "__main__":
     saved = np.load('best_seq2seq_test_sum_PC_multi_consensus.npz')
     consensus = saved['consensus']
     domain = saved['domain'] 
-    plot_line(domain,consensus[:,:2],'best_seq2seq_test_sum_PC','line',labels=ig_bases)
+    plot_line(domain,consensus[:,:2],'bioseq2seq','best_seq2seq_test_sum_PC','line',labels=ig_bases)
     plot_power_spectrum(consensus[:,:2],"bioseq2seq","best_seq2seq_test_sum_PC_IG_spectrum.svg",mode='IG',labels=ig_bases)
     plot_heatmap(np.transpose(consensus[:,2:]),18,"bioseq2seq_test","best_seq2seq_test_PC_MDIG_heatmap.svg")
+    plot_power_spectrum(consensus[:,2:],"bioseq2seq","best_seq2seq_test_sum_PC_MDIG_spectrum.svg",mode='IG',labels=mdig_bases)
     
     saved = np.load('best_seq2seq_test_sum_NC_multi_consensus.npz')
     consensus = saved['consensus']
     domain = saved['domain'] 
-    plot_line(domain,consensus[:,:2],'best_seq2seq_test_sum_NC','line',labels=ig_bases)
+    plot_line(domain,consensus[:,:2],'bioseq2seq','best_seq2seq_test_sum_NC','line',labels=ig_bases)
     plot_power_spectrum(consensus[:,:2],"bioseq2seq","best_seq2seq_test_sum_NC_IG_spectrum.svg",mode='IG',labels=ig_bases)
     plot_heatmap(np.transpose(consensus[:,2:]),106,"bioseq2seq_test","best_seq2seq_test_NC_MDIG_heatmap.svg")
+    plot_power_spectrum(consensus[:,2:],"bioseq2seq","best_seq2seq_test_sum_NC_MDIG_spectrum.svg",mode='IG',labels=mdig_bases)
    
     saved = np.load("best_EDC_test_sum_NC_multi_consensus.npz")
     consensus = saved['consensus']
     domain = saved['domain'] 
-    plot_line(domain,consensus[:,:2],'best_EDC_test_sum_NC','line',labels =ig_bases)
+    plot_line(domain,consensus[:,:2],'EDC','best_EDC_test_sum_NC','line',labels=ig_bases)
     plot_power_spectrum(consensus[:,:2],"EDC","best_EDC_test_sum_NC_IG_spectrum.svg",mode='IG',labels=ig_bases)
+    plot_power_spectrum(consensus[:,2:],"EDC","best_EDC_test_sum_NC_MDIG_spectrum.svg",mode='IG',labels=mdig_bases)
     plot_heatmap(np.transpose(consensus[:,2:]),106,"EDC_test","best_EDC_test_NC_MDIG_heatmap.svg")
 
     saved = np.load("best_EDC_test_sum_PC_multi_consensus.npz")
     consensus = saved['consensus']
     domain = saved['domain'] 
-    plot_line(domain,consensus[:,:2],'best_EDC_test_sum_PC','line',labels = ig_bases)
+    plot_line(domain,consensus[:,:2],'EDC','best_EDC_test_sum_PC','line',labels = ig_bases)
     plot_power_spectrum(consensus[:,:2],"EDC","best_EDC_test_sum_PC_IG_spectrum.svg",mode='IG',labels=ig_bases)
+    plot_power_spectrum(consensus[:,2:],"EDC","best_EDC_test_sum_PC_MDIG_spectrum.svg",mode='IG',labels=mdig_bases)
     plot_heatmap(np.transpose(consensus[:,2:]),18,"EDC_test","best_EDC_test_PC_MDIG_heatmap.svg")
+
+    saved = np.load("best_seq2seq_test_sum_PC_EDA_consensus.npz")
+    consensus = saved['consensus']
+    domain = saved['domain'] 
+    plot_power_spectrum(consensus,"bioseq2seq","best_seq2seq_test_PC_EDA_spectrum.svg",mode='attn')
+
+    saved = np.load("best_EDC_test_sum_PC_EDA_consensus.npz")
+    consensus = saved['consensus']
+    domain = saved['domain'] 
+    plot_power_spectrum(consensus,"EDC","best_EDC_test_PC_EDA_spectrum.svg",mode='attn')

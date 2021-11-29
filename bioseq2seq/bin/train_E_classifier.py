@@ -15,7 +15,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from bioseq2seq.models import ModelSaver
 from bioseq2seq.utils.optimizers import Optimizer
-from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition,train_test_val_split , filter_by_length
+from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition
 from bioseq2seq.bin.models import make_transformer_seq2seq , make_transformer_classifier
 
 
@@ -24,19 +24,23 @@ def parse_args():
     
     parser = argparse.ArgumentParser()
     # required args
-    parser.add_argument("--input",'--i',help = "File containing RNA to Protein dataset")
+    #parser.add_argument("--input",'--i',help = "File containing RNA to Protein dataset")
+    parser.add_argument("--train",help = "File containing RNA to Protein dataset")
+    parser.add_argument("--val",help = "File containing RNA to Protein dataset")
+    
     # optional args
     parser.add_argument("--save-directory","--s", default = "checkpoints/", help = "Name of directory for saving model checkpoints")
     parser.add_argument("--log-directory",'--l',default = "runs/", help = "Name of directory for saving TensorBoard log files" )
     parser.add_argument("--learning-rate","--lr", type = float, default = 1e-3,help = "Optimizer learning rate")
-    parser.add_argument("--max-epochs","--e", type = int, default = 150000,help = "Maximum number of training epochs" )
-    parser.add_argument("--report-every",'--r', type = int, default = 2500, help = "Number of iterations before calculating statistics")
+    parser.add_argument("--max-epochs","--e", type = int, default = 100000,help = "Maximum number of training epochs" )
+    parser.add_argument("--report-every",'--r', type = int, default = 750, help = "Number of iterations before calculating statistics")
+    parser.add_argument("--mode", default = "combined", help = "Training mode. Classify for binary classification. Translate for full translation")
     parser.add_argument("--num_gpus","--g", type = int, default = 1, help = "Number of GPUs to use on node")
     parser.add_argument("--accum_steps", type = int, default = 8, help = "Number of batches to accumulate gradients before update")
     parser.add_argument("--max_tokens",type = int , default = 3000, help = "Max number of tokens in training batch")
     parser.add_argument("--rank", type = int, default = 0, help = "Rank of node in multi-node training")
     parser.add_argument("--max_len_transcript", type = int, default = 1000, help = "Maximum length of transcript")
-    parser.add_argument("--patience", type = int, default = 15, help = "Maximum epochs without improvement")
+    parser.add_argument("--patience", type = int, default = 8, help = "Maximum epochs without improvement")
     parser.add_argument("--address",default =  "127.0.0.1",help = "IP address for master process in distributed training")
     parser.add_argument("--port",default = "6000",help = "Port for master process in distributed training")
     parser.add_argument("--n_enc_layers",type=int,default = 6,help= "Number of encoder layers")
@@ -46,6 +50,7 @@ def parse_args():
 
     # optional flags
     parser.add_argument("--checkpoint", "--c", help = "Name of .pt model to initialize training")
+    parser.add_argument("--finetune",action = "store_true", help = "Reinitialize generator")
     parser.add_argument("--verbose",action="store_true")
 
     return parser.parse_args()
@@ -56,7 +61,7 @@ def human_format(number):
     magnitude = int(floor(log(number, k)))
     return '%.2f%s' % (number / k**magnitude, units[magnitude])
 
-def train_helper(rank,args,model,random_seed):
+def train_helper(rank,df_train,df_val,model,args,random_seed):
 
     """ Train and validate on subset of data. In DistributedDataParallel setting, use one GPU per process.
     Args:
@@ -67,24 +72,11 @@ def train_helper(rank,args,model,random_seed):
     """
     random.seed(random_seed)
     random_state = random.getstate()
-
+    
     # determined by GPU memory
     max_tokens_in_batch = args.max_tokens
-
-    # raw GENCODE transcript data. cols = ['ID','RNA','PROTEIN']
-    if args.input.endswith(".gz"):
-        dataframe = pd.read_csv(args.input,sep="\t",compression = "gzip")
-    else:
-        dataframe = pd.read_csv(args.input,sep="\t")
-
-    # obtain splits. Default 80/10/10. Filter below max_len_transcript
-    df_train,df_test,df_val = train_test_val_split(dataframe,args.max_len_transcript,random_seed)
-    #df_train,df_test,df_val = train_test_val_split(dataframe,150,random_seed)
+    train_dataset,val_dataset = dataset_from_df([df_train.copy(),df_val.copy()],mode="ENC_only")
     
-    # convert to torchtext.Dataset
-    train,test,val = dataset_from_df(df_train.copy(),df_test.copy(),df_val.copy(),mode='D_classify')
-    device = "cpu"
-
     if args.num_gpus > 0: # GPU training
         # One CUDA device per process
         device = torch.device("cuda:{}".format(rank))
@@ -94,7 +86,7 @@ def train_helper(rank,args,model,random_seed):
     if args.num_gpus > 1: # multi-GPU training
         # provide unique data to each process
         splits = [1.0/args.num_gpus for _ in range(args.num_gpus)]
-        train_partitions = partition(train,split_ratios = splits,random_state = random_state)
+        train_partitions = partition(train_dataset,split_ratios = splits,random_state = random_state)
         local_slice = train_partitions[rank]
 
         # iterator over training batches
@@ -110,9 +102,9 @@ def train_helper(rank,args,model,random_seed):
             world_size=args.num_gpus,
             rank=rank)
     else:
-        train_iterator = iterator_from_dataset(train,max_tokens_in_batch,device,train=True)
+        train_iterator = iterator_from_dataset(train_dataset,max_tokens_in_batch,device,train=True)
 
-    valid_iterator = iterator_from_dataset(val,max_tokens_in_batch,device,train=False)
+    valid_iterator = iterator_from_dataset(val_dataset,max_tokens_in_batch,device,train=False)
    
     # controls saving model checkpoints
     job_name = datetime.now().strftime('%b%d_%H-%M-%S') 
@@ -144,23 +136,27 @@ def train_helper(rank,args,model,random_seed):
     running_loss = 0.0
     running_pred = []
     running_tgt = []
+    
+    fp16 = True
 
     for i,  batch in enumerate(train_iterator):
         src, src_lens = batch.src
         tgt = torch.squeeze(batch.tgt,dim=0)
         tgt = torch.squeeze(tgt,dim=1)
+        print(f'src = {src.shape}, tgt = {tgt.shape}, rank={rank}')
 
         # zero the parameter gradients
         optimizer.zero_grad()
 
-        if args.num_gpus > 1:
-            parallel_model = DDP(model,device_ids = [rank],output_device = rank)
-            outputs = parallel_model(src,src_lens)
-        else:
-            outputs = model(src,src_lens)
+        with torch.cuda.amp.autocast(enabled=fp16): 
+            if args.num_gpus > 1:
+                parallel_model = DDP(model,device_ids = [rank],output_device = rank)
+                outputs = parallel_model(src,src_lens)
+            else:
+                outputs = model(src,src_lens)
 
-        loss = criterion(outputs, tgt)
-        running_loss += loss.item()
+            loss = criterion(outputs, tgt)
+            running_loss += loss.item()
 
         curr_tgt = tgt.detach().cpu().numpy()
         curr_pred = torch.max(outputs.detach().cpu(),dim=1)
@@ -171,7 +167,7 @@ def train_helper(rank,args,model,random_seed):
         loss.backward()
         optimizer.step()
         
-        if i % args.report_every == 0 and rank == 0:    # print every 2000 mini-batches
+        if i>0 and i % args.report_every == 0 and rank == 0:
             print('[ %5d] loss: %.3f' %
                   (i+1, running_loss / args.report_every))
            
@@ -191,22 +187,22 @@ def train_helper(rank,args,model,random_seed):
             running_tgt = []
             running_pred = []
 
-    if saver is not None:
-        saver.save(i, moving_average=None)
-    
-    print('Finished Training')
+    if rank == 0:
+        print('Finished Training')
+        torch.distributed.destroy_process_group()
 
 def validate(model,iterator,criterion):
 
+    # put in evaluation mode
     model.eval()
 
     preds = []
     truth = []
     running_loss = 0.0
+    fp16 = True
 
-    with torch.no_grad():
+    with torch.no_grad(),torch.cuda.amp.autocast(enabled=fp16): 
         for i,batch in enumerate(iterator):
-            
             src, src_lens = batch.src
             tgt = torch.squeeze(batch.tgt,dim=0)
             tgt = torch.squeeze(tgt,dim=1)
@@ -222,34 +218,71 @@ def validate(model,iterator,criterion):
     preds = np.concatenate(preds)
     truth = np.concatenate(truth)
 
+    # return to training mode
     model.train()
 
     return running_loss,accuracy_score(truth,preds)
+
+def restore_transformer_classifier(checkpoint,n_input_classes,n_output_classes,args,reset_generator=False):
+    ''' Restore a Transformer model from .pt
+    Args:
+        checkpoint : path to .pt saved model
+        machine : torch device
+    Returns:
+        restored model'''
+
+    model = make_transformer_classifier(n_input_classes,
+                                        n_output_classes,
+                                        n_enc=args.n_enc_layers,
+                                        model_dim=args.model_dim,
+                                        max_rel_pos=args.max_rel_pos)
+    
+    model.load_state_dict(checkpoint['model'],strict = False)
+    
+    if reset_generator:
+        generator = Generator(args.model_dim,n_output_classes)
+        for p in generator.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+        model.generator = generator
+    else: 
+        model.generator.load_state_dict(checkpoint['generator'])
+    
+    return model
 
 def train(args):
 
     # controls pseudorandom shuffling and partitioning of dataset
     seed = 65
 
-    '''
-    if not args.checkp int is N ne:
-        checkpoint = torch.load(args.checkpoint,map_location = "cpu")
-        seq2seq = restore_transformer_model(checkpoint,args)
-    else:
-    '''
+    df_train = pd.read_csv(args.train,sep='\t')
+    df_val = pd.read_csv(args.val,sep='\t')
     
-    model = make_transformer_classifier(n_enc = args.n_enc_layers,
-                                model_dim = args.model_dim,
-                                max_rel_pos = args.max_rel_pos)
+    # convert to torchtext.Dataset
+    train_dataset,val_dataset = dataset_from_df([df_train.copy(),df_val.copy()],mode="ENC_only")
+    fields = train_dataset.fields
+    n_input_classes = len(fields['src'].vocab)
+    n_output_classes = len(fields['tgt'].vocab)
 
+    device = "cpu"
+    
+    if args.checkpoint:
+        checkpoint = torch.load(args.checkpoint,map_location = "cpu")
+        model = restore_transformer_classifier(checkpoint,n_input_classes,n_output_classes,args)
+
+    else:
+        model = make_transformer_classifier(n_input_classes,
+                                            n_output_classes,
+                                            n_enc=args.n_enc_layers,
+                                            model_dim=args.model_dim,
+                                            max_rel_pos=args.max_rel_pos)
+    
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-
     print("# trainable parameters = {}".format(human_format(num_params)))
 
     if args.num_gpus > 1:
         print("Multi-GPU training")
-        torch.multiprocessing.spawn(train_helper, nprocs=args.num_gpus, args=(args,model,seed))
-        torch.distributed.destroy_process_group()
+        torch.multiprocessing.spawn(train_helper, nprocs=args.num_gpus, args=(df_train,df_val,model,args,seed))
     elif args.num_gpus > 0:
         print("Single-GPU training")
         train_helper(0,args,model,seed)

@@ -1,9 +1,10 @@
 # repo-specific stuff
 .*
 *.preds
-*.attns
 *.png
 *.ig
+*.deeplift
+*.inputXgradient
 *.npz
 *.out
 *.txt
@@ -31,9 +32,10 @@
 .DS_Store
 data/
 /output/
-/new_output/
+/all_old/
 /results/
 /checkpoints/
+/sge_dirs/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

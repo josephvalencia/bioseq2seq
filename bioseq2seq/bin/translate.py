@@ -9,7 +9,7 @@ import numpy as np
 from bioseq2seq.inputters import TextDataReader,get_fields
 from bioseq2seq.inputters.text_dataset import TextMultiField
 from bioseq2seq.translate import Translator, GNMTGlobalScorer
-from bioseq2seq.bin.models import make_transformer_seq2seq
+from bioseq2seq.bin.models import make_transformer_seq2seq, Generator
 from bioseq2seq.modules.embeddings import PositionalEncoding
 
 from torchtext.data import RawField
@@ -49,8 +49,15 @@ def restore_transformer_model(checkpoint,machine,opts):
     Returns:
         restored model'''
 
-    #model = make_transformer_model(n_enc=opts.n_enc_layers,n_dec=opts.n_dec_layers,model_dim=opts.model_dim,max_rel_pos=opts.max_rel_pos)
-    model = make_transformer_seq2seq(n_enc=4,n_dec=4,model_dim=128,max_rel_pos=10)
+    vocab = checkpoint['vocab'] 
+    print(vocab['tgt'].vocab.stoi)
+    #n_input_classes = len(vocab['src'].vocab.stoi)
+    #n_output_classes = len(vocab['tgt'].vocab.stoi)
+    n_input_classes = 19
+    n_output_classes = 29
+    
+    model = make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=opts.n_enc_layers,n_dec=opts.n_dec_layers,model_dim=opts.model_dim,max_rel_pos=opts.max_rel_pos)
+    #model = make_transformer_seq2seq(n_enc=4,n_dec=4,model_dim=128,max_rel_pos=10)
     model.load_state_dict(checkpoint['model'],strict=False)
     model.generator.load_state_dict(checkpoint['generator'])
     model.to(device = machine)
@@ -87,7 +94,7 @@ def arrange_data_by_mode(df, mode):
         # in translate-only mode, only protein coding are considered
         df = df[df['Type'] == "<PC>"]
         protein = df['Protein'].tolist()
-    elif mode == "combined":
+    elif mode == "bioseq2seq":
         # identify and translate coding, identify non coding
         protein = (df['Type'] + df['Protein']).tolist()
     elif mode == "ED_classify":
@@ -131,6 +138,7 @@ def run_helper(rank,model,vocab,args):
     random.seed(random_seed)
     state = random.getstate()
     file_prefix = args.output_name
+    
     device = "cuda:{}".format(rank)
     #device = 'cpu'
 
@@ -159,6 +167,7 @@ def run_helper(rank,model,vocab,args):
             ids,
             cds,
             device,
+            args.alpha,
             beam_size=args.beam_size,
             n_best=args.n_best,
             save_preds=True,
@@ -167,7 +176,7 @@ def run_helper(rank,model,vocab,args):
             attn_save_layer=args.attn_save_layer,
             file_prefix=file_prefix)
 
-def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
+def translate(model,text_fields,rna,protein,ids,cds,device,alpha,beam_size = 8,
                     n_best = 4,save_preds=False,save_SA=False,save_EDA=False,attn_save_layer=3,file_prefix= "temp"):
     """ Translate raw data
     Args:
@@ -179,13 +188,14 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
         args (argparse.Namespace | dict): config arguments
         device (torch.device | str): device for translation.
     """
+    
     MAX_LEN = 333
     BATCH_SIZE = 1
     
     # global scorer for beam decoding
-    beam_scorer = GNMTGlobalScorer(alpha = 0.0,
+    beam_scorer = GNMTGlobalScorer(alpha = 0.6,
                                    beta = 0.0,
-                                   length_penalty = "none",
+                                   length_penalty = "wu",
                                    coverage_penalty = "none")
     
     translator = Translator(model,
@@ -197,6 +207,7 @@ def translate(model,text_fields,rna,protein,ids,cds,device,beam_size = 8,
                             beam_size = beam_size,
                             n_best = n_best,
                             global_scorer = beam_scorer,
+                            tgt_prefix = None,
                             verbose = False,
                             attn_save_layer=attn_save_layer,
                             max_length = MAX_LEN)

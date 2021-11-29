@@ -1,6 +1,6 @@
 from __future__ import division
 import torch
-
+import numpy as np
 
 class PenaltyBuilder(object):
     """Returns the Length and Coverage Penalty function for Beam Search.
@@ -50,6 +50,8 @@ class PenaltyBuilder(object):
             return self.length_average
         elif self._pen_is_none(length_pen):
             return self.length_none
+        elif length_pen == "uniform_amino_acid":
+            return self.length_uniform_amino_acid
         else:
             raise NotImplementedError("No '{:s}' length penalty.".format(
                 length_pen))
@@ -96,6 +98,10 @@ class PenaltyBuilder(object):
         """Returns the current sequence length."""
         return cur_len
 
+    def length_uniform_amino_acid(self, cur_len,alpha=0.):
+        """Returns a correction scaled by a uniform distribution over amino acids"""
+        return cur_len * np.log(0.99)
+    
     def length_none(self, cur_len, alpha=0.):
         """Returns unmodified scores."""
         return 1.0
