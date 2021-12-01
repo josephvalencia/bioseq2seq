@@ -4,30 +4,35 @@ import argparse
 import pandas as pd
 import random
 import torch
+import functools
 from math import log, floor
+from torch import nn
 
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim import Adam, SGD
 
-from bioseq2seq.utils.optimizers import Optimizer
+from bioseq2seq.utils.optimizers import Optimizer,noam_decay,AdaFactor
 from bioseq2seq.trainer import Trainer
 from bioseq2seq.utils.report_manager import ReportMgr
-from bioseq2seq.utils.earlystopping import EarlyStopping
+from bioseq2seq.utils.earlystopping import EarlyStopping, AccuracyScorer
 from bioseq2seq.models import ModelSaver
 from bioseq2seq.translate import Translator
 from bioseq2seq.utils.loss import NMTLossCompute
 from bioseq2seq.bin.translate import make_vocab
 
-from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition,train_test_val_split , filter_by_length
-from bioseq2seq.bin.models import make_transformer_seq2seq , make_transformer_classifier
+from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition
+from bioseq2seq.bin.models import make_transformer_seq2seq , make_transformer_classifier, Generator
 
 def parse_args():
     """Parse required and optional configuration arguments.""" 
     
     parser = argparse.ArgumentParser()
     # required args
-    parser.add_argument("--input",'--i',help = "File containing RNA to Protein dataset")
+    #parser.add_argument("--input",'--i',help = "File containing RNA to Protein dataset")
+    parser.add_argument("--train",help = "File containing RNA to Protein dataset")
+    parser.add_argument("--val",help = "File containing RNA to Protein dataset")
+    
     # optional args
     parser.add_argument("--save-directory","--s", default = "checkpoints/", help = "Name of directory for saving model checkpoints")
     parser.add_argument("--log-directory",'--l',default = "runs/", help = "Name of directory for saving TensorBoard log files" )
@@ -40,7 +45,7 @@ def parse_args():
     parser.add_argument("--max_tokens",type = int , default = 3000, help = "Max number of tokens in training batch")
     parser.add_argument("--rank", type = int, default = 0, help = "Rank of node in multi-node training")
     parser.add_argument("--max_len_transcript", type = int, default = 1000, help = "Maximum length of transcript")
-    parser.add_argument("--patience", type = int, default = 15, help = "Maximum epochs without improvement")
+    parser.add_argument("--patience", type = int, default = 8, help = "Maximum epochs without improvement")
     parser.add_argument("--address",default =  "127.0.0.1",help = "IP address for master process in distributed training")
     parser.add_argument("--port",default = "6000",help = "Port for master process in distributed training")
     parser.add_argument("--n_enc_layers",type=int,default = 6,help= "Number of encoder layers")
@@ -50,9 +55,14 @@ def parse_args():
 
     # optional flags
     parser.add_argument("--checkpoint", "--c", help = "Name of .pt model to initialize training")
+    parser.add_argument("--finetune",action = "store_true", help = "Reinitialize generator")
     parser.add_argument("--verbose",action="store_true")
 
     return parser.parse_args()
+
+def make_learning_rate_decay_fn(warmup_steps,model_size):
+    
+    return functools.partial(noam_decay,warmup_steps=warmup_steps,model_size=model_size)
 
 def train_helper(rank,args,seq2seq,random_seed):
 
@@ -68,18 +78,11 @@ def train_helper(rank,args,seq2seq,random_seed):
 
     # determined by GPU memory
     max_tokens_in_batch = args.max_tokens
-
-    # raw GENCODE transcript data. cols = ['ID','RNA','PROTEIN']
-    if args.input.endswith(".gz"):
-        dataframe = pd.read_csv(args.input,sep="\t",compression = "gzip")
-    else:
-        dataframe = pd.read_csv(args.input,sep="\t")
-
-    # obtain splits. Default 80/10/10. Filter below max_len_transcript
-    df_train,df_test,df_val = train_test_val_split(dataframe,args.max_len_transcript,random_seed)
-    #df_val['ID'].to_csv("validation_temp.csv",index=False)
+    df_train = pd.read_csv(args.train,sep='\t')
+    df_val = pd.read_csv(args.val,sep='\t')
+    
     # convert to torchtext.Dataset
-    train,test,val = dataset_from_df(df_train.copy(),df_test.copy(),df_val.copy(),mode=args.mode)
+    train,val = dataset_from_df([df_train.copy(),df_val.copy()],mode=args.mode)
     device = "cpu"
 
     if args.num_gpus > 0: # GPU training
@@ -96,11 +99,10 @@ def train_helper(rank,args,seq2seq,random_seed):
 
         # iterator over training batches
         train_iterator = iterator_from_dataset(local_slice,max_tokens_in_batch,device,train=True)
-
+        
         # configure distributed training with environmental variables
         os.environ['MASTER_ADDR'] = args.address
         os.environ['MASTER_PORT'] = args.port
-
         torch.distributed.init_process_group(
             backend="nccl",
             init_method= "env://",
@@ -109,19 +111,38 @@ def train_helper(rank,args,seq2seq,random_seed):
     else:
         train_iterator = iterator_from_dataset(train,max_tokens_in_batch,device,train=True)
 
+    tgt_vocab = train_iterator.fields['tgt'].vocab.itos
+    
+    weights = [] 
+    for i,c in enumerate(tgt_vocab):
+        if c == "<PC>" or c == "<NC>":
+            #weights.append(1000)
+            weights.append(1)
+        else:
+            weights.append(1)
+    #weights.append(1)
+    weights = torch.Tensor(weights).to(device) 
+
     # computes position-wise NLLoss
-    criterion = torch.nn.NLLLoss(ignore_index=1,reduction='sum')
+    criterion = torch.nn.NLLLoss(weight=weights,ignore_index=1,reduction='sum')
     train_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
     val_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
 
     # optimizes model parameters
     adam = Adam(params = seq2seq.parameters())
-    optim = Optimizer(adam,learning_rate = args.learning_rate)
+    #adafactor = AdaFactor(params=seq2seq.parameters())
+    #sgd = SGD(params=seq2seq.parameters(),learn
+    
+    lr_fn = make_learning_rate_decay_fn(4000,args.model_dim)
+    optim = Optimizer(adam,learning_rate = args.learning_rate,learning_rate_decay_fn=lr_fn,fp16=True)
 
     # concludes training if progress does not improve for |patience| epochs
-    early_stopping = EarlyStopping(tolerance=args.patience)
+    early_stopping = EarlyStopping(tolerance=args.patience) #,scorers=[AccuracyScorer()])
     
-    report_manager = saver = valid_state = valid_iterator = None
+    report_manager = None
+    saver = None
+    valid_state = None
+    valid_iterator = None
 
     # only rank 0 device is responsible for saving models and reporting progress
     if args.num_gpus == 1 or rank == 0:
@@ -136,32 +157,12 @@ def train_helper(rank,args,seq2seq,random_seed):
             os.mkdir(save_path)
        
         valid_iterator = iterator_from_dataset(val,max_tokens_in_batch,device,train=False)
-
+        
         saver = ModelSaver(base_path=save_path,
                            model=seq2seq,
                            model_opt=args,
                            fields=valid_iterator.fields,
                            optim=optim)
-
-        valid_state = None
-            
-        if args.mode == "combined":
-            protein = (df_val['Type']+df_val['Protein']).tolist()
-        elif args.mode == "translate":
-            df_val = df_val[df_val['Type'] == "<PC>"]
-            protein = df_val['Protein'].tolist()
-        elif args.mode == "ED_classify" or args.mode == "D_classify":
-            protein = df_val['Type'].tolist()
-        
-        subset_len = 250
-        # Translator builds its own iterator from unprocessed data
-        valid_state = wrap_validation_state(fields=valid_iterator.fields,
-                                            rna=df_val['RNA'].tolist()[:subset_len],
-                                            protein=protein[:subset_len],
-                                            id=df_val['ID'].tolist()[:subset_len],
-                                            cds=df_val['CDS'].tolist()[:subset_len],
-                                            device=device)
-    print(args.mode)
 
     # controls training and validation
     trainer = Trainer(seq2seq,
@@ -173,14 +174,16 @@ def train_helper(rank,args,seq2seq,random_seed):
                     gpus=args.num_gpus,
                     accum_count=[args.accum_steps],
                     report_manager=report_manager,
-                    model_saver=saver)
+                    model_saver=saver,
+                    model_dtype='fp16')
+    
     # training loop
     trainer.train(train_iter=train_iterator,
                 train_steps=args.max_epochs,
                 save_checkpoint_steps=args.report_every,
                 valid_iter=valid_iterator,
                 valid_steps=args.report_every,
-                valid_state=valid_state,
+                valid_state=None,
                 mode=args.mode)
 
 def wrap_validation_state(fields,rna,protein,id,cds,device):
@@ -188,7 +191,7 @@ def wrap_validation_state(fields,rna,protein,id,cds,device):
     fields = make_vocab(fields,rna,protein)
     return fields,rna,protein,id,cds,device
 
-def restore_transformer_model(checkpoint,args):
+def restore_transformer_seq2seq(checkpoint,n_input_classes,n_output_classes,args):
     ''' Restore a Transformer model from .pt
     Args:
         checkpoint : path to .pt saved model
@@ -196,9 +199,11 @@ def restore_transformer_model(checkpoint,args):
     Returns:
         restored model'''
 
-    model = make_transformer_seq2seq(n_enc=args.n_enc_layers,n_dec=args.n_dec_layers,model_dim=args.model_dim,max_rel_pos=args.max_rel_pos)
+    model = make_transformer_seq2seq(n_input_classes,n_output_classes,
+            n_enc=args.n_enc_layers,n_dec=args.n_dec_layers,
+            model_dim=args.model_dim,max_rel_pos=args.max_rel_pos)
+    
     model.load_state_dict(checkpoint['model'],strict = False)
-    model.generator.load_state_dict(checkpoint['generator'])
     return model
 
 def human_format(number):
@@ -212,17 +217,47 @@ def train(args):
     # controls pseudorandom shuffling and partitioning of dataset
     seed = 65
 
-    if not args.checkpoint is None:
+    df_train = pd.read_csv(args.train,sep='\t')
+    df_val = pd.read_csv(args.val,sep='\t')
+
+    device = "cpu"
+    
+    if args.checkpoint:
         checkpoint = torch.load(args.checkpoint,map_location = "cpu")
-        seq2seq = restore_transformer_model(checkpoint,args)
+        if args.finetune:
+            # tokenize and numericalize to obtain vocab 
+            train_dataset,val_dataset = dataset_from_df([df_train.copy(),df_val.copy()],mode=args.mode)
+            fields = train_dataset.fields
+            n_input_classes = len(fields['src'].vocab)
+            n_output_classes = len(fields['tgt'].vocab)
+            seq2seq = restore_transformer_seq2seq(checkpoint,n_input_classes,n_output_classes,args)
+            generator = Generator(args.model_dim,n_output_classes)
+            for p in generator.parameters():
+                if p.dim() > 1:
+                    nn.init.xavier_uniform_(p)
+            seq2seq.generator = generator
+        else:
+            # use the provided vocab
+            vocab = checkpoint['vocab'] 
+            n_input_classes = len(vocab['src'].vocab.stoi)
+            n_output_classes = len(vocab['tgt'].vocab.stoi)
+            seq2seq = restore_transformer_seq2seq(checkpoint,n_input_classes,n_output_classes,args)
+            seq2seq.generator.load_state_dict(checkpoint['generator'])
     else:
-        seq2seq = make_transformer_seq2seq(n_enc = args.n_enc_layers,
-                                            n_dec = args.n_dec_layers,
-                                            model_dim = args.model_dim,
-                                            max_rel_pos = args.max_rel_pos)
-
+        # tokenize and numericalize to obtain vocab 
+        train_dataset,val_dataset = dataset_from_df([df_train.copy(),df_val.copy()],mode=args.mode)
+        fields = train_dataset.fields
+        n_input_classes = len(fields['src'].vocab)
+        n_output_classes = len(fields['tgt'].vocab)
+        seq2seq = make_transformer_seq2seq(n_input_classes,
+                                            n_output_classes,
+                                            n_enc=args.n_enc_layers,
+                                            model_dim=args.model_dim,
+                                            max_rel_pos=args.max_rel_pos)
+    
     num_params = sum(p.numel() for p in seq2seq.parameters() if p.requires_grad)
-
+    
+    print(f'# Input classes = {n_input_classes} , # Output classes = {n_output_classes}') 
     print("# trainable parameters = {}".format(human_format(num_params)))
 
     if args.num_gpus > 1:

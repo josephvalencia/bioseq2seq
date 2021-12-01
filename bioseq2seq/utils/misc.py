@@ -3,7 +3,20 @@
 import torch
 import random
 import inspect
+import numpy as np
 from itertools import islice, repeat
+import os
+
+
+def check_path(path, exist_ok=False, log=print):
+    """Check if `path` exists, makedirs if not else warning/IOError."""
+    if os.path.exists(path):
+        if exist_ok:
+            log(f"path {path} exists, may overwrite...")
+        else:
+            raise IOError(f"path {path} exists, stop.")
+    else:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
 
 
 def split_corpus(path, shard_size, default=None):
@@ -59,11 +72,11 @@ def tile(x, count, dim=0):
     perm = list(range(len(x.size())))
     if dim != 0:
         perm[0], perm[dim] = perm[dim], perm[0]
-        x = x.permute(perm).contiguous()
+        x = x.permute(perm)
     out_size = list(x.size())
     out_size[0] *= count
     batch = x.size(0)
-    x = x.view(batch, -1) \
+    x = x.contiguous().view(batch, -1) \
          .transpose(0, 1) \
          .repeat(count, 1) \
          .transpose(0, 1) \
@@ -92,6 +105,8 @@ def set_random_seed(seed, is_cuda):
         # some cudnn methods can be random even after fixing the seed
         # unless you tell it to be deterministic
         torch.backends.cudnn.deterministic = True
+        # This one is needed for various tranfroms
+        np.random.seed(seed)
 
     if is_cuda and seed > 0:
         # These ensure same initialization in multi gpu mode
@@ -151,3 +166,22 @@ def report_matrix(row_label, column_label, matrix):
         output += row_format.format(word, *row) + '\n'
         row_format = "{:>10.10} " + "{:>10.7f} " * len(row_label)
     return output
+
+
+def check_model_config(model_config, root):
+    # we need to check the model path + any tokenizer path
+    for model in model_config["models"]:
+        model_path = os.path.join(root, model)
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(
+                "{} from model {} does not exist".format(
+                    model_path, model_config["id"]))
+    if "tokenizer" in model_config.keys():
+        if "params" in model_config["tokenizer"].keys():
+            for k, v in model_config["tokenizer"]["params"].items():
+                if k.endswith("path"):
+                    tok_path = os.path.join(root, v)
+                    if not os.path.exists(tok_path):
+                        raise FileNotFoundError(
+                            "{} from model {} does not exist".format(
+                                tok_path, model_config["id"]))

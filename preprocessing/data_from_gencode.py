@@ -4,15 +4,20 @@ import shlex
 import pandas as pd
 import subprocess
 
-def download_GENCODE():
+def download_GENCODE(species="human"):
 
-    prefix = "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_33/"
+    if species == "human":
+        parent = "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_38/"
+        prefix = "gencode.v38"
+    else:
+        parent = "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M27/"
+        prefix = "gencode.vM27"
 
     downloads = ["annotation.gff3","lncRNA_transcripts.fa","pc_transcripts.fa","pc_translations.fa"]
 
     for f in downloads:
-        remote = "gencode.v33.{}.gz".format(f)
-        cmd = shlex.split("wget {}{}".format(prefix,remote))
+        remote = "{}.{}.gz".format(prefix,f)
+        cmd = shlex.split("wget {}{}".format(parent,remote))
         subprocess.run(cmd)
         subprocess.run(shlex.split("gunzip "+remote))
 
@@ -173,8 +178,9 @@ def parse_GFF(gff):
 
 if __name__ =="__main__":
 
-    #download_GENCODE()
+    download_GENCODE(species="mouse")
 
+    '''
     mRNA_file = sys.argv[1]
     lncRNA_file = sys.argv[2]
     protein_file = sys.argv[3]
@@ -185,3 +191,4 @@ if __name__ =="__main__":
 
     dataset_from_fasta_v1(mRNA_file,protein_file,lncRNA_file,coding,noncoding,"coding_nocoding_enhanced.map")
     #dataset_from_fasta_v2(mRNA_file,protein_file,mRNA,"coding.map")
+    '''

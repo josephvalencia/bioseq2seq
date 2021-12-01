@@ -25,12 +25,11 @@ def batch_size_fn(new, count, sofar):
     src_elements = count * max_src_in_batch
     tgt_elements = count * max_tgt_in_batch
 
-    # return src_elements+tgt_elements
-    return src_elements
+    return src_elements+tgt_elements
 
 class BatchMaker(torchtext.data.Iterator):
 
-    def __init__(self,dataset,batch_size,device,repeat,train=True,sort_mode = "source"):
+    def __init__(self,dataset,batch_size,device,repeat,train=True,sort_mode = "total"):
 
         if sort_mode == "source":
             sort_key = lambda x: len(x.src)
@@ -107,7 +106,6 @@ class TranslationIterator:
             yield batch
 
     def __len__(self):
-
         return len(self.iterator.dataset)
 
     def __test_batch_sizes__(self):
@@ -172,7 +170,6 @@ def partition(dataset, split_ratios, random_state):
 
     data = tuple([dataset.examples[i] for i in index] for index in indices)
     splits = tuple(Dataset(d, dataset.fields) for d in data )
-
     return splits
 
 def dataset_from_df(df_list,mode="combined",saved_vocab = None):
@@ -180,38 +177,43 @@ def dataset_from_df(df_list,mode="combined",saved_vocab = None):
     # Fields define tensor attributes
     if saved_vocab is None:
 
+        rna_init = "[CLS]" if mode == "ENC_only" else None
         RNA = Field(tokenize=src_tokenize,
                     use_vocab=True,
                     batch_first=False,
-                    include_lengths=True)
+                    include_lengths=True,
+                    init_token=rna_init)
 
-        init = None if mode == "D_classify" else "<sos>"
-        eos = None if mode == "D_classify" else "<eos>"
-
+        prot_init = None if mode == "ENC_only" else "<sos>"
+        prot_eos = None if mode == "ENC_only" else "<eos>"
         PROTEIN =  Field(tokenize=tgt_tokenize,
                         use_vocab=True,
                         batch_first=False,
                         is_target=True,
                         include_lengths=False,
-                        init_token=init,
-                        eos_token=eos)
+                        init_token=prot_init,
+                        eos_token=prot_eos)
     else:
         RNA = saved_vocab['src']
         PROTEIN = saved_vocab['tgt']
 
-    # GENCODE ID is string not tensor
+    # ID is string not tensor
     ID = RawField()
     splits = []
     
+    # map column name to batch attribute and Field object
     for translation_table in df_list:
-        # map column name to batch attribute and Field object
-        if mode == "ED_classify" or mode == "D_classify":
+        
+        # for classification, only the class is the target
+        if mode == "ED_classify" or mode == "ENC_only":
             fields = {'ID':('id', ID),'RNA':('src', RNA),'Type':('tgt', PROTEIN)}
-        elif mode == "translate":
-            translation_table = translation_table[translation_table['Type'] == "<PC>"]
-            fields = {'ID':('id', ID),'RNA':('src', RNA),'Protein':('tgt', PROTEIN)}
-        elif mode == "combined":
+        # for bioseq2seq, target is protein prepended with class
+        elif mode == "bioseq2seq":
             translation_table['Protein'] = translation_table['Type']+translation_table['Protein']
+            fields = {'ID':('id', ID),'RNA':('src', RNA),'Protein':('tgt', PROTEIN)}
+        # for translation, target is protein only for mRNA set
+        elif mode == "translate_only":
+            translation_table = translation_table[translation_table['Type'] == "<PC>"]
             fields = {'ID':('id', ID),'RNA':('src', RNA),'Protein':('tgt', PROTEIN)}
 
         # [{col:value}]
@@ -234,8 +236,8 @@ def dataset_from_df(df_list,mode="combined",saved_vocab = None):
         PROTEIN.build_vocab(*splits)
         RNA.build_vocab(*splits)
 
-    #print("RNA:",RNA.vocab.stoi)
-    #print("Protein:",PROTEIN.vocab.stoi)
+    print("RNA:",RNA.vocab.stoi)
+    print("Protein:",PROTEIN.vocab.stoi)
 
     return tuple(splits)
 

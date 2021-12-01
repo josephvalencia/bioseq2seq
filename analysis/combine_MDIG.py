@@ -47,4 +47,6 @@ if __name__ == "__main__":
     
     seq_bases = ['A','C','G','T']
     seq_three_test = ['new_output/IG/seq2seq_3_'+b+'_pos_test.ig' for b in seq_bases]
-    combine(seq_three_test,'max_MDIG.ig')
+    EDC_three_test = ['new_output/IG/EDC_3_'+b+'_pos_test.ig' for b in seq_bases]
+    combine(seq_three_test,'seq2seq_3_combined_MDIG.ig')
+    combine(EDC_three_test,'EDC_3_combined_MDIG.ig')

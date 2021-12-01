@@ -6,7 +6,7 @@ import numpy as np
 
 def sample_by_class():
 
-    df = pd.read_csv("../Fa/train.csv",sep='\t')
+    df = pd.read_csv("data/mammalian_1k_train.csv",sep='\t')
     df = df.set_index('ID')
     by_type = df.groupby('Type')['RNA'].count()
     print(by_type)

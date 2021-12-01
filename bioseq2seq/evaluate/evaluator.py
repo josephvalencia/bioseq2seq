@@ -3,8 +3,7 @@ import shlex
 import subprocess
 import numpy as np
 from collections import Counter, defaultdict
-from sklearn.metrics import f1_score
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import f1_score,accuracy_score,confusion_matrix
 
 class Evaluator:
 
@@ -53,6 +52,7 @@ class Evaluator:
 
         if self.mode == "classify" or self.mode == "combined":
             self.calculate_F1(true_labels,pred_labels)
+            self.calculate_accuracy(true_labels,pred_labels)
             self.calculate_classification_metrics(true_labels,pred_labels)
             
         return self.best_stats,self.best_n_stats
@@ -60,8 +60,16 @@ class Evaluator:
     def calculate_F1(self,true_labels,pred_labels):
         
         best_preds = [x[0] for x in pred_labels]
+        unique = set(best_preds)
+        print(unique)
         f1 = f1_score(true_labels,best_preds) 
         self.best_stats['F1'] = f1
+    
+    def calculate_accuracy(self,true_labels,pred_labels):
+        
+        best_preds = [x[0] for x in pred_labels]
+        accuracy = accuracy_score(true_labels,best_preds) 
+        self.best_stats['accuracy_a'] = accuracy
     
     def calculate_classification_metrics(self,true_labels,pred_labels):
 
@@ -70,6 +78,7 @@ class Evaluator:
         self.best_stats['recall'] = self.divide(tp,tp+fn)
         self.best_stats['specificity'] = self.divide(tn,tn+fp)
         self.best_stats['precision'] = self.divide(tp,tp+fp)
+        self.best_stats['accuracy_b'] = self.divide(tp+tn,len(best_preds))
 
     def divide(self,num,denom):
 

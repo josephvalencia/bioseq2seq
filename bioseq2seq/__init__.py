@@ -12,11 +12,12 @@ from bioseq2seq.trainer import Trainer
 import sys
 import bioseq2seq.utils.optimizers
 import bioseq2seq.translate
+import bioseq2seq.evaluate
 bioseq2seq.utils.optimizers.Optim = bioseq2seq.utils.optimizers.Optimizer
 sys.modules["bioseq2seq.Optim"] = bioseq2seq.utils.optimizers
 
 # For Flake
 __all__ = [bioseq2seq.inputters, bioseq2seq.encoders, bioseq2seq.decoders, bioseq2seq.models,
-           bioseq2seq.utils, bioseq2seq.modules, "Trainer"]
+           bioseq2seq.utils, bioseq2seq.modules, bioseq2seq.evaluate, "Trainer"]
 
 __version__ = "1.0.0"

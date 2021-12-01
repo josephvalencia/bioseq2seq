@@ -364,5 +364,3 @@ def maxdist_txt(layer,tscript_id,seq):
 if __name__ == "__main__":
 
     pipeline(sys.argv[1],sys.argv[2])
-    #self_attn_heatmap_absolute(sys.argv[1])
-    #self_attn_heatmap_relative(sys.argv[1])

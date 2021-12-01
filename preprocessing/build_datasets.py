@@ -7,25 +7,95 @@ import seaborn as sns
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+from collections import defaultdict
 
-def short_mammalian_partitions(combined_file):
+def mammalian_partitions(combined_file,max_len):
     
     random_seed = 65
     data = pd.read_csv(combined_file,sep='\t')
     # filter to <1000 nt and 80/10/10 split
-    train,test,val = train_test_val_split(data,1000,random_seed,splits=[0.8,0.1,0.1])
-   
-    # save to CSV and FASTA formats 
-    train.to_csv('mammalian_1k_train.csv',sep='\t',index=False)
-    to_fasta(train,'mammalian_1k_train_RNA.fa')
+    train,test,val = train_test_val_split(data,max_len,random_seed,min_len=200,splits=[0.8,0.1,0.1])
     
-    test.to_csv('mammalian_1k_test.csv',sep='\t',index=False)
-    to_fasta(test,'mammalian_1k_test_RNA.fa')
-    #reduce_redundancy('mammalian_1k_train_RNA.fa','mammalian_1k_test')
+    # save to CSV and FASTA formats 
+    train.to_csv(f'mammalian_200-{max_len}_train.csv',sep='\t',index=False)
+    to_fasta(train,f'mammalian_200-{max_len}_train_RNA.fa')
+    balanced = balance_class_and_length(train,max_len)     
+    balanced.to_csv(f'mammalian_200-{max_len}_train_balanced.csv',sep='\t',index=False)
+    to_fasta(balanced,f'mammalian_200-{max_len}_train_RNA_balanced.fa')
+    
+    test.to_csv(f'mammalian_200-{max_len}_test.csv',sep='\t',index=False)
+    to_fasta(test,f'mammalian_200-{max_len}_test_RNA.fa')
+    reduce_redundancy(f'mammalian_200-{max_len}_train_RNA.fa',f'mammalian_200-{max_len}_test')
 
-    val.to_csv('mammalian_1k_val.csv',sep='\t',index=False)
-    to_fasta(val,'mammalian_1k_val_RNA.fa')
-    reduce_redundancy('mammalian_1k_train_RNA.fa','mammalian_1k_val')
+    val.to_csv(f'mammalian_200-{max_len}_val.csv',sep='\t',index=False)
+    to_fasta(val,f'mammalian_200-{max_len}_val_RNA.fa')
+    reduce_redundancy(f'mammalian_200-{max_len}_train_RNA.fa',f'mammalian_200-{max_len}_val')
+
+def balance_class_and_length(df,max_len):
+
+    random_seed = 65
+    df['RNA_len'] = [len(x) for x in df['RNA'].tolist()]
+    sns.histplot(data=df,hue='Type',x = 'RNA_len',binwidth=1)
+    plt.savefig(f'train_200-{max_len}_RNA_lens_unbalanced.svg')
+    plt.close()
+
+    pc = df[df['Type'] == '<PC>']
+    nc = df[df['Type'] == '<NC>']
+
+    dataset_nc , seqs_nc = arrange(nc)
+    dataset_pc, _ = arrange(pc)
+
+    nc_keys = [len(seq) for name, seq in seqs_nc]
+    samples_pc = match_length_distribution(nc_keys,dataset_pc)
+    
+    pc_ids = [x[0] for x in samples_pc]
+    nc_ids = nc['ID'].tolist()
+    
+    balanced_ids = pc_ids+nc_ids
+    df = df.set_index('ID')
+    df = df.loc[balanced_ids]
+    df = df.reset_index()
+    df = df.sample(frac=1.0,random_state=random_seed)
+    sns.histplot(data=df,hue='Type',x = 'RNA_len',binwidth=1)
+    plt.savefig(f'train_200-{max_len}_RNA_lens_balanced.svg')
+    plt.close()
+    
+    return df[df.columns.difference(['RNA_len'])]
+
+def match_length_distribution(sample_keys,dataset_b):
+    #list of keys
+    samples_b = []
+    for key in sample_keys:
+        found_neighbor = False
+        sign = 1
+        dist = 1
+        s_key = key
+        while not found_neighbor:
+            try:
+                samples_b.append(dataset_b[key][0])
+                found_neighbor = True
+                del dataset_b[key][0]
+                if len(dataset_b[key]) == 0:
+                    del dataset_b[key]
+            except KeyError:
+                key += dist * sign
+                dist += 1
+                sign *= -1
+    return samples_b
+
+def arrange(df):
+    seqs = []
+    dataset = {}
+
+    for n,r in zip(df['ID'].tolist(),df['RNA'].tolist()):
+        key = len(r)
+        if key not in dataset:
+            dataset[key] = []
+        dataset[key].append((n,r))
+        seqs.append((n,r))
+    
+    return dataset,seqs
+
 
 def longer_mammalian(combined_file):
 
@@ -100,7 +170,8 @@ def reduce_redundancy(train_fa,eval_prefix):
     eval_csv = eval_prefix+'.csv' 
     reduced_csv = eval_prefix+'_nonredundant_80.csv'
 
-    cmd = f'cd-hit-est-2d -i {train_fa} -i2 {eval_fa} -c 0.80 -n 5 -M 16000 -T 8 -o {reduced_fa}'
+    #cmd = f'cd-hit-est-2d -i {train_fa} -i2 {eval_fa} -c 0.80 -n 5 -M 16000 -T 8 -o {reduced_fa}'
+    cmd = f'cd-hit-est-2d -i {train_fa} -i2 {eval_fa} -c 0.80 -n 5 -T 32 -o {reduced_fa}'
     os.system(cmd) 
     filtered = parse_nonredundant_transcripts(reduced_fa)
     
@@ -114,6 +185,6 @@ if __name__ == "__main__":
     mammalian_file = 'data/mammalian_refseq.csv' 
     zebrafish_file = 'data/zebrafish_refseq.csv' 
     
-    #short_mammalian_partitions(mammalian_file) 
-    longer_mammalian(mammalian_file)
-    short_zebrafish(zebrafish_file)
+    mammalian_partitions(mammalian_file,int(sys.argv[1])) 
+    #longer_mammalian(mammalian_file)
+    #short_zebrafish(zebrafish_file)

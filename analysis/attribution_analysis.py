@@ -22,7 +22,6 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
 
-from bioseq2seq.bin.batcher import train_test_val_split
 
 def get_CDS_start(cds,rna):
 
@@ -716,27 +715,39 @@ if __name__ == "__main__":
     #run_attributions("new_output/IG/seq2seq_3_avg_pos_train.ig",df_train,"summed_attr","new_attr/", "IG")
     #run_attributions("new_output/IG/seq2seq_3_zero_pos_train.ig",df_train,"summed_attr","new_attr/","IG") 
 
-    #groups = [['PC','NC'],['PC','PC'],['NC','NC']]
-    groups = [['PC','NC']]
-    #metrics = [['max','max'],['max','min'],['max','random'],['min','random'],['random','random']]
-    metrics = [['max','max']]
+    groups = [['PC','NC'],['PC','PC'],['NC','NC']]
+    metrics = [['max','max'],['max','min'],['max','random'],['min','random'],['random','random']]
     
     for g in groups:
         for m in metrics:
-            name = f'{g[0]}-{m[0]}_{g[1]}-{m[1]}'
-           
-            # build directories
-            EDC_dir = f'new_attr/EDC_3_{name}/'
-            if not os.path.isdir(EDC_dir):
-                os.mkdir(EDC_dir)
-            seq_dir = f'new_attr/seq2seq_3_{name}/'
-            if not os.path.isdir(seq_dir):
-                os.mkdir(seq_dir)
-            
-            for l in range(4):
-                EDC_layer = "new_output/test/EDC_3_test_layer"+str(l)+".enc_dec_attns"
-                seq_layer = "new_output/test/seq2seq_3_test_layer"+str(l)+".enc_dec_attns"
-                for h in range(8):
-                    tgt_head = "layer{}head{}".format(l,h)
-                    run_attributions(EDC_layer,df_test,tgt_head,EDC_dir,g,m,"attn")
-                    run_attributions(seq_layer,df_test,tgt_head,seq_dir,g,m,"attn")
+            a = f'{g[0]}-{m[0]}'
+            b = f'{g[1]}-{m[1]}'
+            # ensure comparison groups are different 
+            if a != b:
+                name = f'{a}_{b}'
+                # build directories
+                EDC_dir = f'new_attr/EDC_3_{name}/'
+                if not os.path.isdir(EDC_dir):
+                    os.mkdir(EDC_dir)
+                seq_dir = f'new_attr/seq2seq_3_{name}/'
+                if not os.path.isdir(seq_dir):
+                    os.mkdir(seq_dir)
+          
+                prefix = "new_output/IG/"
+                run_attributions(prefix+'EDC_3_avg_pos_test.ig',df_test,'summed_attr',EDC_dir,g,m,"IG")
+                run_attributions(prefix+'EDC_3_zero_pos_test.ig',df_test,'summed_attr',EDC_dir,g,m,"IG")
+                run_attributions(prefix+'seq2seq_3_avg_pos_test.ig',df_test,'summed_attr',seq_dir,g,m,"IG")
+                run_attributions(prefix+'seq2seq_3_zero_pos_test.ig',df_test,'summed_attr',seq_dir,g,m,"IG")
+                
+                '''
+                # run all EDA layers
+                for l in range(4):
+                    #EDC_layer = "new_output/test/EDC_3_test_layer"+str(l)+".enc_dec_attns"
+                    EDC_layer = "new_output/test/EDC_3_test_layer"+str(l)+".enc_dec_attns"
+                    seq_layer = "new_output/test/seq2seq_3_test_layer"+str(l)+".enc_dec_attns"
+                    #seq_layer = "new_output/test/seq2seq_3_test_layer"+str(l)+".enc_dec_attns"
+                    for h in range(8):
+                        tgt_head = "layer{}head{}".format(l,h)
+                        run_attributions(EDC_layer,df_test,tgt_head,EDC_dir,g,m,"attn")
+                        run_attributions(seq_layer,df_test,tgt_head,seq_dir,g,m,"attn")
+                '''

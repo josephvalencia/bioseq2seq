@@ -6,6 +6,7 @@ from __future__ import division
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from sklearn.metrics import f1_score,confusion_matrix
 
 import bioseq2seq
 from bioseq2seq.modules.sparse_losses import SparsemaxLoss
@@ -115,7 +116,7 @@ class LossComputeBase(nn.Module):
             batch_stats.update(stats)
         return None, batch_stats
 
-    def _stats(self, loss, scores, target):
+    def _stats(self, loss, scores, target,n_batches,n_correct_class):
         """
         Args:
             loss (:obj:`FloatTensor`): the loss computed by the loss criterion.
@@ -129,7 +130,7 @@ class LossComputeBase(nn.Module):
         non_padding = target.ne(self.padding_idx)
         num_correct = pred.eq(target).masked_select(non_padding).sum().item()
         num_non_padding = non_padding.sum().item()
-        return bioseq2seq.utils.Statistics(loss.item(), num_non_padding, num_correct)
+        return bioseq2seq.utils.Statistics(loss.item(), num_non_padding, num_correct, n_batches,n_correct_class)
 
     def _bottle(self, _v):
         return _v.view(-1, _v.size(2))
@@ -226,8 +227,16 @@ class NMTLossCompute(LossComputeBase):
                       coverage_attn=None, align_head=None, ref_align=None):
 
         bottled_output = self._bottle(output)
-
         scores = self.generator(bottled_output)
+        
+        #isolate PC/NC label for F1 calculation
+        gt_class = target[0,:]
+        #isolate PC/NC prediction
+        pad_tgt_size, batch_size, _ = batch.tgt.size()
+        unbottled_scores = self._unbottle(scores,batch_size)
+        pred_class = unbottled_scores[0,:,:].max(1)[1]
+        n_correct_class = pred_class.eq(gt_class).sum().item()
+        #print(f'got {n_correct_class}/{batch_size} correct')
 
         gtruth = target.view(-1)
         loss = self.criterion(scores, gtruth)
@@ -243,7 +252,7 @@ class NMTLossCompute(LossComputeBase):
             align_loss = self._compute_alignement_loss(
                 align_head=align_head, ref_align=ref_align)
             loss += align_loss
-        stats = self._stats(loss.clone(), scores, gtruth)
+        stats = self._stats(loss.clone(), scores, gtruth,batch_size,n_correct_class)
         return loss, stats
 
     def _compute_coverage_loss(self, std_attn, coverage_attn):

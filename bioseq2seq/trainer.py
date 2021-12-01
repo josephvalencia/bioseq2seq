@@ -10,8 +10,7 @@ import tqdm
 import bioseq2seq.utils
 from bioseq2seq.utils.logging import logger
 from torch.nn.parallel import DistributedDataParallel as DDP
-
-from bioseq2seq.bin.evaluator import Evaluator
+from bioseq2seq.evaluate.evaluator import Evaluator
 from bioseq2seq.bin.translate import translate
 
 class Trainer(object):
@@ -186,13 +185,7 @@ class Trainer(object):
 
             if valid_iter is not None and step % valid_steps == 0 and self.rank == 0:
                 
-                if mode == "translate" : # or mode == "combined":
-                    print("Structured validation")
-                    valid_stats = self.validate_structured(valid_iter,valid_state,moving_average=self.moving_average)
-                else:
-                    print("Normal validation")
-                    valid_stats = self.validate(valid_iter,moving_average=self.moving_average)
-                
+                valid_stats = self.validate(valid_iter,moving_average=self.moving_average)
                 valid_stats = self._maybe_gather_stats(valid_stats)
 
                 self._report_step(self.optim.learning_rate(),
@@ -212,6 +205,7 @@ class Trainer(object):
             if (self.model_saver is not None
                 and (save_checkpoint_steps != 0
                      and step % save_checkpoint_steps == 0)):
+                print(f'Saving at step {step}')
                 self.model_saver.save(step, moving_average=self.moving_average)
 
             if train_steps > 0 and step >= train_steps:
@@ -251,11 +245,13 @@ class Trainer(object):
                                    else (batch.src, None)
                 tgt = batch.tgt
 
+                amp_training = self.model_dtype == 'fp16'
                 # F-prop through the model.
-                outputs, enc_attn, attns = valid_model(src, tgt, src_lengths,
-                                             with_align=self.with_align)
-                # Compute loss.
-                _, batch_stats = self.valid_loss(batch,outputs,attns)
+                with torch.cuda.amp.autocast(enabled=amp_training): 
+                    outputs, enc_attn, attns = valid_model(src, tgt, src_lengths,
+                                                 with_align=self.with_align)
+                    # Compute loss.
+                    _, batch_stats = self.valid_loss(batch,outputs,attns)
 
                 # Update statistics.
                 stats.update(batch_stats)
@@ -263,68 +259,6 @@ class Trainer(object):
         if moving_average:
             for param_data, param in zip(model_params_data,
                                          self.model.parameters()):
-                param.data = param_data
-
-        # Set model back to training mode.
-        valid_model.train()
-
-        return stats
-
-    def validate_structured(self,valid_iter,valid_state,moving_average=None):
-
-        """ Validate model.
-            valid_iter: validate data iterator
-        Returns:
-            :obj:`nmt.Statistics`: validation loss statistics
-        """
-        valid_model = self.model
-        if moving_average:
-            # swap model params w/ moving average
-            # (and keep the original parameters)
-            model_params_data = []
-            for avg, param in zip(self.moving_average,
-                                  valid_model.parameters()):
-                model_params_data.append(param.data)
-                param.data = avg.data.half() if self.optim._fp16 == "legacy" \
-                    else avg.data
-
-        # Set model in validating mode.
-        valid_model.eval()
-
-        with torch.no_grad():
- 
-            stats = bioseq2seq.utils.Statistics()
-            
-            for batch in valid_iter:
-
-                src, src_lengths = batch.src if isinstance(batch.src, tuple) else (batch.src, None)
-                tgt = batch.tgt
-
-                # F-prop through the model.
-                outputs, enc_attn, attns  = valid_model(src, tgt, src_lengths,with_align=self.with_align)
-                # Compute loss.
-                _, batch_stats = self.valid_loss(batch, outputs, attns)
-                # Update statistics.
-                stats.update(batch_stats)
-            
-            # Perform beam-search decoding and compute structured metrics
-            s = time.time()
-            
-            torch.cuda.empty_cache()
-            translations,gold,scores = translate(valid_model,*valid_state,beam_size=1,n_best=1)
-            
-            print("TRANSLATIONS: ",translations)
-            print("GOLD",gold)
-            e = time.time()
-            print("Decoding time: {}".format(e-s))
-            
-            top_results,top_n_results = self.evaluator.calculate_stats(translations,gold,valid_state[3])
-            print(top_results)
-
-            stats.update_structured(top_results,top_n_results)
-
-        if moving_average:
-            for param_data, param in zip(model_params_data,self.model.parameters()):
                 param.data = param_data
 
         # Set model back to training mode.
@@ -340,9 +274,10 @@ class Trainer(object):
         for k, batch in enumerate(true_batches):
 
             true_batch_num = batch_num * self.accum_count + k
-
-            msg = "Entering batch {} with src shape {} and tgt shape {} from device {}"
-            print(msg.format(true_batch_num,batch.src[0].shape,batch.tgt.shape,self.rank))
+            
+            if self.rank == 0 and (true_batch_num % 100 == 0):
+                msg = "Entering batch {} with src shape {} and tgt shape {} from device {}"
+                print(msg.format(true_batch_num,batch.src[0].shape,batch.tgt.shape,self.rank))
             
             target_size = batch.tgt.size(0)
 
@@ -369,24 +304,29 @@ class Trainer(object):
                 if self.accum_count == 1:
                     self.optim.zero_grad()
 
+                amp_training = self.model_dtype == 'fp16'
+
                 if self.num_gpus > 1:
-                    parallel_model = DDP(self.model,device_ids = [self.rank],output_device = self.rank)
-                    outputs,enc_attn,attns = parallel_model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
+                    with torch.cuda.amp.autocast(enabled=amp_training): 
+                        parallel_model = DDP(self.model,device_ids = [self.rank],output_device = self.rank)
+                        outputs,enc_attn,attns = parallel_model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
                 else:
-                    outputs,enc_attn,attns = self.model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
+                    with torch.cuda.amp.autocast(enabled=amp_training): 
+                        outputs,enc_attn,attns = self.model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
 
                 bptt = True
 
                 # 3. Compute loss.
                 try:
-                    loss, batch_stats = self.train_loss(
-                        batch,
-                        outputs,
-                        attns,
-                        normalization=normalization,
-                        shard_size=0,
-                        trunc_start=j,
-                        trunc_size=trunc_size)
+                    with torch.cuda.amp.autocast(enabled=amp_training): 
+                        loss, batch_stats = self.train_loss(
+                            batch,
+                            outputs,
+                            attns,
+                            normalization=normalization,
+                            shard_size=0,
+                            trunc_start=j,
+                            trunc_size=trunc_size)
                     if loss is not None:
                         self.optim.backward(loss)
 

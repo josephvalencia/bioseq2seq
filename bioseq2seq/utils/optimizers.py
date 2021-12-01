@@ -218,7 +218,9 @@ class Optimizer(object):
                  optimizer,
                  learning_rate,
                  learning_rate_decay_fn=None,
-                 max_grad_norm=None):
+                 max_grad_norm=None,
+                 fp16=False):
+
         """Initializes the controller.
 
        Args:
@@ -234,7 +236,8 @@ class Optimizer(object):
         self._max_grad_norm = max_grad_norm or 0
         self._training_step = 1
         self._decay_step = 1
-        self._fp16 = None
+        self.fp16 = fp16
+        self.scaler = torch.cuda.amp.GradScaler(enabled=self.fp16)
 
     @classmethod
     def from_opt(cls, model, opt, checkpoint=None):
@@ -303,6 +306,7 @@ class Optimizer(object):
         if self._learning_rate_decay_fn is None:
             return self._learning_rate
         scale = self._learning_rate_decay_fn(self._decay_step)
+        #print(f'Step={self._decay_step}, scale ={scale}')
         return scale * self._learning_rate
 
     def state_dict(self):
@@ -327,17 +331,7 @@ class Optimizer(object):
     def backward(self, loss):
         """Wrapper for backward pass. Some optimizer requires ownership of the
         backward pass."""
-        if self._fp16 == "amp":
-            import apex
-            with apex.amp.scale_loss(loss, self._optimizer) as scaled_loss:
-                scaled_loss.backward()
-        elif self._fp16 == "legacy":
-            kwargs = {}
-            if "update_master_grads" in fn_args(self._optimizer.backward):
-                kwargs["update_master_grads"] = True
-            self._optimizer.backward(loss, **kwargs)
-        else:
-            loss.backward()
+        self.scaler.scale(loss).backward()
 
     def step(self):
         """Update the model parameters based on current gradients.
@@ -346,18 +340,14 @@ class Optimizer(object):
         rate.
         """
         learning_rate = self.learning_rate()
-        if self._fp16 == "legacy":
-            if hasattr(self._optimizer, "update_master_grads"):
-                self._optimizer.update_master_grads()
-            if hasattr(self._optimizer, "clip_master_grads") and \
-               self._max_grad_norm > 0:
-                self._optimizer.clip_master_grads(self._max_grad_norm)
-
+        
         for group in self._optimizer.param_groups:
             group['lr'] = learning_rate
-            if self._fp16 is None and self._max_grad_norm > 0:
+            if not self.fp16  and self._max_grad_norm > 0:
                 clip_grad_norm_(group['params'], self._max_grad_norm)
-        self._optimizer.step()
+        
+        self.scaler.step(self._optimizer)
+        self.scaler.update()
         self._decay_step += 1
         self._training_step += 1
 

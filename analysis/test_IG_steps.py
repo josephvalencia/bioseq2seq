@@ -10,15 +10,16 @@ def attribution(saved_file,transcript):
                 fields = orjson.loads(l)
                 id_field = "ID"
                 id = fields[id_field]
-                array = [float(x) for x in fields['summed_attr']] 
+                array = [float(x) for x in fields['unreduced_attr']] 
                 return np.asarray(array)
     return None
 
 #new_filename = 'seqseq_4_avg_pos_test_250steps.ig'
 #old_filename = 'output/test/seq2seq/best_seq2seq_avg_pos_test.ig'
-
-new_filename = "new_output/IG/seq2seq_3_T_pos_test.ig"
-old_filename = "output/test/seq2seq/best_seq2seq_T_pos_test.ig" 
+new_filename = "seq2seq_recent.deeplift"
+old_filename = "seq2seq_recent.ig"
+#new_filename = "new_output/IG/seq2seq_3_T_pos_test.ig"
+#old_filename = "output/test/seq2seq/best_seq2seq_T_pos_test.ig" 
 
 storage = []
 
@@ -28,12 +29,12 @@ with open(new_filename) as inFile:
         tscript = fields['ID']
         is_pc = lambda x : x.startswith('NM_') or x.startswith('XM_')
         
-        array = [float(x) for x in fields['summed_attr']] 
+        array = [float(x) for x in fields['unreduced_attr']] 
         higher_scores = np.asarray(array)
         lower_scores = attribution(old_filename,tscript) 
         lower_scores = lower_scores[:higher_scores.shape[0]]
         pearson_result = stats.pearsonr(higher_scores,lower_scores)
         kendall_result = stats.kendalltau(higher_scores,lower_scores)
         storage.append(pearson_result[0])
-        print(pearson_result)
+        print(tscript,pearson_result)
 print('Mean Pearson R = {}'.format(np.mean(storage)))

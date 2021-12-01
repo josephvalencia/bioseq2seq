@@ -1,4 +1,4 @@
-from bioseq2seq.bin.evaluator import Evaluator
+from bioseq2seq.evaluate.evaluator import Evaluator
 import sys,re
 import numpy as np
 import matplotlib.pyplot as plt
@@ -28,7 +28,7 @@ def parse_predictions(record):
         gold = gold_class+gold_peptide
     else:
         print('Uh oh')
-        gold = 'NC>'
+        gold = '<NC>'
 
     return pred_list,gold,transcript
 
@@ -45,19 +45,6 @@ with open(pred_file,"r") as inFile:
 all_ids = []
 all_golds = []
 all_preds = []
-
-'''
-for i in range(0,len(lines)-8,8):
-    id = lines[i].split("ID: ")[1].rstrip()
-    if subset is not None and id not in subset:
-        continue
-    preds = [x.rstrip().split("PRED: ") for x in lines[i+2:i+6]]
-    preds = [x[1] if len(x) ==2 else "?" for x in preds]
-    gold = lines[i+6].rstrip().split("GOLD: ")[1]
-    all_ids.append(id)
-    all_golds.append(gold)
-    all_preds.append(preds)
-'''
     
 for i in range(0,len(lines)-9,9):
     vals = parse_predictions(lines[i:i+9])
@@ -66,7 +53,7 @@ for i in range(0,len(lines)-9,9):
         all_preds.append(pred)
         all_golds.append(gold)
         all_ids.append(transcript)
-
+print(all_preds)
 best_scores, best_n_scores = evaluator.calculate_stats(all_preds,all_golds,all_ids,log_all=True)
 for k,v in best_scores.items():
     vals = np.asarray(v)

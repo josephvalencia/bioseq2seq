@@ -45,30 +45,31 @@ class Translator(object):
     """Translate a batch of sentences with a saved model.
 
     Args:
-        model (onmt.modules.NMTModel): NMT model to use for translation
+        model (bioseq2seq.modules.NMTModel): NMT model to use for translation
         fields (dict[str, torchtext.data.Field]): A dict
             mapping each side to its list of name-Field pairs.
 
         src_reader (bioseq2seq.inputters.DataReaderBase): Source reader.
-        tgt_reader (onmt.inputters.TextDataReader): Target reader.
+        tgt_reader (bioseq2seq.inputters.TextDataReader): Target reader.
         gpu (int): GPU device. Set to negative for no GPU.
         n_best (int): How many beams to wait for.
         min_length (int): See
-            :class:`onmt.translate.decode_strategy.DecodeStrategy`.
+            :class:`bioseq2seq.translate.decode_strategy.DecodeStrategy`.
         max_length (int): See
-            :class:`onmt.translate.decode_strategy.DecodeStrategy`.
+            :class:`bioseq2seq.translate.decode_strategy.DecodeStrategy`.
         beam_size (int): Number of beams.
         random_sampling_topk (int): See
-            :class:`onmt.translate.greedy_search.GreedySearch`.
+            :class:`bioseq2seq.translate.greedy_search.GreedySearch`.
         random_sampling_temp (int): See
-            :class:`onmt.translate.greedy_search.GreedySearch`.
+            :class:`bioseq2seq.translate.greedy_search.GreedySearch`.
         stepwise_penalty (bool): Whether coverage penalty is applied every step
             or not.
         dump_beam (bool): Debugging option.
         block_ngram_repeat (int): See
-            :class:`onmt.translate.decode_strategy.DecodeStrategy`.
+            :class:`bioseq2seq.translate.decode_strategy.DecodeStrategy`.
         ignore_when_blocking (set or frozenset): See
-            :class:`onmt.translate.decode_strategy.DecodeStrategy`.
+            :class:`bioseq2seq.translate.decode_strategy.DecodeStrategy`.
+        tgt_prefix (bool): Force the predictions begin with provided -tgt.        
         replace_unk (bool): Replace unknown token.
         data_type (str): Source data type.
         verbose (bool): Print/log every translation.
@@ -100,6 +101,8 @@ class Translator(object):
             block_ngram_repeat=0,
             ignore_when_blocking=frozenset(),
             replace_unk=False,
+            ban_unk_token=False,
+            tgt_prefix=False,
             phrase_table="",
             data_type="text",
             verbose=False,
@@ -134,6 +137,7 @@ class Translator(object):
         self.sample_from_topk = random_sampling_topk
 
         self.min_length = min_length
+        self.ban_unk_token = ban_unk_token
         self.ratio = ratio
         self.stepwise_penalty = stepwise_penalty
         self.dump_beam = dump_beam
@@ -147,6 +151,8 @@ class Translator(object):
         if self.replace_unk and not self.model.decoder.attentional:
             raise ValueError(
                 "replace_unk requires an attentional decoder.")
+
+        self.tgt_prefix = tgt_prefix
         self.phrase_table = phrase_table
         self.data_type = data_type
         self.verbose = verbose
@@ -236,6 +242,10 @@ class Translator(object):
         if batch_size is None:
             raise ValueError("batch_size must be set")
 
+        if self.tgt_prefix and tgt is None:
+            raise ValueError("Prefix should be feed to tgt if -tgt_prefix.")
+
+        
         src_data = {"reader": self.src_reader, "data": src, "dir": src_dir}
         tgt_data = {"reader": self.tgt_reader, "data": tgt, "dir": None}
         _readers, _data, _dir = inputters.Dataset.config(
@@ -273,72 +283,74 @@ class Translator(object):
         start_time = time.time()
 
         for batch in tqdm.tqdm(data_iter):
-            try:
-                batch_data = self.translate_batch(
-                    batch, data.src_vocabs, save_EDA
-                )
-                translations = xlation_builder.from_batch(batch_data)
+            #try:
+            batch_data = self.translate_batch(
+                batch, data.src_vocabs, save_EDA
+            )
+            translations = xlation_builder.from_batch(batch_data)
 
-                for trans in translations:
+            for trans in translations:
 
-                    #all_scores += [trans.pred_scores[:self.n_best]]
-                    pred_score_total += trans.pred_scores[0]
-                    pred_words_total += len(trans.pred_sents[0])
+                #all_scores += [trans.pred_scores[:self.n_best]]
+                pred_score_total += trans.pred_scores[0]
+                pred_words_total += len(trans.pred_sents[0])
 
-                    rna = "".join(trans.src_raw)
-                    transcript_name = names[trans.index]
+                rna = "".join(trans.src_raw)
+                transcript_name = names[trans.index]
 
-                    bounds = cds[trans.index]
-                    cds_bounds = None if bounds == "-1" else [int(x) for x in bounds.split(":")]
-                    
-                    if save_EDA:
-                        # analyze encoder-decoder attention
-                        enc_dec_attn = trans.context_attn
-                        enc_dec_attn_state = EncoderDecoderAttentionDistribution(transcript_name,enc_dec_attn,\
-                                                                rna,cds_bounds,attn_save_layer = self.attn_save_layer)
-                        summary = enc_dec_attn_state.summarize()
-                        self.enc_dec_attn_file.write(summary+"\n")
-                    if save_SA: 
-                        # analyze self attention
-                        self_attn = trans.self_attn
-                        self_attn_state = SelfAttentionDistribution(transcript_name,self_attn,rna,cds_bounds)
-                        summary = self_attn_state.summarize()
-                        self.self_attn_file.write(summary+"\n")
-                        self.self_attn_file.flush()
-                        self.enc_dec_attn_file.flush()
-                    
-                    if tgt is not None:
-                        gold_score_total += trans.gold_score
-                        gold_words_total += len(trans.gold_sent) + 1
-                        #all_golds.append("".join(trans.gold_sent))
+                bounds = cds[trans.index]
+                cds_bounds = None if bounds == "-1" else [int(x) for x in bounds.split(":")]
+                
+                if save_EDA:
+                    # analyze encoder-decoder attention
+                    enc_dec_attn = trans.context_attn
+                    enc_dec_attn_state = EncoderDecoderAttentionDistribution(transcript_name,enc_dec_attn,\
+                                                            rna,cds_bounds,attn_save_layer = self.attn_save_layer)
+                    summary = enc_dec_attn_state.summarize()
+                    self.enc_dec_attn_file.write(summary+"\n")
+                if save_SA: 
+                    # analyze self attention
+                    self_attn = trans.self_attn
+                    self_attn_state = SelfAttentionDistribution(transcript_name,self_attn,rna,cds_bounds)
+                    summary = self_attn_state.summarize()
+                    self.self_attn_file.write(summary+"\n")
+                    self.self_attn_file.flush()
+                    self.enc_dec_attn_file.flush()
+                
+                if tgt is not None:
+                    gold_score_total += trans.gold_score
+                    gold_words_total += len(trans.gold_sent) + 1
+                    #all_golds.append("".join(trans.gold_sent))
 
-                    n_best_preds = ["".join(pred) for pred in trans.pred_sents[:self.n_best]]
-                    n_best_scores = [score for score in trans.pred_scores[:self.n_best]]
-                    #all_predictions += [n_best_preds]
+                n_best_preds = ["".join(pred) for pred in trans.pred_sents[:self.n_best]]
+                n_best_scores = [score for score in trans.pred_scores[:self.n_best]]
+                #all_predictions += [n_best_preds]
 
-                    if save_preds:
-                        self.pred_file.write("ID: {}\n".format(transcript_name))
-                        self.pred_file.write("RNA: {}\n".format(rna))
-                        for pred,score in zip(n_best_preds,n_best_scores):
-                            self.pred_file.write("PRED: {} SCORE: {}\n".format(pred,score))
-                        self.pred_file.write("PC_SCORE: {}\n".format(trans.coding_prob))
-                        self.pred_file.write("GOLD: "+"".join(trans.gold_sent)+"\n\n")
-                        self.pred_file.flush()
-                    
-                    if self.verbose:
-                        sent_number = next(counter)
-                        output = trans.log(sent_number)
-                        if self.logger:
-                            self.logger.info(output)
-                        else:
-                            os.write(1, output.encode('utf-8'))
-            except RuntimeError:
+                if save_preds:
+                    self.pred_file.write("ID: {}\n".format(transcript_name))
+                    self.pred_file.write("RNA: {}\n".format(rna))
+                    for pred,score in zip(n_best_preds,n_best_scores):
+                        self.pred_file.write("PRED: {} SCORE: {}\n".format(pred,score))
+                    self.pred_file.write("PC_SCORE: {}\n".format(trans.coding_prob))
+                    self.pred_file.write("GOLD: "+"".join(trans.gold_sent)+"\n\n")
+                    self.pred_file.flush()
+                
+                if self.verbose:
+                    sent_number = next(counter)
+                    output = trans.log(sent_number)
+                    if self.logger:
+                        self.logger.info(output)
+                    else:
+                        os.write(1, output.encode('utf-8'))
+            ''' 
+            except RuntimeError as err:
+                print(err)
                 torch.cuda.empty_cache()
                 failed = names[batch.indices]
                 print('GPU memory exceeded for transcript {}. Writing to failure file'.format(failed))
                 self.failure_file.write("{}\n".format(failed))
                 self.failure_file.flush()
-        
+            '''
         end_time = time.time()
 
         if self.report_score:
@@ -449,13 +461,15 @@ class Translator(object):
                     pad=self._tgt_pad_idx,
                     bos=self._tgt_bos_idx,
                     eos=self._tgt_eos_idx,
+                    unk=self._tgt_unk_idx,
                     batch_size=batch.batch_size,
                     min_length=self.min_length, max_length=self.max_length,
                     block_ngram_repeat=self.block_ngram_repeat,
                     exclusion_tokens=self._exclusion_idxs,
                     return_attention=attn_debug or self.replace_unk,
                     sampling_temp=self.random_sampling_temp,
-                    keep_topk=self.sample_from_topk)
+                    keep_topk=self.sample_from_topk,
+                    ban_unk_token=self.bank_unk_token)
             else:
                 # TODO: support these blacklisted features
                 assert not self.dump_beam
@@ -465,6 +479,7 @@ class Translator(object):
                     pad=self._tgt_pad_idx,
                     bos=self._tgt_bos_idx,
                     eos=self._tgt_eos_idx,
+                    unk=self._tgt_unk_idx,
                     n_best=self.n_best,
                     global_scorer=self.global_scorer,
                     min_length=self.min_length, max_length=self.max_length,
@@ -472,7 +487,8 @@ class Translator(object):
                     block_ngram_repeat=self.block_ngram_repeat,
                     exclusion_tokens=self._exclusion_idxs,
                     stepwise_penalty=self.stepwise_penalty,
-                    ratio=self.ratio)
+                    ratio=self.ratio,
+                    ban_unk_token=self.ban_unk_token,)
 
             return self._translate_batch_with_strategy(batch,decode_strategy)
 
@@ -552,8 +568,10 @@ class Translator(object):
 
         # (2) prep decode_strategy. Possibly repeat src objects.
         src_map = None
+        target_prefix = batch.tgt if self.tgt_prefix else None
+                
         fn_map_state, memory_bank, memory_lengths, src_map = \
-            decode_strategy.initialize(memory_bank, src_lengths, src_map)
+            decode_strategy.initialize(memory_bank, src_lengths, src_map,target_prefix=target_prefix)
         if fn_map_state is not None:
             self.model.decoder.map_state(fn_map_state)
        
