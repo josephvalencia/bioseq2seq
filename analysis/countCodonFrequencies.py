@@ -1,4 +1,3 @@
-#!/local/cluster/bin/python
 import sys, re
 from Bio import SeqIO
 from math import log

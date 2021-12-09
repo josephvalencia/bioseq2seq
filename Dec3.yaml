@@ -1,0 +1,22 @@
+[Datasets]
+train_csv : data/old/mammalian_200-1200_train_balanced.csv
+val_csv : data/old/mammalian_1k_val_nonredundant_80.csv
+test_csv : data/old/mammalian_1k_test_nonredundant_80.csv
+[Results]
+competitors_results : competitors_results.txt
+bioseq2seq_results : translation_scores.txt
+EDC_results : tmp.txt
+[Self-Attention]
+best_seq_self_attn : best_seq2seq.self_attn
+best_EDC_self_attn : best_EDC.self_attn
+[Encoder-Decoder Attention]
+best_seq_EDA : {'model' : 'bioseq2seq', 'attr' : 'EDA','prefix' : 'all_old/new_output/test/seq2seq_3_test_layer','suffix' : '.enc_dec_attns','layers' : [0,1,2,3]}
+best_EDC_EDA : {'model' : 'EDC', 'attr' : 'EDA','prefix' : 'all_old/new_output/test/EDC_3_test_layer','suffix' : '.enc_dec_attns','layers' : [0,1,2,3]}
+[Integrated Gradients]
+best_seq_IG : {'model' : 'bioseq2seq', 'attr' : 'IG','prefix' : 'all_old/new_output/IG/seq2seq_3_','suffix' : '_pos_test.ig','bases' : ['avg','zero']}
+best_EDC_IG : {'model' : 'EDC', 'attr' : 'IG','prefix' : 'all_old/new_output/IG/EDC_3_','suffix' : '_pos_test.ig','bases' : ['avg','zero']}
+[MDIG]
+best_seq_MDIG : {'model' : 'bioseq2seq', 'attr' : 'MDIG', 'prefix' : 'all_old/new_output/IG/seq2seq_3_','suffix' : '_pos_test.ig','bases' : ['A','C','G','T']}
+best_EDC_MDIG : {'model' : 'EDC', 'attr' : 'MDIG', 'prefix' : 'all_old/new_output/IG/EDC_3_','suffix' : '_pos_test.ig','bases' : ['A','C','G','T']}
+[Settings]
+average_attr_settings : {}

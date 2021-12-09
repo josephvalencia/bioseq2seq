@@ -51,10 +51,10 @@ def restore_transformer_model(checkpoint,machine,opts):
 
     vocab = checkpoint['vocab'] 
     print(vocab['tgt'].vocab.stoi)
-    #n_input_classes = len(vocab['src'].vocab.stoi)
-    #n_output_classes = len(vocab['tgt'].vocab.stoi)
-    n_input_classes = 19
-    n_output_classes = 29
+    n_input_classes = len(vocab['src'].vocab.stoi)
+    n_output_classes = len(vocab['tgt'].vocab.stoi)
+    #n_input_classes = 19
+    #n_output_classes = 29
     
     model = make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=opts.n_enc_layers,n_dec=opts.n_dec_layers,model_dim=opts.model_dim,max_rel_pos=opts.max_rel_pos)
     #model = make_transformer_seq2seq(n_enc=4,n_dec=4,model_dim=128,max_rel_pos=10)

@@ -1,0 +1,1032 @@
+  Started on:            cascade
+  Started at:            Tue Dec 7 08:04:13 PST 2021
+Training a new model on dataset data/mammalian_200-1200/mammalian_200-1200_train_balanced.csv.AUGMENTED and task bioseq2seq
+from dataset RNA: defaultdict(<bound method Vocab._default_unk_index of <torchtext.vocab.Vocab object at 0x2afa76ee3eb8>>, {'<unk>': 0, '<pad>': 1, 'A': 2, 'G': 3, 'C': 4, 'T': 5, 'N': 6, 'Y': 7, 'R': 8, 'M': 9, 'S': 10})
+from dataset Protein: defaultdict(<bound method Vocab._default_unk_index of <torchtext.vocab.Vocab object at 0x2afa87ea16a0>>, {'<unk>': 0, '<pad>': 1, '<sos>': 2, '<eos>': 3, 'L': 4, 'S': 5, 'A': 6, 'G': 7, 'E': 8, 'R': 9, 'K': 10, 'P': 11, 'V': 12, 'T': 13, 'Q': 14, 'D': 15, 'I': 16, 'F': 17, 'N': 18, 'C': 19, 'Y': 20, 'M': 21, 'H': 22, 'W': 23, '<NC>': 24, '<PC>': 25, 'X': 26, 'U': 27})
+# Input classes = 11 , # Output classes = 28
+# trainable parameters = 3.48M
+Multi-GPU training
+from dataset RNA: defaultdict(<bound method Vocab._default_unk_index of <torchtext.vocab.Vocab object at 0x2b5434dbd2b0>>, {'<unk>': 0, '<pad>': 1, 'A': 2, 'G': 3, 'C': 4, 'T': 5, 'N': 6, 'Y': 7, 'R': 8, 'M': 9, 'S': 10})
+from dataset Protein: defaultdict(<bound method Vocab._default_unk_index of <torchtext.vocab.Vocab object at 0x2b54469d8a20>>, {'<unk>': 0, '<pad>': 1, '<sos>': 2, '<eos>': 3, 'L': 4, 'S': 5, 'A': 6, 'G': 7, 'E': 8, 'R': 9, 'K': 10, 'P': 11, 'V': 12, 'T': 13, 'Q': 14, 'D': 15, 'I': 16, 'F': 17, 'N': 18, 'C': 19, 'Y': 20, 'M': 21, 'H': 22, 'W': 23, '<NC>': 24, '<PC>': 25, 'X': 26, 'U': 27})
+Building directory ...
+NMTModel(
+  (encoder): TransformerEncoder(
+    (embeddings): Embeddings(
+      (make_embedding): Sequential(
+        (emb_luts): Elementwise(
+          (0): Embedding(11, 64, padding_idx=1)
+        )
+        (pe): PositionalEncoding(
+          (dropout): Dropout(p=0, inplace=False)
+        )
+      )
+    )
+    (transformer): ModuleList(
+      (0): TransformerEncoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+          (relative_positions_embeddings): Embedding(17, 8)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=64, out_features=2048, bias=True)
+          (w_2): Linear(in_features=2048, out_features=64, bias=True)
+          (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+          (dropout_1): Dropout(p=0.1, inplace=False)
+          (relu): ReLU()
+          (dropout_2): Dropout(p=0.1, inplace=False)
+        )
+        (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (1): TransformerEncoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+          (relative_positions_embeddings): Embedding(17, 8)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=64, out_features=2048, bias=True)
+          (w_2): Linear(in_features=2048, out_features=64, bias=True)
+          (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+          (dropout_1): Dropout(p=0.1, inplace=False)
+          (relu): ReLU()
+          (dropout_2): Dropout(p=0.1, inplace=False)
+        )
+        (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (2): TransformerEncoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+          (relative_positions_embeddings): Embedding(17, 8)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=64, out_features=2048, bias=True)
+          (w_2): Linear(in_features=2048, out_features=64, bias=True)
+          (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+          (dropout_1): Dropout(p=0.1, inplace=False)
+          (relu): ReLU()
+          (dropout_2): Dropout(p=0.1, inplace=False)
+        )
+        (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (3): TransformerEncoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+          (relative_positions_embeddings): Embedding(17, 8)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=64, out_features=2048, bias=True)
+          (w_2): Linear(in_features=2048, out_features=64, bias=True)
+          (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+          (dropout_1): Dropout(p=0.1, inplace=False)
+          (relu): ReLU()
+          (dropout_2): Dropout(p=0.1, inplace=False)
+        )
+        (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (4): TransformerEncoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+          (relative_positions_embeddings): Embedding(17, 8)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=64, out_features=2048, bias=True)
+          (w_2): Linear(in_features=2048, out_features=64, bias=True)
+          (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+          (dropout_1): Dropout(p=0.1, inplace=False)
+          (relu): ReLU()
+          (dropout_2): Dropout(p=0.1, inplace=False)
+        )
+        (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (5): TransformerEncoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+          (relative_positions_embeddings): Embedding(17, 8)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=64, out_features=2048, bias=True)
+          (w_2): Linear(in_features=2048, out_features=64, bias=True)
+          (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+          (dropout_1): Dropout(p=0.1, inplace=False)
+          (relu): ReLU()
+          (dropout_2): Dropout(p=0.1, inplace=False)
+        )
+        (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+    )
+    (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+  )
+  (decoder): TransformerDecoder(
+    (embeddings): Embeddings(
+      (make_embedding): Sequential(
+        (emb_luts): Elementwise(
+          (0): Embedding(28, 64, padding_idx=1)
+        )
+        (pe): PositionalEncoding(
+          (dropout): Dropout(p=0, inplace=False)
+        )
+      )
+    )
+    (transformer_layers): ModuleList(
+      (0): TransformerDecoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+          (relative_positions_embeddings): Embedding(17, 8)
+        )
+        (context_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=64, out_features=2048, bias=True)
+          (w_2): Linear(in_features=2048, out_features=64, bias=True)
+          (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+          (dropout_1): Dropout(p=0.1, inplace=False)
+          (relu): ReLU()
+          (dropout_2): Dropout(p=0.1, inplace=False)
+        )
+        (layer_norm_1): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (layer_norm_2): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (drop): Dropout(p=0.1, inplace=False)
+      )
+      (1): TransformerDecoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+          (relative_positions_embeddings): Embedding(17, 8)
+        )
+        (context_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=64, out_features=2048, bias=True)
+          (w_2): Linear(in_features=2048, out_features=64, bias=True)
+          (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+          (dropout_1): Dropout(p=0.1, inplace=False)
+          (relu): ReLU()
+          (dropout_2): Dropout(p=0.1, inplace=False)
+        )
+        (layer_norm_1): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (layer_norm_2): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (drop): Dropout(p=0.1, inplace=False)
+      )
+      (2): TransformerDecoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+          (relative_positions_embeddings): Embedding(17, 8)
+        )
+        (context_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=64, out_features=2048, bias=True)
+          (w_2): Linear(in_features=2048, out_features=64, bias=True)
+          (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+          (dropout_1): Dropout(p=0.1, inplace=False)
+          (relu): ReLU()
+          (dropout_2): Dropout(p=0.1, inplace=False)
+        )
+        (layer_norm_1): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (layer_norm_2): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (drop): Dropout(p=0.1, inplace=False)
+      )
+      (3): TransformerDecoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+          (relative_positions_embeddings): Embedding(17, 8)
+        )
+        (context_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=64, out_features=2048, bias=True)
+          (w_2): Linear(in_features=2048, out_features=64, bias=True)
+          (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+          (dropout_1): Dropout(p=0.1, inplace=False)
+          (relu): ReLU()
+          (dropout_2): Dropout(p=0.1, inplace=False)
+        )
+        (layer_norm_1): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (layer_norm_2): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (drop): Dropout(p=0.1, inplace=False)
+      )
+      (4): TransformerDecoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+          (relative_positions_embeddings): Embedding(17, 8)
+        )
+        (context_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=64, out_features=2048, bias=True)
+          (w_2): Linear(in_features=2048, out_features=64, bias=True)
+          (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+          (dropout_1): Dropout(p=0.1, inplace=False)
+          (relu): ReLU()
+          (dropout_2): Dropout(p=0.1, inplace=False)
+        )
+        (layer_norm_1): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (layer_norm_2): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (drop): Dropout(p=0.1, inplace=False)
+      )
+      (5): TransformerDecoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+          (relative_positions_embeddings): Embedding(17, 8)
+        )
+        (context_attn): MultiHeadedAttention(
+          (linear_keys): Linear(in_features=64, out_features=64, bias=True)
+          (linear_values): Linear(in_features=64, out_features=64, bias=True)
+          (linear_query): Linear(in_features=64, out_features=64, bias=True)
+          (softmax): Softmax(dim=-1)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (final_linear): Linear(in_features=64, out_features=64, bias=True)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=64, out_features=2048, bias=True)
+          (w_2): Linear(in_features=2048, out_features=64, bias=True)
+          (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+          (dropout_1): Dropout(p=0.1, inplace=False)
+          (relu): ReLU()
+          (dropout_2): Dropout(p=0.1, inplace=False)
+        )
+        (layer_norm_1): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (layer_norm_2): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+        (drop): Dropout(p=0.1, inplace=False)
+      )
+    )
+    (layer_norm): LayerNorm((64,), eps=1e-06, elementwise_affine=True)
+  )
+  (generator): Generator(
+    (proj): Linear(in_features=64, out_features=28, bias=True)
+  )
+)
+Entering batch 0 with src shape torch.Size([751, 4, 1]) and tgt shape torch.Size([177, 4, 1]) from device 0
+Entering batch 100 with src shape torch.Size([757, 4, 1]) and tgt shape torch.Size([217, 4, 1]) from device 0
+Entering batch 200 with src shape torch.Size([1004, 3, 1]) and tgt shape torch.Size([311, 3, 1]) from device 0
+Entering batch 300 with src shape torch.Size([504, 6, 1]) and tgt shape torch.Size([170, 6, 1]) from device 0
+Entering batch 400 with src shape torch.Size([1090, 3, 1]) and tgt shape torch.Size([303, 3, 1]) from device 0
+Entering batch 500 with src shape torch.Size([1010, 3, 1]) and tgt shape torch.Size([232, 3, 1]) from device 0
+Entering batch 600 with src shape torch.Size([840, 4, 1]) and tgt shape torch.Size([258, 4, 1]) from device 0
+Entering batch 700 with src shape torch.Size([361, 9, 1]) and tgt shape torch.Size([107, 9, 1]) from device 0
+Entering batch 800 with src shape torch.Size([563, 6, 1]) and tgt shape torch.Size([148, 6, 1]) from device 0
+Entering batch 900 with src shape torch.Size([583, 7, 1]) and tgt shape torch.Size([58, 7, 1]) from device 0
+Entering batch 1000 with src shape torch.Size([813, 4, 1]) and tgt shape torch.Size([141, 4, 1]) from device 0
+Entering batch 1100 with src shape torch.Size([908, 3, 1]) and tgt shape torch.Size([239, 3, 1]) from device 0
+Entering batch 1200 with src shape torch.Size([513, 7, 1]) and tgt shape torch.Size([128, 7, 1]) from device 0
+Entering batch 1300 with src shape torch.Size([1144, 3, 1]) and tgt shape torch.Size([213, 3, 1]) from device 0
+Entering batch 1400 with src shape torch.Size([657, 5, 1]) and tgt shape torch.Size([182, 5, 1]) from device 0
+Entering batch 1500 with src shape torch.Size([1184, 3, 1]) and tgt shape torch.Size([253, 3, 1]) from device 0
+Entering batch 1600 with src shape torch.Size([561, 6, 1]) and tgt shape torch.Size([160, 6, 1]) from device 0
+Entering batch 1700 with src shape torch.Size([804, 4, 1]) and tgt shape torch.Size([159, 4, 1]) from device 0
+Entering batch 1800 with src shape torch.Size([1116, 3, 1]) and tgt shape torch.Size([243, 3, 1]) from device 0
+Entering batch 1900 with src shape torch.Size([699, 5, 1]) and tgt shape torch.Size([3, 5, 1]) from device 0
+Elapsed time: 61.54930870532989 minutes
+Saving at step 500
+Entering batch 2000 with src shape torch.Size([764, 4, 1]) and tgt shape torch.Size([225, 4, 1]) from device 0
+Entering batch 2100 with src shape torch.Size([1189, 3, 1]) and tgt shape torch.Size([210, 3, 1]) from device 0
+Entering batch 2200 with src shape torch.Size([729, 4, 1]) and tgt shape torch.Size([245, 4, 1]) from device 0
+Entering batch 2300 with src shape torch.Size([524, 6, 1]) and tgt shape torch.Size([151, 6, 1]) from device 0
+Entering batch 2400 with src shape torch.Size([857, 4, 1]) and tgt shape torch.Size([234, 4, 1]) from device 0
+Entering batch 2500 with src shape torch.Size([1114, 3, 1]) and tgt shape torch.Size([299, 3, 1]) from device 0
+Entering batch 2600 with src shape torch.Size([813, 4, 1]) and tgt shape torch.Size([148, 4, 1]) from device 0
+Entering batch 2700 with src shape torch.Size([967, 3, 1]) and tgt shape torch.Size([169, 3, 1]) from device 0
+Entering batch 2800 with src shape torch.Size([1174, 3, 1]) and tgt shape torch.Size([152, 3, 1]) from device 0
+Entering batch 2900 with src shape torch.Size([763, 4, 1]) and tgt shape torch.Size([179, 4, 1]) from device 0
+Entering batch 3000 with src shape torch.Size([811, 4, 1]) and tgt shape torch.Size([253, 4, 1]) from device 0
+Entering batch 3100 with src shape torch.Size([758, 4, 1]) and tgt shape torch.Size([174, 4, 1]) from device 0
+Entering batch 3200 with src shape torch.Size([1176, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 3300 with src shape torch.Size([847, 4, 1]) and tgt shape torch.Size([262, 4, 1]) from device 0
+Entering batch 3400 with src shape torch.Size([397, 9, 1]) and tgt shape torch.Size([99, 9, 1]) from device 0
+Entering batch 3500 with src shape torch.Size([601, 5, 1]) and tgt shape torch.Size([162, 5, 1]) from device 0
+Entering batch 3600 with src shape torch.Size([915, 3, 1]) and tgt shape torch.Size([225, 3, 1]) from device 0
+Entering batch 3700 with src shape torch.Size([884, 3, 1]) and tgt shape torch.Size([267, 3, 1]) from device 0
+Entering batch 3800 with src shape torch.Size([499, 7, 1]) and tgt shape torch.Size([138, 7, 1]) from device 0
+Entering batch 3900 with src shape torch.Size([815, 4, 1]) and tgt shape torch.Size([173, 4, 1]) from device 0
+Elapsed time: 126.89721524715424 minutes
+Saving at step 1000
+Entering batch 4000 with src shape torch.Size([662, 5, 1]) and tgt shape torch.Size([117, 5, 1]) from device 0
+Entering batch 4100 with src shape torch.Size([957, 3, 1]) and tgt shape torch.Size([210, 3, 1]) from device 0
+Entering batch 4200 with src shape torch.Size([898, 3, 1]) and tgt shape torch.Size([243, 3, 1]) from device 0
+Entering batch 4300 with src shape torch.Size([861, 4, 1]) and tgt shape torch.Size([170, 4, 1]) from device 0
+Entering batch 4400 with src shape torch.Size([559, 6, 1]) and tgt shape torch.Size([163, 6, 1]) from device 0
+Entering batch 4500 with src shape torch.Size([1074, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 4600 with src shape torch.Size([841, 4, 1]) and tgt shape torch.Size([215, 4, 1]) from device 0
+Entering batch 4700 with src shape torch.Size([460, 7, 1]) and tgt shape torch.Size([149, 7, 1]) from device 0
+Entering batch 4800 with src shape torch.Size([370, 12, 1]) and tgt shape torch.Size([3, 12, 1]) from device 0
+Entering batch 4900 with src shape torch.Size([989, 3, 1]) and tgt shape torch.Size([190, 3, 1]) from device 0
+Entering batch 5000 with src shape torch.Size([266, 13, 1]) and tgt shape torch.Size([70, 13, 1]) from device 0
+Entering batch 5100 with src shape torch.Size([868, 4, 1]) and tgt shape torch.Size([242, 4, 1]) from device 0
+Entering batch 5200 with src shape torch.Size([1090, 3, 1]) and tgt shape torch.Size([236, 3, 1]) from device 0
+Entering batch 5300 with src shape torch.Size([997, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 5400 with src shape torch.Size([900, 4, 1]) and tgt shape torch.Size([205, 4, 1]) from device 0
+Entering batch 5500 with src shape torch.Size([902, 4, 1]) and tgt shape torch.Size([159, 4, 1]) from device 0
+Entering batch 5600 with src shape torch.Size([970, 3, 1]) and tgt shape torch.Size([243, 3, 1]) from device 0
+Entering batch 5700 with src shape torch.Size([899, 3, 1]) and tgt shape torch.Size([255, 3, 1]) from device 0
+Entering batch 5800 with src shape torch.Size([617, 5, 1]) and tgt shape torch.Size([198, 5, 1]) from device 0
+Entering batch 5900 with src shape torch.Size([852, 4, 1]) and tgt shape torch.Size([228, 4, 1]) from device 0
+Elapsed time: 189.38723194201788 minutes
+Saving at step 1500
+Entering batch 6000 with src shape torch.Size([926, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 6100 with src shape torch.Size([1146, 3, 1]) and tgt shape torch.Size([225, 3, 1]) from device 0
+Entering batch 6200 with src shape torch.Size([594, 6, 1]) and tgt shape torch.Size([128, 6, 1]) from device 0
+Entering batch 6300 with src shape torch.Size([460, 7, 1]) and tgt shape torch.Size([133, 7, 1]) from device 0
+Entering batch 6400 with src shape torch.Size([829, 4, 1]) and tgt shape torch.Size([182, 4, 1]) from device 0
+Entering batch 6500 with src shape torch.Size([1045, 3, 1]) and tgt shape torch.Size([226, 3, 1]) from device 0
+Entering batch 6600 with src shape torch.Size([487, 7, 1]) and tgt shape torch.Size([83, 7, 1]) from device 0
+Entering batch 6700 with src shape torch.Size([1085, 3, 1]) and tgt shape torch.Size([318, 3, 1]) from device 0
+Entering batch 6800 with src shape torch.Size([538, 6, 1]) and tgt shape torch.Size([104, 6, 1]) from device 0
+Entering batch 6900 with src shape torch.Size([1186, 3, 1]) and tgt shape torch.Size([295, 3, 1]) from device 0
+Entering batch 7000 with src shape torch.Size([678, 6, 1]) and tgt shape torch.Size([3, 6, 1]) from device 0
+Entering batch 7100 with src shape torch.Size([831, 4, 1]) and tgt shape torch.Size([118, 4, 1]) from device 0
+Entering batch 7200 with src shape torch.Size([699, 4, 1]) and tgt shape torch.Size([211, 4, 1]) from device 0
+Entering batch 7300 with src shape torch.Size([448, 7, 1]) and tgt shape torch.Size([124, 7, 1]) from device 0
+Entering batch 7400 with src shape torch.Size([1014, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 7500 with src shape torch.Size([720, 5, 1]) and tgt shape torch.Size([156, 5, 1]) from device 0
+Entering batch 7600 with src shape torch.Size([1102, 3, 1]) and tgt shape torch.Size([256, 3, 1]) from device 0
+Entering batch 7700 with src shape torch.Size([628, 5, 1]) and tgt shape torch.Size([161, 5, 1]) from device 0
+Entering batch 7800 with src shape torch.Size([598, 5, 1]) and tgt shape torch.Size([151, 5, 1]) from device 0
+Entering batch 7900 with src shape torch.Size([752, 5, 1]) and tgt shape torch.Size([107, 5, 1]) from device 0
+Elapsed time: 253.44596359729766 minutes
+Saving at step 2000
+Entering batch 8000 with src shape torch.Size([996, 3, 1]) and tgt shape torch.Size([194, 3, 1]) from device 0
+Entering batch 8100 with src shape torch.Size([1190, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 8200 with src shape torch.Size([968, 3, 1]) and tgt shape torch.Size([285, 3, 1]) from device 0
+Entering batch 8300 with src shape torch.Size([877, 4, 1]) and tgt shape torch.Size([209, 4, 1]) from device 0
+Entering batch 8400 with src shape torch.Size([811, 4, 1]) and tgt shape torch.Size([193, 4, 1]) from device 0
+Entering batch 8500 with src shape torch.Size([338, 10, 1]) and tgt shape torch.Size([84, 10, 1]) from device 0
+Entering batch 8600 with src shape torch.Size([1038, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 8700 with src shape torch.Size([1162, 3, 1]) and tgt shape torch.Size([241, 3, 1]) from device 0
+Entering batch 8800 with src shape torch.Size([520, 7, 1]) and tgt shape torch.Size([110, 7, 1]) from device 0
+Entering batch 8900 with src shape torch.Size([793, 4, 1]) and tgt shape torch.Size([187, 4, 1]) from device 0
+Entering batch 9000 with src shape torch.Size([797, 4, 1]) and tgt shape torch.Size([255, 4, 1]) from device 0
+Entering batch 9100 with src shape torch.Size([1170, 3, 1]) and tgt shape torch.Size([266, 3, 1]) from device 0
+Entering batch 9200 with src shape torch.Size([744, 4, 1]) and tgt shape torch.Size([195, 4, 1]) from device 0
+Entering batch 9300 with src shape torch.Size([459, 8, 1]) and tgt shape torch.Size([79, 8, 1]) from device 0
+Entering batch 9400 with src shape torch.Size([849, 4, 1]) and tgt shape torch.Size([199, 4, 1]) from device 0
+Entering batch 9500 with src shape torch.Size([871, 4, 1]) and tgt shape torch.Size([200, 4, 1]) from device 0
+Entering batch 9600 with src shape torch.Size([540, 6, 1]) and tgt shape torch.Size([178, 6, 1]) from device 0
+Entering batch 9700 with src shape torch.Size([693, 4, 1]) and tgt shape torch.Size([227, 4, 1]) from device 0
+Entering batch 9800 with src shape torch.Size([885, 3, 1]) and tgt shape torch.Size([297, 3, 1]) from device 0
+Entering batch 9900 with src shape torch.Size([622, 5, 1]) and tgt shape torch.Size([183, 5, 1]) from device 0
+Elapsed time: 318.36267697811127 minutes
+Saving at step 2500
+Entering batch 10000 with src shape torch.Size([1151, 3, 1]) and tgt shape torch.Size([296, 3, 1]) from device 0
+Entering batch 10100 with src shape torch.Size([756, 4, 1]) and tgt shape torch.Size([209, 4, 1]) from device 0
+Entering batch 10200 with src shape torch.Size([642, 5, 1]) and tgt shape torch.Size([163, 5, 1]) from device 0
+Entering batch 10300 with src shape torch.Size([1168, 2, 1]) and tgt shape torch.Size([3, 2, 1]) from device 0
+Entering batch 10400 with src shape torch.Size([1043, 3, 1]) and tgt shape torch.Size([298, 3, 1]) from device 0
+Entering batch 10500 with src shape torch.Size([692, 5, 1]) and tgt shape torch.Size([174, 5, 1]) from device 0
+Entering batch 10600 with src shape torch.Size([603, 5, 1]) and tgt shape torch.Size([161, 5, 1]) from device 0
+Entering batch 10700 with src shape torch.Size([768, 4, 1]) and tgt shape torch.Size([172, 4, 1]) from device 0
+Entering batch 10800 with src shape torch.Size([1104, 3, 1]) and tgt shape torch.Size([317, 3, 1]) from device 0
+Entering batch 10900 with src shape torch.Size([1043, 3, 1]) and tgt shape torch.Size([200, 3, 1]) from device 0
+Entering batch 11000 with src shape torch.Size([976, 3, 1]) and tgt shape torch.Size([226, 3, 1]) from device 0
+Entering batch 11100 with src shape torch.Size([295, 11, 1]) and tgt shape torch.Size([100, 11, 1]) from device 0
+Entering batch 11200 with src shape torch.Size([1053, 3, 1]) and tgt shape torch.Size([263, 3, 1]) from device 0
+Entering batch 11300 with src shape torch.Size([980, 3, 1]) and tgt shape torch.Size([275, 3, 1]) from device 0
+Entering batch 11400 with src shape torch.Size([981, 3, 1]) and tgt shape torch.Size([232, 3, 1]) from device 0
+Entering batch 11500 with src shape torch.Size([765, 4, 1]) and tgt shape torch.Size([173, 4, 1]) from device 0
+Entering batch 11600 with src shape torch.Size([773, 4, 1]) and tgt shape torch.Size([159, 4, 1]) from device 0
+Entering batch 11700 with src shape torch.Size([772, 4, 1]) and tgt shape torch.Size([173, 4, 1]) from device 0
+Entering batch 11800 with src shape torch.Size([901, 4, 1]) and tgt shape torch.Size([133, 4, 1]) from device 0
+Entering batch 11900 with src shape torch.Size([823, 4, 1]) and tgt shape torch.Size([257, 4, 1]) from device 0
+Elapsed time: 382.6099167585373 minutes
+Saving at step 3000
+Entering batch 12000 with src shape torch.Size([456, 7, 1]) and tgt shape torch.Size([153, 7, 1]) from device 0
+Entering batch 12100 with src shape torch.Size([519, 6, 1]) and tgt shape torch.Size([127, 6, 1]) from device 0
+Entering batch 12200 with src shape torch.Size([1169, 2, 1]) and tgt shape torch.Size([332, 2, 1]) from device 0
+Entering batch 12300 with src shape torch.Size([742, 4, 1]) and tgt shape torch.Size([230, 4, 1]) from device 0
+Entering batch 12400 with src shape torch.Size([939, 3, 1]) and tgt shape torch.Size([248, 3, 1]) from device 0
+Entering batch 12500 with src shape torch.Size([626, 5, 1]) and tgt shape torch.Size([197, 5, 1]) from device 0
+Entering batch 12600 with src shape torch.Size([428, 8, 1]) and tgt shape torch.Size([73, 8, 1]) from device 0
+Entering batch 12700 with src shape torch.Size([719, 5, 1]) and tgt shape torch.Size([164, 5, 1]) from device 0
+Entering batch 12800 with src shape torch.Size([714, 5, 1]) and tgt shape torch.Size([182, 5, 1]) from device 0
+Entering batch 12900 with src shape torch.Size([1071, 3, 1]) and tgt shape torch.Size([251, 3, 1]) from device 0
+Entering batch 13000 with src shape torch.Size([1124, 3, 1]) and tgt shape torch.Size([201, 3, 1]) from device 0
+Entering batch 13100 with src shape torch.Size([1194, 3, 1]) and tgt shape torch.Size([251, 3, 1]) from device 0
+Entering batch 13200 with src shape torch.Size([743, 5, 1]) and tgt shape torch.Size([133, 5, 1]) from device 0
+Entering batch 13300 with src shape torch.Size([577, 6, 1]) and tgt shape torch.Size([125, 6, 1]) from device 0
+Entering batch 13400 with src shape torch.Size([876, 4, 1]) and tgt shape torch.Size([232, 4, 1]) from device 0
+Entering batch 13500 with src shape torch.Size([430, 8, 1]) and tgt shape torch.Size([123, 8, 1]) from device 0
+Entering batch 13600 with src shape torch.Size([1120, 3, 1]) and tgt shape torch.Size([299, 3, 1]) from device 0
+Entering batch 13700 with src shape torch.Size([896, 4, 1]) and tgt shape torch.Size([173, 4, 1]) from device 0
+Entering batch 13800 with src shape torch.Size([1009, 3, 1]) and tgt shape torch.Size([231, 3, 1]) from device 0
+Entering batch 13900 with src shape torch.Size([479, 7, 1]) and tgt shape torch.Size([151, 7, 1]) from device 0
+Elapsed time: 446.0430549661318 minutes
+Saving at step 3500
+Entering batch 14000 with src shape torch.Size([688, 5, 1]) and tgt shape torch.Size([208, 5, 1]) from device 0
+Entering batch 14100 with src shape torch.Size([417, 8, 1]) and tgt shape torch.Size([84, 8, 1]) from device 0
+Entering batch 14200 with src shape torch.Size([869, 3, 1]) and tgt shape torch.Size([235, 3, 1]) from device 0
+Entering batch 14300 with src shape torch.Size([957, 3, 1]) and tgt shape torch.Size([125, 3, 1]) from device 0
+Entering batch 14400 with src shape torch.Size([550, 6, 1]) and tgt shape torch.Size([142, 6, 1]) from device 0
+Entering batch 14500 with src shape torch.Size([898, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 14600 with src shape torch.Size([1040, 3, 1]) and tgt shape torch.Size([300, 3, 1]) from device 0
+Entering batch 14700 with src shape torch.Size([334, 10, 1]) and tgt shape torch.Size([99, 10, 1]) from device 0
+Entering batch 14800 with src shape torch.Size([639, 5, 1]) and tgt shape torch.Size([129, 5, 1]) from device 0
+Entering batch 14900 with src shape torch.Size([903, 4, 1]) and tgt shape torch.Size([132, 4, 1]) from device 0
+Entering batch 15000 with src shape torch.Size([464, 8, 1]) and tgt shape torch.Size([3, 8, 1]) from device 0
+Entering batch 15100 with src shape torch.Size([711, 5, 1]) and tgt shape torch.Size([143, 5, 1]) from device 0
+Entering batch 15200 with src shape torch.Size([376, 9, 1]) and tgt shape torch.Size([107, 9, 1]) from device 0
+Entering batch 15300 with src shape torch.Size([1187, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 15400 with src shape torch.Size([739, 4, 1]) and tgt shape torch.Size([216, 4, 1]) from device 0
+Entering batch 15500 with src shape torch.Size([1148, 3, 1]) and tgt shape torch.Size([344, 3, 1]) from device 0
+Entering batch 15600 with src shape torch.Size([1126, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 15700 with src shape torch.Size([704, 5, 1]) and tgt shape torch.Size([191, 5, 1]) from device 0
+Entering batch 15800 with src shape torch.Size([857, 4, 1]) and tgt shape torch.Size([190, 4, 1]) from device 0
+Entering batch 15900 with src shape torch.Size([607, 6, 1]) and tgt shape torch.Size([125, 6, 1]) from device 0
+Elapsed time: 509.94082449277244 minutes
+Saving at step 4000
+Entering batch 16000 with src shape torch.Size([854, 4, 1]) and tgt shape torch.Size([195, 4, 1]) from device 0
+Entering batch 16100 with src shape torch.Size([1044, 3, 1]) and tgt shape torch.Size([167, 3, 1]) from device 0
+Entering batch 16200 with src shape torch.Size([1087, 3, 1]) and tgt shape torch.Size([192, 3, 1]) from device 0
+Entering batch 16300 with src shape torch.Size([670, 5, 1]) and tgt shape torch.Size([211, 5, 1]) from device 0
+Entering batch 16400 with src shape torch.Size([1065, 3, 1]) and tgt shape torch.Size([197, 3, 1]) from device 0
+Entering batch 16500 with src shape torch.Size([807, 4, 1]) and tgt shape torch.Size([203, 4, 1]) from device 0
+Entering batch 16600 with src shape torch.Size([783, 4, 1]) and tgt shape torch.Size([200, 4, 1]) from device 0
+Entering batch 16700 with src shape torch.Size([770, 4, 1]) and tgt shape torch.Size([230, 4, 1]) from device 0
+Entering batch 16800 with src shape torch.Size([751, 4, 1]) and tgt shape torch.Size([195, 4, 1]) from device 0
+Entering batch 16900 with src shape torch.Size([1156, 3, 1]) and tgt shape torch.Size([143, 3, 1]) from device 0
+Entering batch 17000 with src shape torch.Size([528, 7, 1]) and tgt shape torch.Size([114, 7, 1]) from device 0
+Entering batch 17100 with src shape torch.Size([564, 6, 1]) and tgt shape torch.Size([129, 6, 1]) from device 0
+Entering batch 17200 with src shape torch.Size([864, 4, 1]) and tgt shape torch.Size([217, 4, 1]) from device 0
+Entering batch 17300 with src shape torch.Size([831, 4, 1]) and tgt shape torch.Size([247, 4, 1]) from device 0
+Entering batch 17400 with src shape torch.Size([291, 11, 1]) and tgt shape torch.Size([85, 11, 1]) from device 0
+Entering batch 17500 with src shape torch.Size([1133, 3, 1]) and tgt shape torch.Size([325, 3, 1]) from device 0
+Entering batch 17600 with src shape torch.Size([488, 7, 1]) and tgt shape torch.Size([138, 7, 1]) from device 0
+Entering batch 17700 with src shape torch.Size([370, 9, 1]) and tgt shape torch.Size([83, 9, 1]) from device 0
+Entering batch 17800 with src shape torch.Size([1077, 3, 1]) and tgt shape torch.Size([240, 3, 1]) from device 0
+Entering batch 17900 with src shape torch.Size([614, 5, 1]) and tgt shape torch.Size([174, 5, 1]) from device 0
+Elapsed time: 574.4116127292315 minutes
+Saving at step 4500
+Entering batch 18000 with src shape torch.Size([650, 5, 1]) and tgt shape torch.Size([119, 5, 1]) from device 0
+Entering batch 18100 with src shape torch.Size([579, 6, 1]) and tgt shape torch.Size([131, 6, 1]) from device 0
+Entering batch 18200 with src shape torch.Size([806, 4, 1]) and tgt shape torch.Size([202, 4, 1]) from device 0
+Entering batch 18300 with src shape torch.Size([845, 4, 1]) and tgt shape torch.Size([213, 4, 1]) from device 0
+Entering batch 18400 with src shape torch.Size([804, 4, 1]) and tgt shape torch.Size([170, 4, 1]) from device 0
+Entering batch 18500 with src shape torch.Size([742, 4, 1]) and tgt shape torch.Size([209, 4, 1]) from device 0
+Entering batch 18600 with src shape torch.Size([785, 4, 1]) and tgt shape torch.Size([180, 4, 1]) from device 0
+Entering batch 18700 with src shape torch.Size([797, 4, 1]) and tgt shape torch.Size([156, 4, 1]) from device 0
+Entering batch 18800 with src shape torch.Size([563, 7, 1]) and tgt shape torch.Size([3, 7, 1]) from device 0
+Entering batch 18900 with src shape torch.Size([754, 4, 1]) and tgt shape torch.Size([135, 4, 1]) from device 0
+Entering batch 19000 with src shape torch.Size([825, 4, 1]) and tgt shape torch.Size([211, 4, 1]) from device 0
+Entering batch 19100 with src shape torch.Size([666, 5, 1]) and tgt shape torch.Size([93, 5, 1]) from device 0
+Entering batch 19200 with src shape torch.Size([674, 5, 1]) and tgt shape torch.Size([130, 5, 1]) from device 0
+Entering batch 19300 with src shape torch.Size([993, 3, 1]) and tgt shape torch.Size([257, 3, 1]) from device 0
+Entering batch 19400 with src shape torch.Size([756, 4, 1]) and tgt shape torch.Size([185, 4, 1]) from device 0
+Entering batch 19500 with src shape torch.Size([732, 4, 1]) and tgt shape torch.Size([171, 4, 1]) from device 0
+Entering batch 19600 with src shape torch.Size([881, 4, 1]) and tgt shape torch.Size([202, 4, 1]) from device 0
+Entering batch 19700 with src shape torch.Size([1195, 3, 1]) and tgt shape torch.Size([301, 3, 1]) from device 0
+Entering batch 19800 with src shape torch.Size([688, 5, 1]) and tgt shape torch.Size([187, 5, 1]) from device 0
+Entering batch 19900 with src shape torch.Size([716, 4, 1]) and tgt shape torch.Size([218, 4, 1]) from device 0
+Elapsed time: 638.5679620583852 minutes
+Saving at step 5000
+Entering batch 20000 with src shape torch.Size([1036, 3, 1]) and tgt shape torch.Size([127, 3, 1]) from device 0
+Entering batch 20100 with src shape torch.Size([448, 7, 1]) and tgt shape torch.Size([134, 7, 1]) from device 0
+Entering batch 20200 with src shape torch.Size([1196, 2, 1]) and tgt shape torch.Size([362, 2, 1]) from device 0
+Entering batch 20300 with src shape torch.Size([642, 6, 1]) and tgt shape torch.Size([83, 6, 1]) from device 0
+Entering batch 20400 with src shape torch.Size([422, 8, 1]) and tgt shape torch.Size([131, 8, 1]) from device 0
+Entering batch 20500 with src shape torch.Size([575, 6, 1]) and tgt shape torch.Size([155, 6, 1]) from device 0
+Entering batch 20600 with src shape torch.Size([685, 4, 1]) and tgt shape torch.Size([216, 4, 1]) from device 0
+Entering batch 20700 with src shape torch.Size([1003, 3, 1]) and tgt shape torch.Size([330, 3, 1]) from device 0
+Entering batch 20800 with src shape torch.Size([487, 7, 1]) and tgt shape torch.Size([129, 7, 1]) from device 0
+Entering batch 20900 with src shape torch.Size([418, 8, 1]) and tgt shape torch.Size([138, 8, 1]) from device 0
+Entering batch 21000 with src shape torch.Size([919, 3, 1]) and tgt shape torch.Size([221, 3, 1]) from device 0
+Entering batch 21100 with src shape torch.Size([527, 8, 1]) and tgt shape torch.Size([3, 8, 1]) from device 0
+Entering batch 21200 with src shape torch.Size([628, 5, 1]) and tgt shape torch.Size([131, 5, 1]) from device 0
+Entering batch 21300 with src shape torch.Size([759, 4, 1]) and tgt shape torch.Size([203, 4, 1]) from device 0
+Entering batch 21400 with src shape torch.Size([1184, 3, 1]) and tgt shape torch.Size([139, 3, 1]) from device 0
+Entering batch 21500 with src shape torch.Size([1091, 3, 1]) and tgt shape torch.Size([337, 3, 1]) from device 0
+Entering batch 21600 with src shape torch.Size([872, 3, 1]) and tgt shape torch.Size([285, 3, 1]) from device 0
+Entering batch 21700 with src shape torch.Size([648, 5, 1]) and tgt shape torch.Size([182, 5, 1]) from device 0
+Entering batch 21800 with src shape torch.Size([476, 7, 1]) and tgt shape torch.Size([130, 7, 1]) from device 0
+Entering batch 21900 with src shape torch.Size([1192, 3, 1]) and tgt shape torch.Size([141, 3, 1]) from device 0
+Elapsed time: 700.337623123328 minutes
+Saving at step 5500
+Entering batch 22000 with src shape torch.Size([868, 4, 1]) and tgt shape torch.Size([194, 4, 1]) from device 0
+Entering batch 22100 with src shape torch.Size([323, 11, 1]) and tgt shape torch.Size([77, 11, 1]) from device 0
+Entering batch 22200 with src shape torch.Size([722, 5, 1]) and tgt shape torch.Size([115, 5, 1]) from device 0
+Entering batch 22300 with src shape torch.Size([1175, 2, 1]) and tgt shape torch.Size([120, 2, 1]) from device 0
+Entering batch 22400 with src shape torch.Size([707, 4, 1]) and tgt shape torch.Size([199, 4, 1]) from device 0
+Entering batch 22500 with src shape torch.Size([774, 5, 1]) and tgt shape torch.Size([120, 5, 1]) from device 0
+Entering batch 22600 with src shape torch.Size([564, 6, 1]) and tgt shape torch.Size([3, 6, 1]) from device 0
+Entering batch 22700 with src shape torch.Size([798, 4, 1]) and tgt shape torch.Size([238, 4, 1]) from device 0
+Entering batch 22800 with src shape torch.Size([868, 3, 1]) and tgt shape torch.Size([270, 3, 1]) from device 0
+Entering batch 22900 with src shape torch.Size([1031, 3, 1]) and tgt shape torch.Size([309, 3, 1]) from device 0
+Entering batch 23000 with src shape torch.Size([460, 7, 1]) and tgt shape torch.Size([96, 7, 1]) from device 0
+Entering batch 23100 with src shape torch.Size([649, 5, 1]) and tgt shape torch.Size([141, 5, 1]) from device 0
+Entering batch 23200 with src shape torch.Size([1186, 3, 1]) and tgt shape torch.Size([191, 3, 1]) from device 0
+Entering batch 23300 with src shape torch.Size([828, 4, 1]) and tgt shape torch.Size([242, 4, 1]) from device 0
+Entering batch 23400 with src shape torch.Size([636, 5, 1]) and tgt shape torch.Size([192, 5, 1]) from device 0
+Entering batch 23500 with src shape torch.Size([555, 6, 1]) and tgt shape torch.Size([147, 6, 1]) from device 0
+Entering batch 23600 with src shape torch.Size([531, 6, 1]) and tgt shape torch.Size([154, 6, 1]) from device 0
+Entering batch 23700 with src shape torch.Size([900, 3, 1]) and tgt shape torch.Size([228, 3, 1]) from device 0
+Entering batch 23800 with src shape torch.Size([914, 4, 1]) and tgt shape torch.Size([182, 4, 1]) from device 0
+Entering batch 23900 with src shape torch.Size([518, 7, 1]) and tgt shape torch.Size([113, 7, 1]) from device 0
+Elapsed time: 762.7136341929436 minutes
+Saving at step 6000
+Entering batch 24000 with src shape torch.Size([649, 6, 1]) and tgt shape torch.Size([96, 6, 1]) from device 0
+Entering batch 24100 with src shape torch.Size([355, 10, 1]) and tgt shape torch.Size([92, 10, 1]) from device 0
+Entering batch 24200 with src shape torch.Size([400, 8, 1]) and tgt shape torch.Size([109, 8, 1]) from device 0
+Entering batch 24300 with src shape torch.Size([1055, 3, 1]) and tgt shape torch.Size([198, 3, 1]) from device 0
+Entering batch 24400 with src shape torch.Size([805, 4, 1]) and tgt shape torch.Size([222, 4, 1]) from device 0
+Entering batch 24500 with src shape torch.Size([785, 4, 1]) and tgt shape torch.Size([152, 4, 1]) from device 0
+Entering batch 24600 with src shape torch.Size([975, 3, 1]) and tgt shape torch.Size([258, 3, 1]) from device 0
+Entering batch 24700 with src shape torch.Size([362, 9, 1]) and tgt shape torch.Size([109, 9, 1]) from device 0
+Entering batch 24800 with src shape torch.Size([731, 4, 1]) and tgt shape torch.Size([179, 4, 1]) from device 0
+Entering batch 24900 with src shape torch.Size([1160, 3, 1]) and tgt shape torch.Size([248, 3, 1]) from device 0
+Entering batch 25000 with src shape torch.Size([1010, 3, 1]) and tgt shape torch.Size([263, 3, 1]) from device 0
+Entering batch 25100 with src shape torch.Size([771, 4, 1]) and tgt shape torch.Size([215, 4, 1]) from device 0
+Entering batch 25200 with src shape torch.Size([747, 4, 1]) and tgt shape torch.Size([126, 4, 1]) from device 0
+Entering batch 25300 with src shape torch.Size([963, 3, 1]) and tgt shape torch.Size([186, 3, 1]) from device 0
+Entering batch 25400 with src shape torch.Size([955, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 25500 with src shape torch.Size([802, 4, 1]) and tgt shape torch.Size([223, 4, 1]) from device 0
+Entering batch 25600 with src shape torch.Size([532, 6, 1]) and tgt shape torch.Size([168, 6, 1]) from device 0
+Entering batch 25700 with src shape torch.Size([706, 5, 1]) and tgt shape torch.Size([151, 5, 1]) from device 0
+Entering batch 25800 with src shape torch.Size([896, 3, 1]) and tgt shape torch.Size([259, 3, 1]) from device 0
+Entering batch 25900 with src shape torch.Size([808, 4, 1]) and tgt shape torch.Size([108, 4, 1]) from device 0
+Elapsed time: 825.9481174429258 minutes
+Saving at step 6500
+Entering batch 26000 with src shape torch.Size([1150, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 26100 with src shape torch.Size([512, 7, 1]) and tgt shape torch.Size([122, 7, 1]) from device 0
+Entering batch 26200 with src shape torch.Size([981, 3, 1]) and tgt shape torch.Size([161, 3, 1]) from device 0
+Entering batch 26300 with src shape torch.Size([480, 7, 1]) and tgt shape torch.Size([120, 7, 1]) from device 0
+Entering batch 26400 with src shape torch.Size([857, 4, 1]) and tgt shape torch.Size([233, 4, 1]) from device 0
+Entering batch 26500 with src shape torch.Size([1159, 3, 1]) and tgt shape torch.Size([155, 3, 1]) from device 0
+Entering batch 26600 with src shape torch.Size([922, 4, 1]) and tgt shape torch.Size([156, 4, 1]) from device 0
+Entering batch 26700 with src shape torch.Size([807, 4, 1]) and tgt shape torch.Size([186, 4, 1]) from device 0
+Entering batch 26800 with src shape torch.Size([1126, 3, 1]) and tgt shape torch.Size([281, 3, 1]) from device 0
+Entering batch 26900 with src shape torch.Size([714, 5, 1]) and tgt shape torch.Size([156, 5, 1]) from device 0
+Entering batch 27000 with src shape torch.Size([1177, 3, 1]) and tgt shape torch.Size([293, 3, 1]) from device 0
+Entering batch 27100 with src shape torch.Size([956, 3, 1]) and tgt shape torch.Size([148, 3, 1]) from device 0
+Entering batch 27200 with src shape torch.Size([864, 4, 1]) and tgt shape torch.Size([139, 4, 1]) from device 0
+Entering batch 27300 with src shape torch.Size([1042, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 27400 with src shape torch.Size([719, 4, 1]) and tgt shape torch.Size([217, 4, 1]) from device 0
+Entering batch 27500 with src shape torch.Size([795, 4, 1]) and tgt shape torch.Size([208, 4, 1]) from device 0
+Entering batch 27600 with src shape torch.Size([751, 4, 1]) and tgt shape torch.Size([169, 4, 1]) from device 0
+Entering batch 27700 with src shape torch.Size([890, 4, 1]) and tgt shape torch.Size([160, 4, 1]) from device 0
+Entering batch 27800 with src shape torch.Size([929, 4, 1]) and tgt shape torch.Size([121, 4, 1]) from device 0
+Entering batch 27900 with src shape torch.Size([419, 8, 1]) and tgt shape torch.Size([100, 8, 1]) from device 0
+Elapsed time: 888.5972375671068 minutes
+Saving at step 7000
+Entering batch 28000 with src shape torch.Size([1095, 3, 1]) and tgt shape torch.Size([247, 3, 1]) from device 0
+Entering batch 28100 with src shape torch.Size([1050, 3, 1]) and tgt shape torch.Size([312, 3, 1]) from device 0
+Entering batch 28200 with src shape torch.Size([805, 4, 1]) and tgt shape torch.Size([170, 4, 1]) from device 0
+Entering batch 28300 with src shape torch.Size([1002, 3, 1]) and tgt shape torch.Size([239, 3, 1]) from device 0
+Entering batch 28400 with src shape torch.Size([450, 7, 1]) and tgt shape torch.Size([116, 7, 1]) from device 0
+Entering batch 28500 with src shape torch.Size([1139, 3, 1]) and tgt shape torch.Size([297, 3, 1]) from device 0
+Entering batch 28600 with src shape torch.Size([666, 5, 1]) and tgt shape torch.Size([137, 5, 1]) from device 0
+Entering batch 28700 with src shape torch.Size([1127, 3, 1]) and tgt shape torch.Size([323, 3, 1]) from device 0
+Entering batch 28800 with src shape torch.Size([430, 8, 1]) and tgt shape torch.Size([98, 8, 1]) from device 0
+Entering batch 28900 with src shape torch.Size([1190, 3, 1]) and tgt shape torch.Size([266, 3, 1]) from device 0
+Entering batch 29000 with src shape torch.Size([751, 4, 1]) and tgt shape torch.Size([163, 4, 1]) from device 0
+Entering batch 29100 with src shape torch.Size([781, 4, 1]) and tgt shape torch.Size([154, 4, 1]) from device 0
+Entering batch 29200 with src shape torch.Size([396, 8, 1]) and tgt shape torch.Size([3, 8, 1]) from device 0
+Entering batch 29300 with src shape torch.Size([1043, 3, 1]) and tgt shape torch.Size([272, 3, 1]) from device 0
+Entering batch 29400 with src shape torch.Size([822, 4, 1]) and tgt shape torch.Size([118, 4, 1]) from device 0
+Entering batch 29500 with src shape torch.Size([857, 4, 1]) and tgt shape torch.Size([268, 4, 1]) from device 0
+Entering batch 29600 with src shape torch.Size([376, 11, 1]) and tgt shape torch.Size([3, 11, 1]) from device 0
+Entering batch 29700 with src shape torch.Size([1128, 3, 1]) and tgt shape torch.Size([74, 3, 1]) from device 0
+Entering batch 29800 with src shape torch.Size([968, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 29900 with src shape torch.Size([818, 5, 1]) and tgt shape torch.Size([3, 5, 1]) from device 0
+Elapsed time: 951.6379216909409 minutes
+Saving at step 7500
+Entering batch 30000 with src shape torch.Size([776, 4, 1]) and tgt shape torch.Size([171, 4, 1]) from device 0
+Entering batch 30100 with src shape torch.Size([628, 5, 1]) and tgt shape torch.Size([3, 5, 1]) from device 0
+Entering batch 30200 with src shape torch.Size([902, 3, 1]) and tgt shape torch.Size([218, 3, 1]) from device 0
+Entering batch 30300 with src shape torch.Size([789, 4, 1]) and tgt shape torch.Size([188, 4, 1]) from device 0
+Entering batch 30400 with src shape torch.Size([625, 5, 1]) and tgt shape torch.Size([186, 5, 1]) from device 0
+Entering batch 30500 with src shape torch.Size([865, 4, 1]) and tgt shape torch.Size([247, 4, 1]) from device 0
+Entering batch 30600 with src shape torch.Size([809, 4, 1]) and tgt shape torch.Size([236, 4, 1]) from device 0
+Entering batch 30700 with src shape torch.Size([423, 8, 1]) and tgt shape torch.Size([128, 8, 1]) from device 0
+Entering batch 30800 with src shape torch.Size([1088, 3, 1]) and tgt shape torch.Size([220, 3, 1]) from device 0
+Entering batch 30900 with src shape torch.Size([594, 5, 1]) and tgt shape torch.Size([188, 5, 1]) from device 0
+Entering batch 31000 with src shape torch.Size([990, 3, 1]) and tgt shape torch.Size([286, 3, 1]) from device 0
+Entering batch 31100 with src shape torch.Size([582, 6, 1]) and tgt shape torch.Size([150, 6, 1]) from device 0
+Entering batch 31200 with src shape torch.Size([1166, 3, 1]) and tgt shape torch.Size([101, 3, 1]) from device 0
+Entering batch 31300 with src shape torch.Size([1107, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 31400 with src shape torch.Size([787, 4, 1]) and tgt shape torch.Size([235, 4, 1]) from device 0
+Entering batch 31500 with src shape torch.Size([1104, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 31600 with src shape torch.Size([625, 5, 1]) and tgt shape torch.Size([159, 5, 1]) from device 0
+Entering batch 31700 with src shape torch.Size([612, 6, 1]) and tgt shape torch.Size([3, 6, 1]) from device 0
+Entering batch 31800 with src shape torch.Size([795, 4, 1]) and tgt shape torch.Size([180, 4, 1]) from device 0
+Entering batch 31900 with src shape torch.Size([660, 5, 1]) and tgt shape torch.Size([222, 5, 1]) from device 0
+Elapsed time: 1013.9648985942205 minutes
+Saving at step 8000
+Entering batch 32000 with src shape torch.Size([1109, 3, 1]) and tgt shape torch.Size([193, 3, 1]) from device 0
+Entering batch 32100 with src shape torch.Size([922, 3, 1]) and tgt shape torch.Size([229, 3, 1]) from device 0
+Entering batch 32200 with src shape torch.Size([974, 3, 1]) and tgt shape torch.Size([159, 3, 1]) from device 0
+Entering batch 32300 with src shape torch.Size([438, 8, 1]) and tgt shape torch.Size([111, 8, 1]) from device 0
+Entering batch 32400 with src shape torch.Size([956, 3, 1]) and tgt shape torch.Size([230, 3, 1]) from device 0
+Entering batch 32500 with src shape torch.Size([969, 3, 1]) and tgt shape torch.Size([244, 3, 1]) from device 0
+Entering batch 32600 with src shape torch.Size([1098, 3, 1]) and tgt shape torch.Size([350, 3, 1]) from device 0
+Entering batch 32700 with src shape torch.Size([786, 4, 1]) and tgt shape torch.Size([104, 4, 1]) from device 0
+Entering batch 32800 with src shape torch.Size([394, 9, 1]) and tgt shape torch.Size([57, 9, 1]) from device 0
+Entering batch 32900 with src shape torch.Size([997, 3, 1]) and tgt shape torch.Size([242, 3, 1]) from device 0
+Entering batch 33000 with src shape torch.Size([1035, 3, 1]) and tgt shape torch.Size([300, 3, 1]) from device 0
+Entering batch 33100 with src shape torch.Size([930, 4, 1]) and tgt shape torch.Size([187, 4, 1]) from device 0
+Entering batch 33200 with src shape torch.Size([1198, 3, 1]) and tgt shape torch.Size([143, 3, 1]) from device 0
+Entering batch 33300 with src shape torch.Size([784, 4, 1]) and tgt shape torch.Size([200, 4, 1]) from device 0
+Entering batch 33400 with src shape torch.Size([786, 4, 1]) and tgt shape torch.Size([171, 4, 1]) from device 0
+Entering batch 33500 with src shape torch.Size([859, 4, 1]) and tgt shape torch.Size([175, 4, 1]) from device 0
+Entering batch 33600 with src shape torch.Size([978, 3, 1]) and tgt shape torch.Size([195, 3, 1]) from device 0
+Entering batch 33700 with src shape torch.Size([1112, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 33800 with src shape torch.Size([258, 16, 1]) and tgt shape torch.Size([3, 16, 1]) from device 0
+Entering batch 33900 with src shape torch.Size([1162, 2, 1]) and tgt shape torch.Size([379, 2, 1]) from device 0
+Elapsed time: 1076.570329574744 minutes
+Saving at step 8500
+Entering batch 34000 with src shape torch.Size([997, 3, 1]) and tgt shape torch.Size([237, 3, 1]) from device 0
+Entering batch 34100 with src shape torch.Size([1026, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 34200 with src shape torch.Size([510, 6, 1]) and tgt shape torch.Size([161, 6, 1]) from device 0
+Entering batch 34300 with src shape torch.Size([882, 4, 1]) and tgt shape torch.Size([233, 4, 1]) from device 0
+Entering batch 34400 with src shape torch.Size([942, 3, 1]) and tgt shape torch.Size([189, 3, 1]) from device 0
+Entering batch 34500 with src shape torch.Size([753, 4, 1]) and tgt shape torch.Size([186, 4, 1]) from device 0
+Entering batch 34600 with src shape torch.Size([760, 4, 1]) and tgt shape torch.Size([89, 4, 1]) from device 0
+Entering batch 34700 with src shape torch.Size([1037, 3, 1]) and tgt shape torch.Size([321, 3, 1]) from device 0
+Entering batch 34800 with src shape torch.Size([1019, 3, 1]) and tgt shape torch.Size([317, 3, 1]) from device 0
+Entering batch 34900 with src shape torch.Size([1159, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 35000 with src shape torch.Size([841, 4, 1]) and tgt shape torch.Size([205, 4, 1]) from device 0
+Entering batch 35100 with src shape torch.Size([1081, 3, 1]) and tgt shape torch.Size([290, 3, 1]) from device 0
+Entering batch 35200 with src shape torch.Size([1056, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 35300 with src shape torch.Size([1178, 2, 1]) and tgt shape torch.Size([338, 2, 1]) from device 0
+Entering batch 35400 with src shape torch.Size([498, 7, 1]) and tgt shape torch.Size([96, 7, 1]) from device 0
+Entering batch 35500 with src shape torch.Size([741, 4, 1]) and tgt shape torch.Size([213, 4, 1]) from device 0
+Entering batch 35600 with src shape torch.Size([1008, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 35700 with src shape torch.Size([526, 6, 1]) and tgt shape torch.Size([131, 6, 1]) from device 0
+Entering batch 35800 with src shape torch.Size([892, 4, 1]) and tgt shape torch.Size([139, 4, 1]) from device 0
+Entering batch 35900 with src shape torch.Size([814, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Elapsed time: 1139.235392510891 minutes
+Saving at step 9000
+Entering batch 36000 with src shape torch.Size([888, 4, 1]) and tgt shape torch.Size([221, 4, 1]) from device 0
+Entering batch 36100 with src shape torch.Size([768, 4, 1]) and tgt shape torch.Size([205, 4, 1]) from device 0
+Entering batch 36200 with src shape torch.Size([894, 3, 1]) and tgt shape torch.Size([196, 3, 1]) from device 0
+Entering batch 36300 with src shape torch.Size([695, 5, 1]) and tgt shape torch.Size([133, 5, 1]) from device 0
+Entering batch 36400 with src shape torch.Size([688, 5, 1]) and tgt shape torch.Size([157, 5, 1]) from device 0
+Entering batch 36500 with src shape torch.Size([1077, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 36600 with src shape torch.Size([796, 4, 1]) and tgt shape torch.Size([231, 4, 1]) from device 0
+Entering batch 36700 with src shape torch.Size([875, 3, 1]) and tgt shape torch.Size([264, 3, 1]) from device 0
+Entering batch 36800 with src shape torch.Size([900, 3, 1]) and tgt shape torch.Size([262, 3, 1]) from device 0
+Entering batch 36900 with src shape torch.Size([1193, 2, 1]) and tgt shape torch.Size([328, 2, 1]) from device 0
+Entering batch 37000 with src shape torch.Size([508, 6, 1]) and tgt shape torch.Size([166, 6, 1]) from device 0
+Entering batch 37100 with src shape torch.Size([1010, 3, 1]) and tgt shape torch.Size([317, 3, 1]) from device 0
+Entering batch 37200 with src shape torch.Size([1036, 3, 1]) and tgt shape torch.Size([305, 3, 1]) from device 0
+Entering batch 37300 with src shape torch.Size([1014, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 37400 with src shape torch.Size([468, 7, 1]) and tgt shape torch.Size([118, 7, 1]) from device 0
+Entering batch 37500 with src shape torch.Size([932, 4, 1]) and tgt shape torch.Size([95, 4, 1]) from device 0
+Entering batch 37600 with src shape torch.Size([474, 7, 1]) and tgt shape torch.Size([160, 7, 1]) from device 0
+Entering batch 37700 with src shape torch.Size([1076, 3, 1]) and tgt shape torch.Size([190, 3, 1]) from device 0
+Entering batch 37800 with src shape torch.Size([690, 5, 1]) and tgt shape torch.Size([124, 5, 1]) from device 0
+Entering batch 37900 with src shape torch.Size([910, 4, 1]) and tgt shape torch.Size([117, 4, 1]) from device 0
+Elapsed time: 1201.4009153326353 minutes
+Saving at step 9500
+Entering batch 38000 with src shape torch.Size([470, 8, 1]) and tgt shape torch.Size([89, 8, 1]) from device 0
+Entering batch 38100 with src shape torch.Size([842, 4, 1]) and tgt shape torch.Size([267, 4, 1]) from device 0
+Entering batch 38200 with src shape torch.Size([607, 6, 1]) and tgt shape torch.Size([141, 6, 1]) from device 0
+Entering batch 38300 with src shape torch.Size([577, 6, 1]) and tgt shape torch.Size([141, 6, 1]) from device 0
+Entering batch 38400 with src shape torch.Size([786, 4, 1]) and tgt shape torch.Size([151, 4, 1]) from device 0
+Entering batch 38500 with src shape torch.Size([1045, 3, 1]) and tgt shape torch.Size([177, 3, 1]) from device 0
+Entering batch 38600 with src shape torch.Size([1110, 3, 1]) and tgt shape torch.Size([315, 3, 1]) from device 0
+Entering batch 38700 with src shape torch.Size([534, 6, 1]) and tgt shape torch.Size([3, 6, 1]) from device 0
+Entering batch 38800 with src shape torch.Size([548, 6, 1]) and tgt shape torch.Size([162, 6, 1]) from device 0
+Entering batch 38900 with src shape torch.Size([597, 5, 1]) and tgt shape torch.Size([157, 5, 1]) from device 0
+Entering batch 39000 with src shape torch.Size([748, 5, 1]) and tgt shape torch.Size([114, 5, 1]) from device 0
+Entering batch 39100 with src shape torch.Size([913, 3, 1]) and tgt shape torch.Size([214, 3, 1]) from device 0
+Entering batch 39200 with src shape torch.Size([556, 6, 1]) and tgt shape torch.Size([118, 6, 1]) from device 0
+Entering batch 39300 with src shape torch.Size([482, 7, 1]) and tgt shape torch.Size([137, 7, 1]) from device 0
+Entering batch 39400 with src shape torch.Size([912, 3, 1]) and tgt shape torch.Size([276, 3, 1]) from device 0
+Entering batch 39500 with src shape torch.Size([757, 4, 1]) and tgt shape torch.Size([213, 4, 1]) from device 0
+Entering batch 39600 with src shape torch.Size([1194, 3, 1]) and tgt shape torch.Size([245, 3, 1]) from device 0
+Entering batch 39700 with src shape torch.Size([865, 4, 1]) and tgt shape torch.Size([211, 4, 1]) from device 0
+Entering batch 39800 with src shape torch.Size([1032, 3, 1]) and tgt shape torch.Size([276, 3, 1]) from device 0
+Entering batch 39900 with src shape torch.Size([1068, 3, 1]) and tgt shape torch.Size([260, 3, 1]) from device 0
+Elapsed time: 1263.1171907742819 minutes
+Saving at step 10000
+Entering batch 40000 with src shape torch.Size([578, 6, 1]) and tgt shape torch.Size([81, 6, 1]) from device 0
+Entering batch 40100 with src shape torch.Size([914, 3, 1]) and tgt shape torch.Size([225, 3, 1]) from device 0
+Entering batch 40200 with src shape torch.Size([1011, 3, 1]) and tgt shape torch.Size([315, 3, 1]) from device 0
+Entering batch 40300 with src shape torch.Size([827, 4, 1]) and tgt shape torch.Size([214, 4, 1]) from device 0
+Entering batch 40400 with src shape torch.Size([932, 3, 1]) and tgt shape torch.Size([214, 3, 1]) from device 0
+Entering batch 40500 with src shape torch.Size([860, 3, 1]) and tgt shape torch.Size([273, 3, 1]) from device 0
+Entering batch 40600 with src shape torch.Size([859, 4, 1]) and tgt shape torch.Size([228, 4, 1]) from device 0
+Entering batch 40700 with src shape torch.Size([775, 4, 1]) and tgt shape torch.Size([179, 4, 1]) from device 0
+Entering batch 40800 with src shape torch.Size([902, 3, 1]) and tgt shape torch.Size([225, 3, 1]) from device 0
+Entering batch 40900 with src shape torch.Size([833, 4, 1]) and tgt shape torch.Size([239, 4, 1]) from device 0
+Entering batch 41000 with src shape torch.Size([474, 7, 1]) and tgt shape torch.Size([106, 7, 1]) from device 0
+Entering batch 41100 with src shape torch.Size([528, 6, 1]) and tgt shape torch.Size([120, 6, 1]) from device 0
+Entering batch 41200 with src shape torch.Size([837, 4, 1]) and tgt shape torch.Size([197, 4, 1]) from device 0
+Entering batch 41300 with src shape torch.Size([799, 4, 1]) and tgt shape torch.Size([112, 4, 1]) from device 0
+Entering batch 41400 with src shape torch.Size([522, 6, 1]) and tgt shape torch.Size([133, 6, 1]) from device 0
+Entering batch 41500 with src shape torch.Size([688, 5, 1]) and tgt shape torch.Size([149, 5, 1]) from device 0
+Entering batch 41600 with src shape torch.Size([966, 4, 1]) and tgt shape torch.Size([101, 4, 1]) from device 0
+Entering batch 41700 with src shape torch.Size([1193, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 41800 with src shape torch.Size([673, 5, 1]) and tgt shape torch.Size([129, 5, 1]) from device 0
+Entering batch 41900 with src shape torch.Size([1018, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Elapsed time: 1325.0472098787625 minutes
+Saving at step 10500
+Entering batch 42000 with src shape torch.Size([489, 7, 1]) and tgt shape torch.Size([103, 7, 1]) from device 0
+Entering batch 42100 with src shape torch.Size([686, 5, 1]) and tgt shape torch.Size([146, 5, 1]) from device 0
+Entering batch 42200 with src shape torch.Size([995, 3, 1]) and tgt shape torch.Size([231, 3, 1]) from device 0
+Entering batch 42300 with src shape torch.Size([1000, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 42400 with src shape torch.Size([779, 4, 1]) and tgt shape torch.Size([122, 4, 1]) from device 0
+Entering batch 42500 with src shape torch.Size([651, 5, 1]) and tgt shape torch.Size([164, 5, 1]) from device 0
+Entering batch 42600 with src shape torch.Size([727, 4, 1]) and tgt shape torch.Size([191, 4, 1]) from device 0
+Entering batch 42700 with src shape torch.Size([616, 5, 1]) and tgt shape torch.Size([157, 5, 1]) from device 0
+Entering batch 42800 with src shape torch.Size([792, 4, 1]) and tgt shape torch.Size([149, 4, 1]) from device 0
+Entering batch 42900 with src shape torch.Size([1179, 3, 1]) and tgt shape torch.Size([259, 3, 1]) from device 0
+Entering batch 43000 with src shape torch.Size([983, 3, 1]) and tgt shape torch.Size([207, 3, 1]) from device 0
+Entering batch 43100 with src shape torch.Size([439, 8, 1]) and tgt shape torch.Size([84, 8, 1]) from device 0
+Entering batch 43200 with src shape torch.Size([735, 5, 1]) and tgt shape torch.Size([148, 5, 1]) from device 0
+Entering batch 43300 with src shape torch.Size([570, 6, 1]) and tgt shape torch.Size([179, 6, 1]) from device 0
+Entering batch 43400 with src shape torch.Size([1186, 2, 1]) and tgt shape torch.Size([342, 2, 1]) from device 0
+Entering batch 43500 with src shape torch.Size([1188, 2, 1]) and tgt shape torch.Size([345, 2, 1]) from device 0
+Entering batch 43600 with src shape torch.Size([797, 4, 1]) and tgt shape torch.Size([220, 4, 1]) from device 0
+Entering batch 43700 with src shape torch.Size([1069, 3, 1]) and tgt shape torch.Size([258, 3, 1]) from device 0
+Entering batch 43800 with src shape torch.Size([708, 4, 1]) and tgt shape torch.Size([204, 4, 1]) from device 0
+Entering batch 43900 with src shape torch.Size([264, 12, 1]) and tgt shape torch.Size([90, 12, 1]) from device 0
+Elapsed time: 1387.206785460313 minutes
+Saving at step 11000
+Entering batch 44000 with src shape torch.Size([745, 5, 1]) and tgt shape torch.Size([110, 5, 1]) from device 0
+Entering batch 44100 with src shape torch.Size([958, 3, 1]) and tgt shape torch.Size([235, 3, 1]) from device 0
+Entering batch 44200 with src shape torch.Size([381, 9, 1]) and tgt shape torch.Size([85, 9, 1]) from device 0
+Entering batch 44300 with src shape torch.Size([836, 4, 1]) and tgt shape torch.Size([211, 4, 1]) from device 0
+Entering batch 44400 with src shape torch.Size([827, 4, 1]) and tgt shape torch.Size([191, 4, 1]) from device 0
+Entering batch 44500 with src shape torch.Size([1022, 3, 1]) and tgt shape torch.Size([305, 3, 1]) from device 0
+Entering batch 44600 with src shape torch.Size([572, 6, 1]) and tgt shape torch.Size([154, 6, 1]) from device 0
+Entering batch 44700 with src shape torch.Size([861, 4, 1]) and tgt shape torch.Size([165, 4, 1]) from device 0
+Entering batch 44800 with src shape torch.Size([861, 4, 1]) and tgt shape torch.Size([191, 4, 1]) from device 0
+Entering batch 44900 with src shape torch.Size([370, 9, 1]) and tgt shape torch.Size([101, 9, 1]) from device 0
+Entering batch 45000 with src shape torch.Size([592, 5, 1]) and tgt shape torch.Size([164, 5, 1]) from device 0
+Entering batch 45100 with src shape torch.Size([901, 4, 1]) and tgt shape torch.Size([161, 4, 1]) from device 0
+Entering batch 45200 with src shape torch.Size([911, 3, 1]) and tgt shape torch.Size([128, 3, 1]) from device 0
+Entering batch 45300 with src shape torch.Size([1033, 3, 1]) and tgt shape torch.Size([230, 3, 1]) from device 0
+Entering batch 45400 with src shape torch.Size([1097, 3, 1]) and tgt shape torch.Size([160, 3, 1]) from device 0
+Entering batch 45500 with src shape torch.Size([615, 5, 1]) and tgt shape torch.Size([150, 5, 1]) from device 0
+Entering batch 45600 with src shape torch.Size([702, 5, 1]) and tgt shape torch.Size([192, 5, 1]) from device 0
+Entering batch 45700 with src shape torch.Size([1164, 3, 1]) and tgt shape torch.Size([252, 3, 1]) from device 0
+Entering batch 45800 with src shape torch.Size([733, 4, 1]) and tgt shape torch.Size([222, 4, 1]) from device 0
+Entering batch 45900 with src shape torch.Size([720, 4, 1]) and tgt shape torch.Size([219, 4, 1]) from device 0
+Elapsed time: 1449.5897461771965 minutes
+Saving at step 11500
+Entering batch 46000 with src shape torch.Size([563, 6, 1]) and tgt shape torch.Size([136, 6, 1]) from device 0
+Entering batch 46100 with src shape torch.Size([591, 5, 1]) and tgt shape torch.Size([164, 5, 1]) from device 0
+Entering batch 46200 with src shape torch.Size([308, 11, 1]) and tgt shape torch.Size([95, 11, 1]) from device 0
+Entering batch 46300 with src shape torch.Size([981, 3, 1]) and tgt shape torch.Size([310, 3, 1]) from device 0
+Entering batch 46400 with src shape torch.Size([534, 6, 1]) and tgt shape torch.Size([159, 6, 1]) from device 0
+Entering batch 46500 with src shape torch.Size([537, 6, 1]) and tgt shape torch.Size([172, 6, 1]) from device 0
+Entering batch 46600 with src shape torch.Size([761, 4, 1]) and tgt shape torch.Size([92, 4, 1]) from device 0
+Entering batch 46700 with src shape torch.Size([876, 3, 1]) and tgt shape torch.Size([249, 3, 1]) from device 0
+Entering batch 46800 with src shape torch.Size([370, 9, 1]) and tgt shape torch.Size([89, 9, 1]) from device 0
+Entering batch 46900 with src shape torch.Size([535, 6, 1]) and tgt shape torch.Size([168, 6, 1]) from device 0
+Entering batch 47000 with src shape torch.Size([809, 4, 1]) and tgt shape torch.Size([237, 4, 1]) from device 0
+Entering batch 47100 with src shape torch.Size([566, 7, 1]) and tgt shape torch.Size([3, 7, 1]) from device 0
+Entering batch 47200 with src shape torch.Size([435, 7, 1]) and tgt shape torch.Size([138, 7, 1]) from device 0
+Entering batch 47300 with src shape torch.Size([973, 3, 1]) and tgt shape torch.Size([317, 3, 1]) from device 0
+Entering batch 47400 with src shape torch.Size([537, 6, 1]) and tgt shape torch.Size([132, 6, 1]) from device 0
+Entering batch 47500 with src shape torch.Size([383, 8, 1]) and tgt shape torch.Size([127, 8, 1]) from device 0
+Entering batch 47600 with src shape torch.Size([296, 11, 1]) and tgt shape torch.Size([99, 11, 1]) from device 0
+Entering batch 47700 with src shape torch.Size([991, 3, 1]) and tgt shape torch.Size([237, 3, 1]) from device 0
+Entering batch 47800 with src shape torch.Size([723, 4, 1]) and tgt shape torch.Size([213, 4, 1]) from device 0
+Entering batch 47900 with src shape torch.Size([1033, 3, 1]) and tgt shape torch.Size([201, 3, 1]) from device 0
+Elapsed time: 1512.036191912492 minutes
+Saving at step 12000
+Entering batch 48000 with src shape torch.Size([351, 10, 1]) and tgt shape torch.Size([84, 10, 1]) from device 0
+Entering batch 48100 with src shape torch.Size([689, 5, 1]) and tgt shape torch.Size([101, 5, 1]) from device 0
+Entering batch 48200 with src shape torch.Size([768, 4, 1]) and tgt shape torch.Size([161, 4, 1]) from device 0
+Entering batch 48300 with src shape torch.Size([801, 4, 1]) and tgt shape torch.Size([262, 4, 1]) from device 0
+Entering batch 48400 with src shape torch.Size([953, 3, 1]) and tgt shape torch.Size([287, 3, 1]) from device 0
+Entering batch 48500 with src shape torch.Size([596, 5, 1]) and tgt shape torch.Size([169, 5, 1]) from device 0
+Entering batch 48600 with src shape torch.Size([642, 5, 1]) and tgt shape torch.Size([139, 5, 1]) from device 0
+Entering batch 48700 with src shape torch.Size([893, 4, 1]) and tgt shape torch.Size([179, 4, 1]) from device 0
+Entering batch 48800 with src shape torch.Size([1177, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 48900 with src shape torch.Size([943, 3, 1]) and tgt shape torch.Size([315, 3, 1]) from device 0
+Entering batch 49000 with src shape torch.Size([1100, 3, 1]) and tgt shape torch.Size([232, 3, 1]) from device 0
+Entering batch 49100 with src shape torch.Size([844, 4, 1]) and tgt shape torch.Size([257, 4, 1]) from device 0
+Entering batch 49200 with src shape torch.Size([851, 3, 1]) and tgt shape torch.Size([280, 3, 1]) from device 0
+Entering batch 49300 with src shape torch.Size([734, 4, 1]) and tgt shape torch.Size([223, 4, 1]) from device 0
+Entering batch 49400 with src shape torch.Size([1115, 3, 1]) and tgt shape torch.Size([323, 3, 1]) from device 0
+Entering batch 49500 with src shape torch.Size([1037, 3, 1]) and tgt shape torch.Size([321, 3, 1]) from device 0
+Entering batch 49600 with src shape torch.Size([1050, 3, 1]) and tgt shape torch.Size([276, 3, 1]) from device 0
+Entering batch 49700 with src shape torch.Size([747, 4, 1]) and tgt shape torch.Size([204, 4, 1]) from device 0
+Entering batch 49800 with src shape torch.Size([1086, 3, 1]) and tgt shape torch.Size([3, 3, 1]) from device 0
+Entering batch 49900 with src shape torch.Size([623, 5, 1]) and tgt shape torch.Size([139, 5, 1]) from device 0
+Elapsed time: 1574.3884714921317 minutes
+Saving at step 12500
+Entering batch 50000 with src shape torch.Size([765, 4, 1]) and tgt shape torch.Size([254, 4, 1]) from device 0
+Entering batch 50100 with src shape torch.Size([608, 6, 1]) and tgt shape torch.Size([126, 6, 1]) from device 0
+Entering batch 50200 with src shape torch.Size([910, 3, 1]) and tgt shape torch.Size([225, 3, 1]) from device 0
+Entering batch 50300 with src shape torch.Size([928, 3, 1]) and tgt shape torch.Size([261, 3, 1]) from device 0
+Entering batch 50400 with src shape torch.Size([571, 6, 1]) and tgt shape torch.Size([143, 6, 1]) from device 0
+Entering batch 50500 with src shape torch.Size([1108, 3, 1]) and tgt shape torch.Size([331, 3, 1]) from device 0
+Entering batch 50600 with src shape torch.Size([381, 9, 1]) and tgt shape torch.Size([113, 9, 1]) from device 0
+Entering batch 50700 with src shape torch.Size([817, 4, 1]) and tgt shape torch.Size([229, 4, 1]) from device 0
+Entering batch 50800 with src shape torch.Size([567, 6, 1]) and tgt shape torch.Size([148, 6, 1]) from device 0
+Entering batch 50900 with src shape torch.Size([755, 4, 1]) and tgt shape torch.Size([153, 4, 1]) from device 0
+Entering batch 51000 with src shape torch.Size([941, 4, 1]) and tgt shape torch.Size([108, 4, 1]) from device 0
+Entering batch 51100 with src shape torch.Size([1070, 3, 1]) and tgt shape torch.Size([193, 3, 1]) from device 0
+Entering batch 51200 with src shape torch.Size([627, 5, 1]) and tgt shape torch.Size([148, 5, 1]) from device 0
+Entering batch 51300 with src shape torch.Size([753, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 51400 with src shape torch.Size([1175, 3, 1]) and tgt shape torch.Size([233, 3, 1]) from device 0
+Entering batch 51500 with src shape torch.Size([877, 3, 1]) and tgt shape torch.Size([262, 3, 1]) from device 0
+Entering batch 51600 with src shape torch.Size([923, 4, 1]) and tgt shape torch.Size([166, 4, 1]) from device 0
+Entering batch 51700 with src shape torch.Size([858, 4, 1]) and tgt shape torch.Size([220, 4, 1]) from device 0
+Entering batch 51800 with src shape torch.Size([1067, 3, 1]) and tgt shape torch.Size([137, 3, 1]) from device 0
+Entering batch 51900 with src shape torch.Size([832, 4, 1]) and tgt shape torch.Size([220, 4, 1]) from device 0
+Elapsed time: 1637.1242498874665 minutes
+Saving at step 13000
+Entering batch 52000 with src shape torch.Size([471, 8, 1]) and tgt shape torch.Size([75, 8, 1]) from device 0
+Entering batch 52100 with src shape torch.Size([844, 4, 1]) and tgt shape torch.Size([215, 4, 1]) from device 0
+Entering batch 52200 with src shape torch.Size([875, 4, 1]) and tgt shape torch.Size([116, 4, 1]) from device 0
+Entering batch 52300 with src shape torch.Size([1174, 3, 1]) and tgt shape torch.Size([99, 3, 1]) from device 0
+Entering batch 52400 with src shape torch.Size([823, 4, 1]) and tgt shape torch.Size([194, 4, 1]) from device 0
+Entering batch 52500 with src shape torch.Size([969, 3, 1]) and tgt shape torch.Size([244, 3, 1]) from device 0
+Entering batch 52600 with src shape torch.Size([870, 4, 1]) and tgt shape torch.Size([194, 4, 1]) from device 0
+Entering batch 52700 with src shape torch.Size([1103, 3, 1]) and tgt shape torch.Size([256, 3, 1]) from device 0
+Entering batch 52800 with src shape torch.Size([881, 3, 1]) and tgt shape torch.Size([264, 3, 1]) from device 0
+Entering batch 52900 with src shape torch.Size([644, 5, 1]) and tgt shape torch.Size([193, 5, 1]) from device 0
+Entering batch 53000 with src shape torch.Size([679, 5, 1]) and tgt shape torch.Size([146, 5, 1]) from device 0
+Entering batch 53100 with src shape torch.Size([1045, 3, 1]) and tgt shape torch.Size([209, 3, 1]) from device 0
+Entering batch 53200 with src shape torch.Size([703, 4, 1]) and tgt shape torch.Size([125, 4, 1]) from device 0
+Entering batch 53300 with src shape torch.Size([1104, 3, 1]) and tgt shape torch.Size([326, 3, 1]) from device 0
+Entering batch 53400 with src shape torch.Size([686, 5, 1]) and tgt shape torch.Size([143, 5, 1]) from device 0
+Entering batch 53500 with src shape torch.Size([930, 4, 1]) and tgt shape torch.Size([110, 4, 1]) from device 0
+Entering batch 53600 with src shape torch.Size([862, 4, 1]) and tgt shape torch.Size([209, 4, 1]) from device 0
+Entering batch 53700 with src shape torch.Size([662, 5, 1]) and tgt shape torch.Size([147, 5, 1]) from device 0
+Entering batch 53800 with src shape torch.Size([545, 6, 1]) and tgt shape torch.Size([104, 6, 1]) from device 0
+Entering batch 53900 with src shape torch.Size([931, 3, 1]) and tgt shape torch.Size([275, 3, 1]) from device 0
+Elapsed time: 1699.7161873022715 minutes
+Saving at step 13500
+Entering batch 54000 with src shape torch.Size([614, 5, 1]) and tgt shape torch.Size([155, 5, 1]) from device 0
+Entering batch 54100 with src shape torch.Size([546, 6, 1]) and tgt shape torch.Size([118, 6, 1]) from device 0
+Entering batch 54200 with src shape torch.Size([681, 5, 1]) and tgt shape torch.Size([190, 5, 1]) from device 0
+Entering batch 54300 with src shape torch.Size([787, 4, 1]) and tgt shape torch.Size([203, 4, 1]) from device 0
+Entering batch 54400 with src shape torch.Size([511, 7, 1]) and tgt shape torch.Size([114, 7, 1]) from device 0
+Entering batch 54500 with src shape torch.Size([576, 6, 1]) and tgt shape torch.Size([140, 6, 1]) from device 0
+Entering batch 54600 with src shape torch.Size([799, 4, 1]) and tgt shape torch.Size([235, 4, 1]) from device 0
+Entering batch 54700 with src shape torch.Size([554, 7, 1]) and tgt shape torch.Size([71, 7, 1]) from device 0
+Entering batch 54800 with src shape torch.Size([704, 5, 1]) and tgt shape torch.Size([100, 5, 1]) from device 0
+Entering batch 54900 with src shape torch.Size([526, 6, 1]) and tgt shape torch.Size([149, 6, 1]) from device 0
+Entering batch 55000 with src shape torch.Size([787, 4, 1]) and tgt shape torch.Size([148, 4, 1]) from device 0
+Entering batch 55100 with src shape torch.Size([985, 3, 1]) and tgt shape torch.Size([187, 3, 1]) from device 0
+Entering batch 55200 with src shape torch.Size([1104, 3, 1]) and tgt shape torch.Size([370, 3, 1]) from device 0
+Entering batch 55300 with src shape torch.Size([615, 7, 1]) and tgt shape torch.Size([3, 7, 1]) from device 0
+Entering batch 55400 with src shape torch.Size([1145, 3, 1]) and tgt shape torch.Size([156, 3, 1]) from device 0
+Entering batch 55500 with src shape torch.Size([620, 5, 1]) and tgt shape torch.Size([150, 5, 1]) from device 0
+Entering batch 55600 with src shape torch.Size([394, 9, 1]) and tgt shape torch.Size([64, 9, 1]) from device 0
+Entering batch 55700 with src shape torch.Size([925, 4, 1]) and tgt shape torch.Size([171, 4, 1]) from device 0
+Entering batch 55800 with src shape torch.Size([997, 3, 1]) and tgt shape torch.Size([284, 3, 1]) from device 0
+Entering batch 55900 with src shape torch.Size([1126, 3, 1]) and tgt shape torch.Size([175, 3, 1]) from device 0
+Elapsed time: 1761.7015013297398 minutes
+Saving at step 14000
+Entering batch 56000 with src shape torch.Size([1186, 3, 1]) and tgt shape torch.Size([305, 3, 1]) from device 0
+Entering batch 56100 with src shape torch.Size([693, 5, 1]) and tgt shape torch.Size([166, 5, 1]) from device 0
+Entering batch 56200 with src shape torch.Size([621, 5, 1]) and tgt shape torch.Size([178, 5, 1]) from device 0
+Entering batch 56300 with src shape torch.Size([1011, 3, 1]) and tgt shape torch.Size([232, 3, 1]) from device 0
+Entering batch 56400 with src shape torch.Size([592, 5, 1]) and tgt shape torch.Size([175, 5, 1]) from device 0
+Entering batch 56500 with src shape torch.Size([816, 4, 1]) and tgt shape torch.Size([95, 4, 1]) from device 0
+Entering batch 56600 with src shape torch.Size([689, 5, 1]) and tgt shape torch.Size([134, 5, 1]) from device 0
+Entering batch 56700 with src shape torch.Size([1005, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 56800 with src shape torch.Size([596, 5, 1]) and tgt shape torch.Size([188, 5, 1]) from device 0
+Entering batch 56900 with src shape torch.Size([666, 5, 1]) and tgt shape torch.Size([156, 5, 1]) from device 0
+Entering batch 57000 with src shape torch.Size([486, 7, 1]) and tgt shape torch.Size([129, 7, 1]) from device 0
+Entering batch 57100 with src shape torch.Size([676, 5, 1]) and tgt shape torch.Size([220, 5, 1]) from device 0
+Entering batch 57200 with src shape torch.Size([480, 7, 1]) and tgt shape torch.Size([138, 7, 1]) from device 0
+Entering batch 57300 with src shape torch.Size([450, 7, 1]) and tgt shape torch.Size([152, 7, 1]) from device 0
+Entering batch 57400 with src shape torch.Size([539, 7, 1]) and tgt shape torch.Size([77, 7, 1]) from device 0
+Entering batch 57500 with src shape torch.Size([1196, 2, 1]) and tgt shape torch.Size([359, 2, 1]) from device 0
+Entering batch 57600 with src shape torch.Size([922, 3, 1]) and tgt shape torch.Size([244, 3, 1]) from device 0
+Entering batch 57700 with src shape torch.Size([853, 4, 1]) and tgt shape torch.Size([249, 4, 1]) from device 0
+Entering batch 57800 with src shape torch.Size([973, 3, 1]) and tgt shape torch.Size([292, 3, 1]) from device 0
+Entering batch 57900 with src shape torch.Size([701, 5, 1]) and tgt shape torch.Size([175, 5, 1]) from device 0
+Elapsed time: 1823.4645023425421 minutes
+Saving at step 14500
+Entering batch 58000 with src shape torch.Size([812, 4, 1]) and tgt shape torch.Size([220, 4, 1]) from device 0
+Entering batch 58100 with src shape torch.Size([853, 3, 1]) and tgt shape torch.Size([217, 3, 1]) from device 0
+Entering batch 58200 with src shape torch.Size([1198, 2, 1]) and tgt shape torch.Size([362, 2, 1]) from device 0
+Entering batch 58300 with src shape torch.Size([1005, 3, 1]) and tgt shape torch.Size([278, 3, 1]) from device 0
+Entering batch 58400 with src shape torch.Size([954, 3, 1]) and tgt shape torch.Size([230, 3, 1]) from device 0
+Entering batch 58500 with src shape torch.Size([738, 4, 1]) and tgt shape torch.Size([248, 4, 1]) from device 0
+Entering batch 58600 with src shape torch.Size([961, 3, 1]) and tgt shape torch.Size([239, 3, 1]) from device 0
+Entering batch 58700 with src shape torch.Size([1076, 3, 1]) and tgt shape torch.Size([284, 3, 1]) from device 0
+Entering batch 58800 with src shape torch.Size([1168, 3, 1]) and tgt shape torch.Size([200, 3, 1]) from device 0
+Entering batch 58900 with src shape torch.Size([711, 4, 1]) and tgt shape torch.Size([215, 4, 1]) from device 0
+Entering batch 59000 with src shape torch.Size([385, 9, 1]) and tgt shape torch.Size([100, 9, 1]) from device 0
+Entering batch 59100 with src shape torch.Size([1136, 3, 1]) and tgt shape torch.Size([132, 3, 1]) from device 0
+Entering batch 59200 with src shape torch.Size([712, 4, 1]) and tgt shape torch.Size([192, 4, 1]) from device 0
+Entering batch 59300 with src shape torch.Size([622, 6, 1]) and tgt shape torch.Size([101, 6, 1]) from device 0
+Entering batch 59400 with src shape torch.Size([924, 4, 1]) and tgt shape torch.Size([3, 4, 1]) from device 0
+Entering batch 59500 with src shape torch.Size([1137, 3, 1]) and tgt shape torch.Size([333, 3, 1]) from device 0
+Entering batch 59600 with src shape torch.Size([934, 3, 1]) and tgt shape torch.Size([107, 3, 1]) from device 0
+Entering batch 59700 with src shape torch.Size([1039, 3, 1]) and tgt shape torch.Size([267, 3, 1]) from device 0
+Entering batch 59800 with src shape torch.Size([901, 3, 1]) and tgt shape torch.Size([225, 3, 1]) from device 0
+Entering batch 59900 with src shape torch.Size([642, 5, 1]) and tgt shape torch.Size([184, 5, 1]) from device 0
+Elapsed time: 1885.8429124037425 minutes
+Saving at step 15000
+Entering batch 60000 with src shape torch.Size([1134, 3, 1]) and tgt shape torch.Size([340, 3, 1]) from device 0
+Entering batch 60100 with src shape torch.Size([828, 4, 1]) and tgt shape torch.Size([207, 4, 1]) from device 0
+Entering batch 60200 with src shape torch.Size([587, 5, 1]) and tgt shape torch.Size([174, 5, 1]) from device 0
+Entering batch 60300 with src shape torch.Size([961, 3, 1]) and tgt shape torch.Size([246, 3, 1]) from device 0
+Entering batch 60400 with src shape torch.Size([813, 4, 1]) and tgt shape torch.Size([213, 4, 1]) from device 0
+Entering batch 60500 with src shape torch.Size([1058, 3, 1]) and tgt shape torch.Size([261, 3, 1]) from device 0
+Entering batch 60600 with src shape torch.Size([587, 6, 1]) and tgt shape torch.Size([118, 6, 1]) from device 0
+Entering batch 60700 with src shape torch.Size([830, 4, 1]) and tgt shape torch.Size([250, 4, 1]) from device 0
+Entering batch 60800 with src shape torch.Size([834, 4, 1]) and tgt shape torch.Size([256, 4, 1]) from device 0
+Entering batch 60900 with src shape torch.Size([1073, 3, 1]) and tgt shape torch.Size([257, 3, 1]) from device 0
+Entering batch 61000 with src shape torch.Size([1122, 3, 1]) and tgt shape torch.Size([286, 3, 1]) from device 0
+Entering batch 61100 with src shape torch.Size([423, 7, 1]) and tgt shape torch.Size([143, 7, 1]) from device 0
+Entering batch 61200 with src shape torch.Size([592, 6, 1]) and tgt shape torch.Size([130, 6, 1]) from device 0
+Entering batch 61300 with src shape torch.Size([845, 4, 1]) and tgt shape torch.Size([213, 4, 1]) from device 0
+Entering batch 61400 with src shape torch.Size([996, 3, 1]) and tgt shape torch.Size([254, 3, 1]) from device 0
+Entering batch 61500 with src shape torch.Size([806, 4, 1]) and tgt shape torch.Size([237, 4, 1]) from device 0
+Entering batch 61600 with src shape torch.Size([702, 5, 1]) and tgt shape torch.Size([187, 5, 1]) from device 0
+Entering batch 61700 with src shape torch.Size([702, 5, 1]) and tgt shape torch.Size([137, 5, 1]) from device 0
+Entering batch 61800 with src shape torch.Size([623, 6, 1]) and tgt shape torch.Size([111, 6, 1]) from device 0
+Entering batch 61900 with src shape torch.Size([894, 4, 1]) and tgt shape torch.Size([212, 4, 1]) from device 0

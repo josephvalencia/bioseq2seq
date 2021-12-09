@@ -415,34 +415,6 @@ class FeatureAttributor:
                     summary = json.dumps(entry)
                     outFile.write(summary+"\n")
 
-    def merge_handler(self,attr,fh):
-
-        # query across all machines for size
-        local_size = torch.tensor([attr.numel()],dtype=torch.int64).to(self.device)
-        size_list = [torch.zeros_like(local_size) for _ in range(self.world_size)]
-        torch.distributed.all_gather(size_list, local_size)
-        size_list = [int(size.item()) for size in size_list]
-        max_size = max(size_list)
-        
-        # pad tensors to maximum length 
-        tensor_list = [torch.zeros(size=(max_size,),dtype=torch.float).to(self.device) for _ in range(self.world_size)]
-        
-        if local_size != max_size:
-            padding = float('NaN') *torch.ones(size=(max_size - local_size,)).to(self.device)
-            attr = torch.cat((attr, padding), dim=0)
-            torch.distributed.all_gather(tensor_list, attr)
-        else:
-            torch.distributed.all_gather(tensor_list,attr)
-
-        if self.rank == 0:
-            attr = torch.stack(tensor_list,dim=1).cpu().numpy()
-            attr = attr[~np.isnan(attr)]
-
-            for i in range(self.world_size):
-                curr_attr = attr[:,i]
-                entry = "{}\t{}\n".format(id,curr_attr)
-                fh.write(summary)
-
 def parse_args():
 
     """ Parse required and optional configuration arguments"""

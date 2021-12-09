@@ -10,6 +10,8 @@ import matplotlib.colors as mcolors
 from matplotlib.backends.backend_pdf import PdfPages
 from collections import Counter
 
+from utils import parse_config, add_file_list, load_CDS
+
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
@@ -223,7 +225,7 @@ def codon_graph_katz(aa,codons_df,i):
     
     return storage
 
-def build_score_change_file(df):
+def build_score_change_file(df,attr_info):
 
     codonMap = {'TTT':'F', 'TTC':'F', 'TTA':'L', 'TTG':'L', 'TCT':'S', 
                 'TCC':'S', 'TCA':'S', 'TCG':'S', 'TAT':'Y', 'TAC':'Y', 
@@ -240,26 +242,24 @@ def build_score_change_file(df):
                 'GGT':'G', 'GGC':'G', 'GGA':'G', 'GGG':'G',}
     
     storage = []
-    
-    for b in ['A','G','C','T']:
-        #mdig_file = "seq2seq_3_{}_pos_test.deeplift".format(b)
-        mdig_file = "new_output/IG/seq2seq_3_{}_pos_test.ig".format(b)
-        #mdig_file = "new_output/IG/EDC_3_{}_pos_test.ig".format(b)
-        #mdig_file = "output/test/seq2seq/best_seq2seq_{}_pos_test.ig".format(b)
-        storage += mutation_analysis(mdig_file,df,"summed_attr",b)
+    path_list = attr_info['path_list']
+    labels = attr_info['bases']
+    for f,b in zip(path_list,labels):
+        storage += mutation_analysis(f,df,"summed_attr",b)
     
     summary = pd.DataFrame(storage) 
     summary['aa_original'] = [codonMap[c] for c in summary['original'].tolist()] 
     summary['aa_mutated'] = [codonMap[c] for c in summary['mutated'].tolist()] 
-    summary.to_csv('MDIG_scores_by_codon.csv',sep="\t")
+    
+    return summary
 
-def synonymous_graph_centralities(synonymous):
+def synonymous_graph_centralities(synonymous,mut_file):
     
     entries = []
     centers = {}
     transitions = {}
 
-    by_aa = synonymous.groupby(['aa_original','partition'])
+    by_aa = synonymous.groupby(['aa_original','partition_rel'])
     #by_aa = synonymous.groupby('aa_original') 
     for (aa,partition), df_aa in by_aa:
     #for aa , df_aa in by_aa:
@@ -270,21 +270,23 @@ def synonymous_graph_centralities(synonymous):
     centers['ATG'] = 'ATG'
     transitions['ATG'] = 'ATG'
 
-    with open('optimal_codons_by_center.json','w') as inFile:
+    center_codons_file = f'{mut_file}optimal_codons_by_center.json'
+    with open(center_codons_file,'w') as inFile:
         json.dump(centers,inFile)
     
-    with open('optimal_codons_by_transition.json','w') as inFile:
+    edge_codons_file = f'{mut_file}optimal_codons_by_edge.json'
+    with open(edge_codons_file,'w') as inFile:
         json.dump(transitions,inFile)
     
     trials = pd.DataFrame(entries)
     trials.to_csv('weighted_degree.csv',sep="\t")
 
-def analyze_stops(missense):
+def analyze_stops(missense,mut_dir):
 
     plt.figure(figsize=(10,6))
     by_partition = missense.groupby(['partition_rel'])
     #sns.violinplot(data=missense,x='partition',y='delta')
-    g = sns.lineplot(data=missense,x='partition',y='delta',ci=95,err_style='band')
+    g = sns.lineplot(data=missense,x='partition_rel',y='delta',ci=95,err_style='band')
 
     step = 150
     partitions = sorted(missense['partition_rel'].unique())
@@ -296,7 +298,8 @@ def analyze_stops(missense):
     plt.ylabel('Mean MDIG of missense mutation')
     plt.xlabel('partition')
     plt.tight_layout()
-    plt.savefig('missense_scores_new.svg')
+    missense_file = f'{mut_dir}missense_scores.svg'
+    plt.savefig(missense_file)
     plt.close()
 
     '''
@@ -305,9 +308,8 @@ def analyze_stops(missense):
         avoidance_scores.append(by_mutations_mean)
     '''
 
-def mdig_pipeline():
+def mdig_pipeline(summary,mut_dir):
 
-    summary = pd.read_csv('MDIG_scores_by_codon.csv',sep="\t") 
     summary = summary.sort_values(by=['aa_original','original','substitution'],ascending=[True,False,True]) 
    
     # relative is a percentile location in the CDS, absolute is a fixed window size 
@@ -317,25 +319,27 @@ def mdig_pipeline():
     # plot relative
     by_frame = summary.groupby(['frame','partition_rel']).mean().reset_index()
     sns.barplot(data=by_frame,x='partition_rel',y='delta',hue='frame') 
-    plt.savefig('by_frame_partition_rel.svg')
+    rel_filename = f'{mut_dir}_by_frame_partition_rel.svg'
+    plt.savefig(rel_filename)
     plt.close()
 
     # plot absolute
     by_frame = summary.groupby(['frame','partition_abs']).mean().reset_index()
     sns.barplot(data=by_frame,x='partition_abs',y='delta',hue='frame') 
-    plt.savefig('by_frame_partition_abs.svg')
+    abs_filename = f'{mut_dir}_by_frame_partition_abs.svg'
+    plt.savefig(abs_filename)
     plt.close()
 
     # analyze missense mutations
     is_missense = ((summary['aa_original'] != '*' ) & (summary['aa_mutated'] == '*'))  & (summary['delta'] != 0.0)
     missense = summary[is_missense]
-    analyze_stops(missense)
+    analyze_stops(missense,mut_dir)
     
     # build codon graphs and calculate centralities
     is_synonymous = (summary['aa_original'] == summary['aa_mutated']) 
     synonymous = summary[(is_synonymous) & (summary['delta'] != 0.0)]
     non_synonymous = summary[(~is_synonymous) & (summary['delta'] != 0.0)]
-    synonymous_graph_centralities(synonymous)
+    synonymous_graph_centralities(synonymous,mut_dir)
   
     '''
     # synonymous difference
@@ -366,10 +370,10 @@ def mdig_pipeline():
     
     # plot colorbar
     cmap = sns.diverging_palette(220, 10, s=80, l=50, as_cmap=True)
-    colorbar(cmap,norm)
+    colorbar(cmap,norm,mut_dir)
 
     # overall plot
-    overall_filename = 'MDIG_changes_heatmap.svg'
+    overall_filename = f'{mut_dir}MDIG_changes_heatmap.svg'
     bubble_plot(overall,norm,cmap,overall_filename)
 
     # by partition
@@ -379,10 +383,10 @@ def mdig_pipeline():
             group = group.replace(0,np.NaN)
             group = group.groupby(['aa_original','original','substitution'])[['delta']].mean()
             group = group.sort_values(by=['aa_original','original','substitution'],ascending=[True,False,True]) 
-            group_filename = 'MDIG_changes_heatmap_{}_{}.svg'.format(m,p)
+            group_filename = f'{mut_dir}MDIG_changes_heatmap_{m}_{p}.svg'
             bubble_plot(group,norm,cmap,group_filename)
 
-def colorbar(cmap,norm):
+def colorbar(cmap,norm,mut_dir):
 
     figure, axes = plt.subplots(figsize =(6, 1))
     figure.subplots_adjust(bottom = 0.5)
@@ -390,7 +394,7 @@ def colorbar(cmap,norm):
         cmap = cmap),
         cax = axes, orientation ='horizontal',
         label ='median MDIG score')
-    plt.savefig('MDIG_changes_colorbar.svg')
+    plt.savefig(f'{mut_dir}MDIG_changes_colorbar.svg')
     plt.close()
 
 def bubble_plot(df,norm,cmap,filename):
@@ -531,13 +535,29 @@ def continuous_sections(zeros):
 
     return continuous
 
+def mdig_pipeline_from_config():
+
+    args,unknown_args = parse_config()
+    test_file = args.test_csv
+    test_cds = load_CDS(test_file)
+    df_test = pd.read_csv(test_file,sep='\t').set_index('ID')
+    
+    # load attribution files from config
+    best_seq_MDIG = add_file_list(args.best_seq_MDIG,'bases')
+    
+    # build output directory
+    config = args.c
+    config_prefix = config.split('.yaml')[0]
+    output_dir  =  f'results_{config_prefix}/'
+    mutation_dir  =  f'{output_dir}mut/'
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+    if not os.path.isdir(mutation_dir):
+        os.mkdir(mutation_dir)
+    
+    mutation_df = build_score_change_file(df_test,best_seq_MDIG)
+    mdig_pipeline(mutation_df,mutation_dir)
+
 if __name__ == "__main__":
 
-    test_file = "data/mammalian_1k_test_nonredundant_80.csv" 
-    
-    df = pd.read_csv(test_file,sep="\t")
-    df = df.set_index('ID')
-    
-    #build_score_change_file(df)
-    mutation_resistant_locations('seq2seq_3_combined_MDIG.ig',df,'summed_attr')
-    mdig_pipeline()
+    mdig_pipeline_from_config()

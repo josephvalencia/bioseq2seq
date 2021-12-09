@@ -1,7 +1,7 @@
 # test pre-trained rnasamba
 
 # re-train rnasamba on our data and test
-#rnasamba train -s 3 -e 25 -v 3 rnasamba.hdf5 mammalian_rnasamba_train_PC_RNA.fa mammalian_rnasamba_train_NC_RNA.fa
+rnasamba train -s 3 -e 25 -v 3 rnasamba.hdf5 mammalian_rnasamba_train_PC_RNA.fa mammalian_rnasamba_train_NC_RNA.fa
 rnasamba classify test_rnasamba_mammalian.tsv data/mammalian_1k_test_RNA_nonredundant_80.fa rnasamba.hdf5
 
 # run CPC2,  must use python2

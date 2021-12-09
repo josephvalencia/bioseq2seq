@@ -236,8 +236,8 @@ def dataset_from_df(df_list,mode="combined",saved_vocab = None):
         PROTEIN.build_vocab(*splits)
         RNA.build_vocab(*splits)
 
-    print("RNA:",RNA.vocab.stoi)
-    print("Protein:",PROTEIN.vocab.stoi)
+    print("from dataset RNA:",RNA.vocab.stoi)
+    print("from dataset Protein:",PROTEIN.vocab.stoi)
 
     return tuple(splits)
 

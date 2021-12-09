@@ -53,7 +53,7 @@ for i in range(0,len(lines)-9,9):
         all_preds.append(pred)
         all_golds.append(gold)
         all_ids.append(transcript)
-print(all_preds)
+
 best_scores, best_n_scores = evaluator.calculate_stats(all_preds,all_golds,all_ids,log_all=True)
 for k,v in best_scores.items():
     vals = np.asarray(v)
