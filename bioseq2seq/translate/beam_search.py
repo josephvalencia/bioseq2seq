@@ -265,7 +265,8 @@ class BeamSearchBase(DecodeStrategy):
         length_penalty = self.global_scorer.length_penalty(
             step + 1, alpha=self.global_scorer.alpha)
 
-        curr_scores = log_probs / length_penalty
+        #curr_scores = log_probs / length_penalty
+        curr_scores = log_probs - length_penalty
 
         # Avoid any direction that would repeat unwanted ngrams
         self.block_ngram_repeats(curr_scores)
@@ -276,7 +277,8 @@ class BeamSearchBase(DecodeStrategy):
         # Recover log probs.
         # Length penalty is just a scalar. It doesn't matter if it's applied
         # before or after the topk.
-        torch.mul(self.topk_scores, length_penalty, out=self.topk_log_probs)
+        #torch.mul(self.topk_scores, length_penalty, out=self.topk_log_probs)
+        self.topk_log_probs = self.topk_scores + length_penalty
 
         # Resolve beam origin and map to batch index flat representation.
         self._batch_index = self.topk_ids // vocab_size

@@ -14,6 +14,8 @@ import tqdm
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
+from scipy import signal
+from numpy.fft import rfft
 
 import bioseq2seq.inputters as inputters
 from bioseq2seq.translate.beam_search import BeamSearch
@@ -94,7 +96,8 @@ class Translator(object):
             ratio=0.,
             beam_size=30,
             attn_save_layer=-1,
-            random_sampling_topk=1,
+            random_sampling_topk=0,
+            random_sampling_topp=0.0,
             random_sampling_temp=1,
             stepwise_penalty=None,
             dump_beam=False,
@@ -135,7 +138,8 @@ class Translator(object):
         self.attn_save_layer = attn_save_layer
         self.random_sampling_temp = random_sampling_temp
         self.sample_from_topk = random_sampling_topk
-
+        self.sample_from_topp = random_sampling_topp
+        
         self.min_length = min_length
         self.ban_unk_token = ban_unk_token
         self.ratio = ratio
@@ -197,6 +201,7 @@ class Translator(object):
 
     def _gold_score(self, batch, memory_bank, src_lengths,
                     enc_states, batch_size, src):
+        
         if "tgt" in batch.__dict__:
             gs = self._score_target(
                 batch, memory_bank, src_lengths)
@@ -297,7 +302,8 @@ class Translator(object):
 
                 rna = "".join(trans.src_raw)
                 transcript_name = names[trans.index]
-
+                #print('transcript:',transcript_name,'\n')
+                #print(trans.index,transcript_name)
                 bounds = cds[trans.index]
                 cds_bounds = None if bounds == "-1" else [int(x) for x in bounds.split(":")]
                 
@@ -425,7 +431,6 @@ class Translator(object):
         n_best = batch_tgt_idxs.size(1)
         # (1) Encoder forward.
         src, enc_states, memory_bank, src_lengths, dec_attn = self._run_encoder(batch)
-
         # (2) Repeat src objects `n_best` times.
         # We use batch_size x n_best, get ``(src_len, batch * n_best, nfeat)``
         src = tile(src, n_best, dim=1)
@@ -456,20 +461,25 @@ class Translator(object):
     def translate_batch(self, batch, src_vocabs, attn_debug):
         """Translate a batch of sentences."""
         with torch.no_grad():
-            if self.beam_size == 1:
+            if self.sample_from_topk != 0 or self.sample_from_topp != 0:
                 decode_strategy = GreedySearch(
                     pad=self._tgt_pad_idx,
                     bos=self._tgt_bos_idx,
                     eos=self._tgt_eos_idx,
                     unk=self._tgt_unk_idx,
                     batch_size=batch.batch_size,
-                    min_length=self.min_length, max_length=self.max_length,
+                    global_scorer=self.global_scorer,
+                    min_length=self.min_length,
+                    max_length=self.max_length,
                     block_ngram_repeat=self.block_ngram_repeat,
                     exclusion_tokens=self._exclusion_idxs,
                     return_attention=attn_debug or self.replace_unk,
                     sampling_temp=self.random_sampling_temp,
                     keep_topk=self.sample_from_topk,
-                    ban_unk_token=self.bank_unk_token)
+                    keep_topp=self.sample_from_topp,
+                    beam_size=self.beam_size,
+                    ban_unk_token=self.ban_unk_token,
+                )
             else:
                 # TODO: support these blacklisted features
                 assert not self.dump_beam
@@ -495,9 +505,20 @@ class Translator(object):
     def _run_encoder(self, batch):
         src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                            else (batch.src, None)
+    
+        '''
+        categories = np.asarray(list(range(18))).reshape(1,-1)
+        enc = preprocessing.OneHotEncoder(categories=categories)
+        raw = src.cpu().numpy().squeeze()
+        one_hot_raw = enc.fit_transform(raw.reshape(-1,1)).toarray()
+        '''
 
         enc_states, memory_bank, src_lengths, enc_attn = self.model.encoder(
             src, src_lengths)
+       
+        #idx = batch.indices.item()
+        #plot_embeddings(enc_states,one_hot_raw,idx)
+
         if src_lengths is None:
             assert not isinstance(memory_bank, tuple), \
                 'Ensemble decoding only supported for text data'
@@ -506,6 +527,7 @@ class Translator(object):
                                .long() \
                                .fill_(memory_bank.size(0))
         return src, enc_states, memory_bank, src_lengths,enc_attn
+
 
     def _decode_and_generate(
             self,
@@ -553,7 +575,6 @@ class Translator(object):
 
         # (1) Run the encoder on the src.
         src, enc_states, memory_bank, src_lengths, enc_attn = self._run_encoder(batch)
-        
         self.model.decoder.init_state(src, memory_bank, enc_states)
 
         results = {
@@ -590,8 +611,11 @@ class Translator(object):
             
             if step == 0:
                 class_prob_indices = range(0,parallel_paths*batch_size,parallel_paths)
-                coding_probs = [log_probs[i,self._tgt_coding_idx] for i in class_prob_indices]
-            
+                coding_probs = [torch.exp(log_probs[i,self._tgt_coding_idx]).item() for i in class_prob_indices]
+                noncoding_probs = [torch.exp(log_probs[i,self._tgt_noncoding_idx]).item() for i in class_prob_indices]
+                #print(f'prob(<PC>) = {coding_probs}')
+                #print(f'prob(<NC>) = {noncoding_probs}') 
+
             any_finished = decode_strategy.is_finished.any()
             if any_finished:
                 decode_strategy.update_finished()
@@ -620,6 +644,8 @@ class Translator(object):
         results["scores"] = decode_strategy.scores
         results["predictions"] = decode_strategy.predictions
         results["context_attention"] = decode_strategy.attention
+        if results["self_attention"] is None:
+            results["self_attention"] = [None for _ in range(batch_size)]
         results["coding_probs"] = coding_probs
 
         if self.report_align:
@@ -652,3 +678,27 @@ class Translator(object):
                 name, math.exp(-score_total / words_total)))
         return msg
 
+def plot_embeddings(embeddings,one_hot,idx):
+
+    fig, (ax1, ax2,ax3) = plt.subplots(3, 1)
+    # make a little extra space between the subplots
+    fig.subplots_adjust(hspace=0.5)
+
+    # plot of embeddings
+    data = embeddings.squeeze(1).transpose(0,1).cpu().numpy()
+    ax1.imshow(data,aspect=10.0)
+    # PSD of embeddings
+    freq,ps = signal.welch(data,axis=1,scaling='density',average='median')
+    n_dim, n_freq_bins = ps.shape
+    for d in range(n_dim):
+        ax2.plot(freq,ps[d,:],alpha=0.6)
+  
+    one_hot = one_hot.T
+    # PSD of one-hot 
+    freq,ps = signal.welch(one_hot,axis=1,scaling='density',average='median')
+    n_dim, n_freq_bins = ps.shape
+    for d in range(n_dim):
+        ax3.plot(freq,ps[d,:],alpha=0.6)
+    
+    plt.savefig(f'transcript_{idx}.png')
+    plt.close() 

@@ -100,7 +100,7 @@ class PenaltyBuilder(object):
 
     def length_uniform_amino_acid(self, cur_len,alpha=0.):
         """Returns a correction scaled by a uniform distribution over amino acids"""
-        return cur_len * np.log(0.99)
+        return cur_len * np.log(0.90)
     
     def length_none(self, cur_len, alpha=0.):
         """Returns unmodified scores."""

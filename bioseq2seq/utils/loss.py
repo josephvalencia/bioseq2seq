@@ -181,10 +181,12 @@ class NMTLossCompute(LossComputeBase):
         self.lambda_align = lambda_align
 
     def _make_shard_state(self, batch, output, range_, attns=None):
+        
         shard_state = {
             "output": output,
             "target": batch.tgt[range_[0] + 1: range_[1], :, 0],
         }
+        
         if self.lambda_coverage != 0.0:
             coverage = attns.get("coverage", None)
             std = attns.get("std", None)
@@ -228,13 +230,13 @@ class NMTLossCompute(LossComputeBase):
 
         bottled_output = self._bottle(output)
         scores = self.generator(bottled_output)
-        
         #isolate PC/NC label for F1 calculation
         gt_class = target[0,:]
-        #isolate PC/NC prediction
         pad_tgt_size, batch_size, _ = batch.tgt.size()
         unbottled_scores = self._unbottle(scores,batch_size)
+        #print(f'logits {torch.exp(unbottled_scores[0,:,:])}')    
         pred_class = unbottled_scores[0,:,:].max(1)[1]
+        #print(f'target shape = {target.shape}, unbottled_scores shape = {unbottled_scores.shape}, ground truth class = {gt_class}, pred class ={pred_class}')
         n_correct_class = pred_class.eq(gt_class).sum().item()
         #print(f'got {n_correct_class}/{batch_size} correct')
 

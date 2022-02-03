@@ -187,6 +187,7 @@ class Trainer(object):
                 
                 valid_stats = self.validate(valid_iter,moving_average=self.moving_average)
                 valid_stats = self._maybe_gather_stats(valid_stats)
+                print('perplexity',valid_stats.ppl())
 
                 self._report_step(self.optim.learning_rate(),
                                   step, valid_stats=valid_stats)
@@ -244,7 +245,7 @@ class Trainer(object):
                 src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                                    else (batch.src, None)
                 tgt = batch.tgt
-
+                print(f'tgt shape = {tgt.shape}')
                 amp_training = self.model_dtype == 'fp16'
                 # F-prop through the model.
                 with torch.cuda.amp.autocast(enabled=amp_training): 
@@ -275,10 +276,10 @@ class Trainer(object):
 
             true_batch_num = batch_num * self.accum_count + k
             
-            if self.rank == 0 and (true_batch_num % 100 == 0):
-                msg = "Entering batch {} with src shape {} and tgt shape {} from device {}"
-                print(msg.format(true_batch_num,batch.src[0].shape,batch.tgt.shape,self.rank))
-            
+            #if self.rank == 0 and (true_batch_num % 100 == 0):
+            msg = "Entering batch {} with src shape {} and tgt shape {} from device {}"
+            print(msg.format(true_batch_num,batch.src[0].shape,batch.tgt.shape,self.rank))
+        
             target_size = batch.tgt.size(0)
 
             # Truncated BPTT: reminder not compatible with accum > 1
@@ -313,7 +314,7 @@ class Trainer(object):
                 else:
                     with torch.cuda.amp.autocast(enabled=amp_training): 
                         outputs,enc_attn,attns = self.model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
-
+                
                 bptt = True
 
                 # 3. Compute loss.

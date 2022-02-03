@@ -12,6 +12,7 @@ from torchsummary import summary
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim import Adam, SGD
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from bioseq2seq.utils.optimizers import Optimizer,noam_decay,AdaFactor
 from bioseq2seq.trainer import Trainer
@@ -23,7 +24,8 @@ from bioseq2seq.utils.loss import NMTLossCompute
 
 from bioseq2seq.bin.translate import make_vocab
 from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition
-from bioseq2seq.bin.models import make_transformer_seq2seq , make_transformer_classifier, Generator
+from bioseq2seq.bin.models import make_transformer_seq2seq , make_transformer_classifier
+from bioseq2seq.bin.models import make_cnn_seq2seq, make_hybrid_seq2seq, Generator
 
 def parse_args():
     """Parse required and optional configuration arguments.""" 
@@ -115,8 +117,8 @@ def train_helper(rank,args,seq2seq,random_seed):
     weights = [] 
     for i,c in enumerate(tgt_vocab):
         if c == "<PC>" or c == "<NC>":
-            #weights.append(1000)
-            weights.append(1)
+            #weights.append(1)
+            weights.append(10000)
         else:
             weights.append(1)
     weights = torch.Tensor(weights).to(device) 
@@ -127,17 +129,17 @@ def train_helper(rank,args,seq2seq,random_seed):
     val_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
 
     # optimizes model parameters
-    adam = Adam(params = seq2seq.parameters())
+    optimizer = Adam(params = seq2seq.parameters())
     #adafactor = AdaFactor(params=seq2seq.parameters())
-    #sgd = SGD(params=seq2seq.parameters(),learn
+    #optimizer = SGD(params=seq2seq.parameters(),lr=args.learning_rate) #momentum=0.99,nesterov=True)
     
-    lr_fn = make_learning_rate_decay_fn(4000,args.model_dim)
-    #lr_fn = make_learning_rate_decay_fn(0,args.model_dim)
-    #lr_fn = None
-    optim = Optimizer(adam,learning_rate = args.learning_rate,learning_rate_decay_fn=lr_fn,fp16=True)
+    #lr_fn = make_learning_rate_decay_fn(4000,args.model_dim)
+    lr_fn = None
+    #scheduler = ReduceLROnPlateau(optimizer, 'min')
+    optim = Optimizer(optimizer,learning_rate = args.learning_rate,learning_rate_decay_fn=lr_fn,fp16=False)
     
     # concludes training if progress does not improve for |patience| epochs
-    early_stopping = EarlyStopping(tolerance=args.patience)#,scorers=[ClassAccuracyScorer()])
+    early_stopping = EarlyStopping(tolerance=args.patience)#,scorers=[ClassAccuracyScorer(),AccuracyScorer()])
     
     report_manager = None
     saver = None
@@ -156,7 +158,6 @@ def train_helper(rank,args,seq2seq,random_seed):
             os.mkdir(save_path)
        
         valid_iterator = iterator_from_dataset(val,max_tokens_in_batch,device,train=False)
-        print(seq2seq)     
         saver = ModelSaver(base_path=save_path,
                            model=seq2seq,
                            model_opt=args,
@@ -174,7 +175,7 @@ def train_helper(rank,args,seq2seq,random_seed):
                     accum_count=[args.accum_steps],
                     report_manager=report_manager,
                     model_saver=saver,
-                    model_dtype='fp16')
+                    model_dtype='fp32')
     
     # training loop
     trainer.train(train_iter=train_iterator,
@@ -186,6 +187,7 @@ def train_helper(rank,args,seq2seq,random_seed):
                 mode=args.mode)
 
 def restore_transformer_seq2seq(checkpoint,n_input_classes,n_output_classes,args):
+    
     ''' Restore a Transformer model from .pt
     Args:
         checkpoint : path to .pt saved model
@@ -196,6 +198,37 @@ def restore_transformer_seq2seq(checkpoint,n_input_classes,n_output_classes,args
     model = make_transformer_seq2seq(n_input_classes,n_output_classes,
             n_enc=args.n_enc_layers,n_dec=args.n_dec_layers,
             model_dim=args.model_dim,max_rel_pos=args.max_rel_pos)
+    model.load_state_dict(checkpoint['model'],strict = False)
+    
+    return model
+
+def restore_hybrid_seq2seq(checkpoint,n_input_classes,n_output_classes,args):
+    
+    ''' Restore a Transformer model from .pt
+    Args:
+        checkpoint : path to .pt saved model
+        machine : torch device
+    Returns:
+        restored model'''
+    
+    model = make_hybrid_seq2seq(n_input_classes,n_output_classes,
+            n_enc=args.n_enc_layers,n_dec=12,
+            model_dim=args.model_dim)
+    model.load_state_dict(checkpoint['model'],strict=False)
+    return model
+
+def restore_cnn_seq2seq(checkpoint,n_input_classes,n_output_classes,args):
+    
+    ''' Restore a Transformer model from .pt
+    Args:
+        checkpoint : path to .pt saved model
+        machine : torch device
+    Returns:
+        restored model'''
+
+    model = make_cnn_seq2seq(n_input_classes,n_output_classes,
+            n_enc=args.n_enc_layers,n_dec=args.n_dec_layers,
+            model_dim=args.model_dim)
     model.load_state_dict(checkpoint['model'],strict = False)
     
     return model
@@ -240,7 +273,9 @@ def train(args):
             n_input_classes = len(vocab['src'].vocab.stoi)
             n_output_classes = len(vocab['tgt'].vocab.stoi)
             print('RNA from checkpoint',vocab['src'].vocab.stoi)
-            seq2seq = restore_transformer_seq2seq(checkpoint,n_input_classes,n_output_classes,args)
+            
+            seq2seq = restore_hybrid_seq2seq(checkpoint,n_input_classes,n_output_classes,args)
+            #seq2seq = restore_cnn_seq2seq(checkpoint,n_input_classes,n_output_classes,args)
             seq2seq.generator.load_state_dict(checkpoint['generator'])
     else:
         print(f'Training a new model on dataset {args.train} and task {args.mode}')
@@ -249,15 +284,26 @@ def train(args):
         fields = train_dataset.fields
         n_input_classes = len(fields['src'].vocab)
         n_output_classes = len(fields['tgt'].vocab)
+        ''' 
         seq2seq = make_transformer_seq2seq(n_input_classes,
                                             n_output_classes,
                                             n_enc=args.n_enc_layers,
-                                            n_dec=args.n_enc_layers,
+                                            n_dec=args.n_dec_layers,
                                             model_dim=args.model_dim,
                                             max_rel_pos=args.max_rel_pos)
+        seq2seq = make_cnn_seq2seq(n_input_classes,
+                                    n_output_classes,
+                                    n_enc=args.n_enc_layers,
+                                    n_dec=args.n_dec_layers,
+                                    model_dim=args.model_dim)
+        ''' 
+        seq2seq = make_hybrid_seq2seq(n_input_classes,
+                                            n_output_classes,
+                                            n_enc=args.n_enc_layers,
+                                            n_dec=args.n_dec_layers,
+                                            model_dim=args.model_dim)
     
     num_params = sum(p.numel() for p in seq2seq.parameters() if p.requires_grad)
-    
     print(f'# Input classes = {n_input_classes} , # Output classes = {n_output_classes}') 
     print(f"# trainable parameters = {human_format(num_params)}")
 
