@@ -50,8 +50,8 @@ class PenaltyBuilder(object):
             return self.length_average
         elif self._pen_is_none(length_pen):
             return self.length_none
-        elif length_pen == "uniform_amino_acid":
-            return self.length_uniform_amino_acid
+        elif length_pen == "expected_score":
+            return self.length_expected_score
         else:
             raise NotImplementedError("No '{:s}' length penalty.".format(
                 length_pen))
@@ -98,9 +98,9 @@ class PenaltyBuilder(object):
         """Returns the current sequence length."""
         return cur_len
 
-    def length_uniform_amino_acid(self, cur_len,alpha=0.):
-        """Returns a correction scaled by a uniform distribution over amino acids"""
-        return cur_len * np.log(0.99)
+    def length_expected_score(self, cur_len,alpha=0.):
+        """Returns an expected score assuming a constant probability per residue"""
+        return cur_len * np.log(0.85)
     
     def length_none(self, cur_len, alpha=0.):
         """Returns unmodified scores."""

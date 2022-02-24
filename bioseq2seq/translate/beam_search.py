@@ -3,7 +3,7 @@ from bioseq2seq.translate import penalties
 from bioseq2seq.translate.decode_strategy import DecodeStrategy
 
 import warnings
-
+warnings.filterwarnings("error")
 
 class BeamSearchBase(DecodeStrategy):
     """Generation beam search.
@@ -241,6 +241,7 @@ class BeamSearchBase(DecodeStrategy):
                         0, non_finished)
 
     def advance(self, log_probs, attn):
+        
         vocab_size = log_probs.size(-1)
 
         # using integer division to get an integer _B without casting
@@ -265,7 +266,8 @@ class BeamSearchBase(DecodeStrategy):
         length_penalty = self.global_scorer.length_penalty(
             step + 1, alpha=self.global_scorer.alpha)
 
-        curr_scores = log_probs / length_penalty
+        #curr_scores = log_probs / length_penalty
+        curr_scores = log_probs - length_penalty
 
         # Avoid any direction that would repeat unwanted ngrams
         self.block_ngram_repeats(curr_scores)
@@ -276,10 +278,11 @@ class BeamSearchBase(DecodeStrategy):
         # Recover log probs.
         # Length penalty is just a scalar. It doesn't matter if it's applied
         # before or after the topk.
-        torch.mul(self.topk_scores, length_penalty, out=self.topk_log_probs)
+        #torch.mul(self.topk_scores, length_penalty, out=self.topk_log_probs)
+        self.topk_log_probs = self.topk_scores + length_penalty
 
         # Resolve beam origin and map to batch index flat representation.
-        self._batch_index = self.topk_ids // vocab_size
+        self._batch_index = torch.div(self.topk_ids, vocab_size, rounding_mode= 'floor')
         self._batch_index += self._beam_offset[:_B].unsqueeze(1)
         self.select_indices = self._batch_index.view(_B * self.beam_size)
         self.topk_ids.fmod_(vocab_size)  # resolve true word ids

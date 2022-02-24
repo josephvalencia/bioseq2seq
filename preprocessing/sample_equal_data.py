@@ -76,7 +76,8 @@ def match_length_distribution(sample_keys,dataset_b):
 
 dataset_a, seqs = load_dataset_v2(sys.argv[1])
 dataset_b, _ = load_dataset(sys.argv[2])
-
+print(len(dataset_a),len(dataset_b))
+quit()
 samples_a = random.sample(seqs, len(seqs)) #list of keys
 sample_keys = [len(seq) for name, seq in samples_a]
 

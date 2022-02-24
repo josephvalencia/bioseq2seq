@@ -59,6 +59,19 @@ class AccuracyScorer(Scorer):
     def _caller(self, stats):
         return stats.accuracy()
 
+class ClassAccuracyScorer(Scorer):
+
+    def __init__(self):
+        super(ClassAccuracyScorer, self).__init__(float("-inf"), "class_acc")
+
+    def is_improving(self, stats):
+        return stats.class_accuracy() > self.best_score
+
+    def is_decreasing(self, stats):
+        return stats.class_accuracy() < self.best_score
+
+    def _caller(self, stats):
+        return stats.class_accuracy()
 
 DEFAULT_SCORERS = [PPLScorer(), AccuracyScorer()]
 

@@ -12,8 +12,9 @@ import math
 import scipy
 import warnings
 
-from captum.attr import IntegratedGradients,DeepLift,DeepLiftShap,Saliency,InputXGradient
+from captum.attr import IntegratedGradients,DeepLift,DeepLiftShap,Saliency,InputXGradient,FeatureAblation
 from captum.attr import configure_interpretable_embedding_layer, remove_interpretable_embedding_layer
+from torchtext.data import Dataset
 
 from torch.nn.parallel import DistributedDataParallel as DDP
 
@@ -81,27 +82,38 @@ class PredictionWrapper(torch.nn.Module):
 
 class FeatureAttributor:
 
-    def __init__(self,model,device,sos_token,pad_token,pc_token,vocab,rank=0,world_size=1,softmax=True):
+    def __init__(self,model,device,vocab,method,rank=0,world_size=1,softmax=True):
         
         self.device = device
         self.model = model
         self.model.eval()
         self.model.zero_grad()
 
+        if method == "ig":
+            self.run_fn = self.run_integrated_gradients
+        elif method == "deeplift":
+            self.run_fn = self.run_deeplift
+        elif method == "inputxgradient":
+            self.run_fn = self.run_inputXgradient
+        elif method == "ISM":
+            self.run_fn = self.run_ISM
+        
         self.rank = rank
         self.world_size=world_size
 
-        self.sos_token = sos_token
-        self.pad_token = pad_token
-        self.pc_token = pc_token
-        self.vocab = vocab
+        self.sos_token = vocab['tgt'].vocab['<sos>']
+        self.pc_token = vocab['tgt'].vocab['<PC>']
+        self.src_vocab = vocab['src'].vocab
+
         self.average = None
         self.nucleotide = None
 
         self.positional = PositionalEncoding(dropout=0,dim=64).to(self.device)
-        self.interpretable_emb = configure_interpretable_embedding_layer(self.model,'encoder.embeddings')
+         
+        if method != "ISM":
+            self.interpretable_emb = configure_interpretable_embedding_layer(self.model,'encoder.embeddings')
         self.predictor = PredictionWrapper(self.model,softmax)
-
+   
     def old_zero_embed(self,src):
 
         src_size = list(src.size())
@@ -126,7 +138,7 @@ class FeatureAttributor:
     def old_nucleotide_embed(self,src,nucleotide):
 
         src_size = list(src.size())
-        i=self.vocab[nucleotide]
+        i=self.src_vocab[nucleotide]
         test = torch.tensor([[[i]]]).to(self.device)
         emb = self.interpretable_emb.indices_to_embeddings(test)
         baseline_emb = emb.repeat(*src_size)
@@ -137,7 +149,7 @@ class FeatureAttributor:
        
         src_size = list(src.size())
         # retrieve embedding from torchtext
-        n = self.vocab[nucleotide]
+        n = self.src_vocab[nucleotide]
         # copy across length
         test =  n*torch.ones_like(src).to(self.device)
         baseline_emb = self.interpretable_emb.indices_to_embeddings(test.permute(1,0,2))
@@ -161,7 +173,7 @@ class FeatureAttributor:
         tensor_list = []
 
         for nuc in ['A','G','C','T']:
-            i = self.vocab[nuc]
+            i = self.src_vocab[nuc]
             test = torch.tensor([[[i]]]).to(self.device)
             emb = self.interpretable_emb.indices_to_embeddings(test)
             tensor_list.append(torch.squeeze(emb,dim=0))
@@ -178,8 +190,12 @@ class FeatureAttributor:
     def decoder_input(self,batch_size):
 
         return self.sos_token * torch.ones(size=(batch_size,1,1),dtype=torch.long).to(self.device)
-    
-    def run_deeplift(self,savefile,val_iterator,target_pos,reduction,baseline):
+   
+    def run(self,savefile,val_iterator,target_pos,baseline):
+
+        self.run_fn(savefile,val_iterator,target_pos,baseline)
+
+    def run_deeplift(self,savefile,val_iterator,target_pos,baseline):
 
         dl = DeepLift(self.predictor)
        
@@ -217,9 +233,9 @@ class FeatureAttributor:
                     pred,answer_idx = pred_classes.data.cpu().max(dim=-1)
                     pc_class = torch.tensor([[[self.pc_token]]]).to(self.device)
                     
-                    n_steps = 20
+                    n_steps = 500
                     saved_src = np.squeeze(np.squeeze(curr_src.detach().cpu().numpy(),axis=0),axis=1).tolist()
-                    saved_src = "".join([self.vocab.itos[x] for x in saved_src])
+                    saved_src = "".join([self.src_vocab.itos[x] for x in saved_src])
                      
                     attributions,convergence_delta = dl.attribute(inputs=curr_src_embed,
                                                 target=pc_class,
@@ -242,11 +258,11 @@ class FeatureAttributor:
                     normed_attr = ['{:.3e}'.format(x) for x in normed.tolist()[:true_len]]
                     unreduced_attr = ['{:.3e}'.format(x) for x in attributions.ravel().tolist()]
 
-                    entry = {"ID" : ids[j] , "summed_attr" : summed_attr, "normed_attr" : normed_attr, 'unreduced_attr' : unreduced_attr, "src" : saved_src}
+                    entry = {"ID" : ids[j] , "summed_attr" : summed_attr, "normed_attr" : normed_attr, "src" : saved_src}
                     summary = json.dumps(entry)
                     outFile.write(summary+"\n")
     '''
-    def run_deeplift(self,savefile,val_iterator,target_pos,reduction,baseline):
+    def run_deeplift(self,savefile,val_iterator,target_pos,baseline):
 
         dl = DeepLift(self.predictor)
         
@@ -290,7 +306,7 @@ class FeatureAttributor:
                     normed = -normed
 
                 for j in range(batch_size):
-                    curr_saved_src = "".join([self.vocab.itos[x] for x in saved_src[j,:,0]])
+                    curr_saved_src = "".join([self.src_vocab.itos[x] for x in saved_src[j,:,0]])
                     curr_saved_src = curr_saved_src.split('<pad>')[0]
                     
                     true_len = len(curr_saved_src)
@@ -301,9 +317,10 @@ class FeatureAttributor:
                     summary = json.dumps(entry)
                     outFile.write(summary+"\n")
     ''' 
-    def run_integrated_gradients(self,savefile,val_iterator,target_pos,reduction,baseline):
+    def run_integrated_gradients(self,savefile,val_iterator,target_pos,baseline):
 
-        ig = IntegratedGradients(self.predictor)
+        global_attr = True
+        ig = IntegratedGradients(self.predictor,multiply_by_inputs=global_attr)
        
         with open(savefile,'w') as outFile:
             for batch in tqdm.tqdm(val_iterator):
@@ -337,11 +354,13 @@ class FeatureAttributor:
                     curr_src_lens = torch.unsqueeze(curr_src_lens,0)
                     pred_classes = self.predictor(curr_src_embed,curr_src_lens,decoder_input,1)
                     pred,answer_idx = pred_classes.data.cpu().max(dim=-1)
+                    print(pred,answer_idx)
+                    '''
                     pc_class = torch.tensor([[[self.pc_token]]]).to(self.device)
                     
                     n_steps = 20
                     saved_src = np.squeeze(np.squeeze(curr_src.detach().cpu().numpy(),axis=0),axis=1).tolist()
-                    saved_src = "".join([self.vocab.itos[x] for x in saved_src])
+                    saved_src = "".join([self.src_vocab.itos[x] for x in saved_src])
                     saved_src = saved_src.split('<pad>')[0]
 
                     attributions,convergence_delta = ig.attribute(inputs=curr_src_embed,
@@ -351,7 +370,7 @@ class FeatureAttributor:
                                                 internal_batch_size=2,
                                                 return_convergence_delta=True,
                                                 additional_forward_args = (curr_src_lens,decoder_input,1))
-                    
+                   
                     attributions = np.squeeze(attributions.detach().cpu().numpy(),axis=0)
                     pct_error = convergence_delta.item() / np.sum(attributions)
                    
@@ -366,13 +385,12 @@ class FeatureAttributor:
                     true_len = len(saved_src)
                     summed_attr = ['{:.3e}'.format(x) for x in summed.tolist()[:true_len]]
                     normed_attr = ['{:.3e}'.format(x) for x in normed.tolist()[:true_len]]
-                    unreduced_attr = ['{:.3e}'.format(x) for x in attributions.ravel().tolist()]
 
-                    entry = {"ID" : ids[j] , "summed_attr" : summed_attr, "normed_attr" : normed_attr, 'unreduced_attr' : unreduced_attr, "src" : saved_src}
+                    entry = {"ID" : ids[j] , "summed_attr" : summed_attr, "normed_attr" : normed_attr, "src" : saved_src}
                     summary = json.dumps(entry)
 
                     outFile.write(summary+"\n")
-
+                    '''
     def run_inputXgradient(self,savefile,val_iterator,target_pos,baseline):
 
         sl = InputXGradient(self.predictor)
@@ -404,7 +422,7 @@ class FeatureAttributor:
                     normed = -normed
 
                 for j in range(batch_size):
-                    curr_saved_src = "".join([self.vocab.itos[x] for x in saved_src[j,:,0]])
+                    curr_saved_src = "".join([self.src_vocab.itos[x] for x in saved_src[j,:,0]])
                     curr_saved_src = curr_saved_src.split('<pad>')[0]
                                 
                     true_len = len(curr_saved_src)
@@ -415,34 +433,62 @@ class FeatureAttributor:
                     summary = json.dumps(entry)
                     outFile.write(summary+"\n")
 
-    def merge_handler(self,attr,fh):
+    def run_ISM(self,savefile,val_iterator,target_pos,baseline):
 
-        # query across all machines for size
-        local_size = torch.tensor([attr.numel()],dtype=torch.int64).to(self.device)
-        size_list = [torch.zeros_like(local_size) for _ in range(self.world_size)]
-        torch.distributed.all_gather(size_list, local_size)
-        size_list = [int(size.item()) for size in size_list]
-        max_size = max(size_list)
+        ism = FeatureAblation(self.predictor)
         
-        # pad tensors to maximum length 
-        tensor_list = [torch.zeros(size=(max_size,),dtype=torch.float).to(self.device) for _ in range(self.world_size)]
-        
-        if local_size != max_size:
-            padding = float('NaN') *torch.ones(size=(max_size - local_size,)).to(self.device)
-            attr = torch.cat((attr, padding), dim=0)
-            torch.distributed.all_gather(tensor_list, attr)
-        else:
-            torch.distributed.all_gather(tensor_list,attr)
-
-        if self.rank == 0:
-            attr = torch.stack(tensor_list,dim=1).cpu().numpy()
-            attr = attr[~np.isnan(attr)]
-
-            for i in range(self.world_size):
-                curr_attr = attr[:,i]
-                entry = "{}\t{}\n".format(id,curr_attr)
-                fh.write(summary)
-
+        with open(savefile,'w') as outFile:
+            
+            for batch in tqdm.tqdm(val_iterator):
+                ids = batch.id
+                src, src_lens = batch.src
+                src = src.transpose(0,1)
+                batch_size = batch.batch_size
+                
+                for j in range(batch_size):
+                    curr_src = torch.unsqueeze(src[j,:,:],0)
+                    curr_src_lens = torch.max(src_lens)
+                    curr_src_lens = torch.unsqueeze(curr_src_lens,0)
+                    decoder_input = self.decoder_input(1) 
+                    curr_ids = batch.id
+                    curr_tgt = batch.tgt[target_pos,j,:]
+                    curr_tgt = torch.unsqueeze(curr_tgt,0)
+                    curr_tgt = torch.unsqueeze(curr_tgt,2)
+                    pred_classes = self.predictor(curr_src,curr_src_lens,decoder_input,batch_size)
+                    pred,answer_idx = pred_classes.data.cpu().max(dim=-1)
+                    pc_class = torch.tensor([[[self.pc_token]]]).to(self.device)
+                    
+                    # save computational time by masking non-mutated locations to run simultaneously 
+                    base = self.src_vocab[baseline]
+                    baseline_class = torch.tensor([[[base]]]).to(self.device)
+                    baseline_tensor = base*torch.ones_like(curr_src).to(self.device)
+                    num_total_el = torch.numel(curr_src)
+                    mask = torch.arange(1,num_total_el+1).reshape_as(curr_src).to(self.device)
+                    unchanged_indices = curr_src == baseline_class
+                    feature_mask = torch.where(unchanged_indices,0,mask)  
+                    
+                    '''
+                    attributions = ism.attribute(inputs=src_embed,baselines=baseline_embed,
+                                        target=pc_class,feature_mask=feature_mask,
+                                        additional_forward_args = (src_lens,decoder_input,batch_size))
+                    '''
+                    attributions = ism.attribute(inputs=curr_src,
+                                            baselines=baseline_tensor,
+                                            target=pc_class,
+                                            feature_mask=None,
+                                            additional_forward_args = (curr_src_lens,decoder_input,1))
+                    
+                    attributions = attributions.detach().cpu().numpy().ravel().tolist()
+                    saved_src = curr_src.detach().cpu().numpy().ravel().tolist()
+                    
+                    curr_saved_src = "".join([self.src_vocab.itos[x] for x in saved_src])
+                    curr_saved_src = curr_saved_src.split('<pad>')[0]
+                    true_len = len(curr_saved_src)
+                    ism_attr = [f'{x:.3e}' for x in attributions[:true_len]]
+                    
+                    entry = {"ID" : ids[j] , "ism_attr" : ism_attr,"src" : curr_saved_src}
+                    summary = json.dumps(entry)
+                    outFile.write(summary+"\n")
 def parse_args():
 
     """ Parse required and optional configuration arguments"""
@@ -460,7 +506,6 @@ def parse_args():
     parser.add_argument("--dataset",default="validation",help="train|test|validation")
     parser.add_argument("--name",default = "temp")
     parser.add_argument("--rank",type=int,default=0)
-    parser.add_argument("--reduction",default="norm")
     parser.add_argument("--num_gpus","--g", type = int, default = 1, help = "Number of GPUs to use on node")
     parser.add_argument("--address",default =  "127.0.0.1",help = "IP address for master process in distributed training")
     parser.add_argument("--port",default = "6000",help = "Port for master process in distributed training")
@@ -475,12 +520,8 @@ def run_helper(rank,args,model,vocab,use_splits=False):
 
     df = pd.read_csv(args.input,sep="\t")
     df["CDS"] = ["-1" for _ in range(df.shape[0])]
-
-    sos_token = vocab['tgt'].vocab['<sos>']
-    pad_token = vocab['src'].vocab['<pad>']
-    pc_token = vocab['tgt'].vocab['<PC>']
     print(vocab['tgt'].vocab.stoi)
-
+    
     dataset = dataset_from_df([df],mode=args.inference_mode,saved_vocab=vocab)[0]
     max_tokens_in_batch = 2000
     device = "cpu"
@@ -498,22 +539,23 @@ def run_helper(rank,args,model,vocab,use_splits=False):
         splits = [1.0/args.num_gpus for _ in range(args.num_gpus)]
         dev_partitions = partition(dataset,split_ratios = splits,random_state = random_state)
         local_slice = dev_partitions[rank]
+        
+        data = [local_slice.examples[i] for i in range(50)]
+        local_slice = Dataset(data, local_slice.fields)
+
         # iterator over evaluation batches
         val_iterator = iterator_from_dataset(local_slice,max_tokens_in_batch,device,train=False)
-        attributor = FeatureAttributor(model,device,sos_token,pad_token,pc_token,vocab['src'].vocab,rank=rank,world_size=args.num_gpus,softmax=apply_softmax)
+        attributor = FeatureAttributor(model,device,vocab,args.attribution_mode,rank=rank,world_size=args.num_gpus,softmax=apply_softmax)
 
     else:
-        attributor = FeatureAttributor(model,device,sos_token,pad_token,pc_token,vocab['src'].vocab,softmax=apply_softmax)
+        data = [dataset.examples[i] for i in range(50)]
+        dataset = Dataset(data, dataset.fields)
+        attributor = FeatureAttributor(model,device,vocab,args.attribution_mode,softmax=apply_softmax)
         val_iterator = iterator_from_dataset(dataset,max_tokens_in_batch,device,train=False)
 
     target_pos = 1
 
-    if args.attribution_mode == "ig":
-        attributor.run_integrated_gradients(savefile,val_iterator,target_pos,args.reduction,args.baseline)
-    elif args.attribution_mode == "deeplift":
-        attributor.run_deeplift(savefile,val_iterator,target_pos,args.reduction,args.baseline)
-    elif args.attribution_mode == "inputXgradient":
-        attributor.run_inputXgradient(savefile,val_iterator,target_pos,args.baseline)
+    attributor.run(savefile,val_iterator,target_pos,args.baseline)
 
 def run_attribution(args,device):
     

@@ -5,11 +5,12 @@ import torch
 import random
 import time
 import numpy as np
+from math import log, floor
 
 from bioseq2seq.inputters import TextDataReader,get_fields
 from bioseq2seq.inputters.text_dataset import TextMultiField
 from bioseq2seq.translate import Translator, GNMTGlobalScorer
-from bioseq2seq.bin.models import make_transformer_seq2seq, Generator
+from bioseq2seq.bin.models import make_transformer_seq2seq, make_hybrid_seq2seq, Generator
 from bioseq2seq.modules.embeddings import PositionalEncoding
 
 from torchtext.data import RawField
@@ -51,13 +52,12 @@ def restore_transformer_model(checkpoint,machine,opts):
 
     vocab = checkpoint['vocab'] 
     print(vocab['tgt'].vocab.stoi)
-    #n_input_classes = len(vocab['src'].vocab.stoi)
-    #n_output_classes = len(vocab['tgt'].vocab.stoi)
-    n_input_classes = 19
-    n_output_classes = 29
-    
-    model = make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=opts.n_enc_layers,n_dec=opts.n_dec_layers,model_dim=opts.model_dim,max_rel_pos=opts.max_rel_pos)
-    #model = make_transformer_seq2seq(n_enc=4,n_dec=4,model_dim=128,max_rel_pos=10)
+    n_input_classes = len(vocab['src'].vocab.stoi)
+    n_output_classes = len(vocab['tgt'].vocab.stoi)
+    print(f'n_enc = {opts.n_enc_layers} ,n_dec={opts.n_dec_layers}, n_output_classes= {n_output_classes} ,n_input_classes ={n_input_classes}')
+    n_output_classes = 28 
+    model = make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=opts.n_enc_layers,n_dec=12,model_dim=opts.model_dim,dim_filter=100)
+    #model = make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=opts.n_enc_layers,n_dec=opts.n_dec_layers,model_dim=opts.model_dim,max_rel_pos=opts.max_rel_pos)
     model.load_state_dict(checkpoint['model'],strict=False)
     model.generator.load_state_dict(checkpoint['generator'])
     model.to(device = machine)
@@ -100,23 +100,12 @@ def arrange_data_by_mode(df, mode):
     elif mode == "ED_classify":
         # regular binary classifiation coding/noncoding
         protein = df['Type'].tolist()
-
+    
+    #protein = ['<sos>']*len(df)
     ids = df['ID'].tolist() 
     rna = df['RNA'].tolist()
     cds = df['CDS'].tolist()
     return protein,ids,rna,cds
-
-def exclude_transcripts(data):
-
-    # hack to process seqs that failed on GPU
-    failed = pd.read_csv('../Fa/mammalian_1k_to_2k_RNA_reduced_80_ids.txt',sep='\n',names=['ID'])
-    failed = failed.set_index("ID")
-    data = data.set_index("ID")
-    #data = data.drop(labels=data.index.difference(failed.index))
-    data = data.drop(labels=failed.index)
-    data = data.reset_index()
-    print(data)
-    return data
 
 def partition(df,split_ratios,random_seed):
 
@@ -143,9 +132,10 @@ def run_helper(rank,model,vocab,args):
     #device = 'cpu'
 
     data = pd.read_csv(args.input,sep="\t")
-    #data = exclude_transcripts(data)
+    #special = ['XR_949580.2', 'XR_001748355.1', 'XR_001707416.2', 'XR_003029405.1', 'XR_922291.3','XM_015134081.2', 'XM_032910311.1', 'NM_001375259.1', 'XR_002007359.1', 'XR_003726903.1']
+    #data = data[data['ID'].isin(special)].sample(frac=1.0)
     data["CDS"] = ["-1" for _ in range(data.shape[0])]
-    
+    print(data)
     if args.num_gpus > 1:
         file_prefix += '.rank_{}'.format(rank)
 
@@ -159,6 +149,12 @@ def run_helper(rank,model,vocab,args):
 
     protein,ids,rna,cds = arrange_data_by_mode(data,args.mode)
     text_fields = make_vocab(vocab,rna,protein)
+        
+    def test_dropout(m):
+        if isinstance(m,torch.nn.Dropout):
+            print(m.training)
+    
+    #model.apply(test_dropout)
     
     translate(model,
             text_fields,
@@ -189,13 +185,13 @@ def translate(model,text_fields,rna,protein,ids,cds,device,alpha,beam_size = 8,
         device (torch.device | str): device for translation.
     """
     
-    MAX_LEN = 333
+    MAX_LEN = 1
     BATCH_SIZE = 1
     
     # global scorer for beam decoding
-    beam_scorer = GNMTGlobalScorer(alpha = 0.6,
+    beam_scorer = GNMTGlobalScorer(alpha = 0.0,
                                    beta = 0.0,
-                                   length_penalty = "wu",
+                                   length_penalty = "expected_score",
                                    coverage_penalty = "none")
     
     translator = Translator(model,
@@ -205,7 +201,7 @@ def translate(model,text_fields,rna,protein,ids,cds,device,alpha,beam_size = 8,
                             file_prefix = file_prefix,
                             fields = text_fields,
                             beam_size = beam_size,
-                            n_best = n_best,
+                            n_best = 2,
                             global_scorer = beam_scorer,
                             tgt_prefix = None,
                             verbose = False,
@@ -221,6 +217,13 @@ def translate(model,text_fields,rna,protein,ids,cds,device,alpha,beam_size = 8,
                           save_EDA= save_EDA,
                           save_preds = save_preds,
                           save_scores = False)
+
+def human_format(number):
+    
+    units = ['','K','M','G','T','P']
+    k = 1000.0
+    magnitude = int(floor(log(number, k)))
+    return '%.2f%s' % (number / k**magnitude, units[magnitude])
 
 def translate_from_transformer_checkpt(args):
 
@@ -238,6 +241,8 @@ def translate_from_transformer_checkpt(args):
             print(k,v)
     
     model = restore_transformer_model(checkpoint,device,options)
+    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"# trainable parameters = {human_format(num_params)}")
     model.eval()
 
     vocab = checkpoint['vocab']

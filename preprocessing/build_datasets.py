@@ -8,6 +8,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from collections import defaultdict
+from ushuffle import shuffle, Shuffler
 
 def mammalian_partitions(combined_file,max_len):
     
@@ -38,29 +39,53 @@ def balance_class_and_length(df,max_len):
     sns.histplot(data=df,hue='Type',x = 'RNA_len',binwidth=1)
     plt.savefig(f'train_200-{max_len}_RNA_lens_unbalanced.svg')
     plt.close()
-
+    
+    print(df.groupby('Type').count())
     pc = df[df['Type'] == '<PC>']
     nc = df[df['Type'] == '<NC>']
-
-    dataset_nc , seqs_nc = arrange(nc)
-    dataset_pc, _ = arrange(pc)
-
+    print(f'# pc unbalanced = {len(pc)}, # nc unbalanced = {len(nc)}')
+    dataset_nc, seqs_nc = arrange(nc)
+    dataset_pc, seqs_pc = arrange(pc)
     nc_keys = [len(seq) for name, seq in seqs_nc]
     samples_pc = match_length_distribution(nc_keys,dataset_pc)
-    
     pc_ids = [x[0] for x in samples_pc]
     nc_ids = nc['ID'].tolist()
+    N = len(pc_ids)
+    print(f'len(pc_ids) = {N} , len(nc_ids) = {len(nc_ids)}, diff = {len(pc)-N}')
     
-    balanced_ids = pc_ids+nc_ids
-    df = df.set_index('ID')
-    df = df.loc[balanced_ids]
-    df = df.reset_index()
+    residual_pc = pc[~pc['ID'].isin(pc_ids)]
+    fake_lnc = generate_shuffled_seqs(residual_pc)
+    #balanced_ids = pc_ids+nc_ids
+    
+    #df = df.set_index('ID')
+    #df = df.loc[balanced_ids]
+    #df = df.reset_index()
+    df = pd.concat([df,fake_lnc])
     df = df.sample(frac=1.0,random_state=random_seed)
+
     sns.histplot(data=df,hue='Type',x = 'RNA_len',binwidth=1)
     plt.savefig(f'train_200-{max_len}_RNA_lens_balanced.svg')
     plt.close()
     
     return df[df.columns.difference(['RNA_len'])]
+
+def generate_shuffled_seqs(df):
+
+    ids = df['ID'].tolist()
+    cds = df['CDS'].tolist()
+    rna = df['RNA'].tolist()
+    protein = df['Protein'].tolist()
+    types = df['Type'].tolist()
+
+    ids = ['XR_shuffled_'+t for t in ids]
+    cds = [-1 for c in cds]
+    protein = ['?' for p in protein]
+    rna = [str(shuffle(r.encode('utf-8'),2)) for r in rna]
+    types = ['<NC>' for t in types]
+
+    data = {'ID' : ids , 'RNA' : rna , 'CDS' : cds , 'Type' : types , 'Protein' : protein}
+    return pd.DataFrame(data=data)
+
 
 def match_length_distribution(sample_keys,dataset_b):
     #list of keys
@@ -182,7 +207,7 @@ def reduce_redundancy(train_fa,eval_prefix):
 
 if __name__ == "__main__":
    
-    mammalian_file = 'data/mammalian_refseq.csv' 
+    mammalian_file = 'data/old/mammalian_refseq.csv' 
     zebrafish_file = 'data/zebrafish_refseq.csv' 
     
     mammalian_partitions(mammalian_file,int(sys.argv[1])) 

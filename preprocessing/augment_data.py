@@ -50,7 +50,7 @@ def augment(filename):
 
     df_mutated = df_mutated.reset_index()
     nucs = ['A','C','G','T']
-    all_data = []
+    all_data = [df]
 
     # single insertions
     for i in range(4):

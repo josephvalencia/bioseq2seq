@@ -1,6 +1,7 @@
 import sys,random
 import json
 import os,re
+#import configargparse
 
 import matplotlib
 matplotlib.use('Agg')
@@ -22,35 +23,41 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
 
+from utils import parse_config, add_file_list, getLongestORF
 
-def get_CDS_start(cds,rna):
-
-    if cds != "-1": 
-        splits = cds.split(":")
-        clean = lambda x : x[1:] if x.startswith("<") or x.startswith(">") else x
-        splits = [clean(x) for x in splits]
-        start,end = tuple([int(x) for x in splits])
-    else:
-        start,end = getLongestORF(rna)
+def parse_args():
+    """parse required and optional configuration arguments.""" 
     
-    return start
-        
-def getLongestORF(mRNA):
-    ORF_start = -1
-    ORF_end = -1
-    longestORF = 0
-    for startMatch in re.finditer('ATG',mRNA):
-        remaining = mRNA[startMatch.start():]
-        if re.search('TGA|TAG|TAA',remaining):
-            for stopMatch in re.finditer('TGA|TAG|TAA',remaining):
-                ORF = remaining[0:stopMatch.end()]
-                if len(ORF) % 3 == 0:
-                    if len(ORF) > longestORF:
-                        ORF_start = startMatch.start()
-                        ORF_end = startMatch.start()+stopMatch.end()
-                        longestORF = len(ORF)
-                    break
-    return ORF_start,ORF_end
+    parser = configargparse.ArgParser()
+    
+    # required args
+    parser.add_argument("--train",help = "file containing rna to protein dataset")
+    parser.add_argument("--val",help = "file containing rna to protein dataset")
+    
+    # optional args
+    parser.add_argument("--save-directory","--s", default = "checkpoints/", help = "name of directory for saving model checkpoints")
+    parser.add_argument("--learning-rate","--lr", type = float, default = 1e-3,help = "optimizer learning rate")
+    parser.add_argument("--max-epochs","--e", type = int, default = 100000,help = "maximum number of training epochs" )
+    parser.add_argument("--report-every",'--r', type = int, default = 750, help = "number of iterations before calculating statistics")
+    parser.add_argument("--mode", default = "combined", help = "training mode. classify for binary classification. translate for full translation")
+    parser.add_argument("--num_gpus","--g", type = int, default = 1, help = "number of gpus to use on node")
+    parser.add_argument("--accum_steps", type = int, default = 4, help = "number of batches to accumulate gradients before update")
+    parser.add_argument("--max_tokens",type = int , default = 4500, help = "max number of tokens in training batch")
+    parser.add_argument("--patience", type = int, default = 5, help = "maximum epochs without improvement")
+    parser.add_argument("--address",default =  "127.0.0.1",help = "ip address for master process in distributed training")
+    parser.add_argument("--port",default = "6000",help = "port for master process in distributed training")
+    parser.add_argument("--n_enc_layers",type=int,default = 6,help= "number of encoder layers")
+    parser.add_argument("--n_dec_layers",type=int,default = 6,help="number of decoder layers")
+    parser.add_argument("--model_dim",type=int,default = 64,help ="size of hidden context embeddings")
+    parser.add_argument("--max_rel_pos",type=int,default = 8,help="max value of relative position embedding")
+
+    # optional flags
+    parser.add_argument("--checkpoint", "--c", help = "name of .pt model to initialize training")
+    parser.add_argument("--finetune",action = "store_true", help = "reinitialize generator")
+    parser.add_argument("--verbose",action="store_true")
+
+    return parser.parse_args()
+
 
 def plot_stem(name,array,labels):
 
@@ -129,14 +136,15 @@ def top_indices(saved_file,tgt_field,positive_topk_file,negative_topk_file,group
             
             name = id + "_" + mode
             window_size = 50
-
+            
+            # find various indices of interest
             max_idx = np.argmax(array).tolist()
             min_idx = np.argmin(array).tolist()
             smallest_magnitude_idx = np.argmin(np.abs(array)).tolist()
             largest_magnitude_idx = np.argmax(np.abs(array)).tolist()
-            
             other_idx = [x for x in range(L) if x != max_idx]
             random_idx = random.sample(other_idx,1)[0]
+            
             val_list.append(np.max(array))
 
             coding = True if (id.startswith('XM_') or id.startswith('NM_')) else False 
@@ -144,6 +152,7 @@ def top_indices(saved_file,tgt_field,positive_topk_file,negative_topk_file,group
 
             for g,m,dataset in zip(groups,metrics,both_storage): 
                 result = None
+                # partition based on args
                 if g == 'PC' and coding:
                     if m == 'max':
                         result = (id,max_idx)
@@ -174,31 +183,6 @@ def top_indices(saved_file,tgt_field,positive_topk_file,negative_topk_file,group
         for tscript,idx in negative_storage:
             outFile.write("{},{}\n".format(tscript,idx))
 
-def smooth_array(array,window_size):
-
-    half_size = window_size // 2
-    running_sum = sum(array[:half_size]) 
-    
-    smoothed_scores = [0.0]*len(array)
-
-    trail_idx = 0
-    lead_idx = half_size
-
-    for i in range(len(array)):
-        gap_size = lead_idx - trail_idx + 1
-        smoothed_scores[i] = running_sum / gap_size
-
-        # advance lead until it reaches end
-        if lead_idx < len(array)-1:
-            running_sum += array[lead_idx]
-            lead_idx +=1
-
-        # advance trail when the gap is big enough or the lead has reached the end        
-        if gap_size == window_size or lead_idx == len(array) -1:
-            running_sum -= array[trail_idx]
-            trail_idx+=1
-
-    return smoothed_scores
 
 def top_k_to_substrings(top_k_csv,motif_fasta,df):
     
@@ -247,27 +231,6 @@ def top_k_to_substrings(top_k_csv,motif_fasta,df):
     with open(motif_fasta,'w') as outFile:
         SeqIO.write(sequences, outFile, "fasta")
 
-def getLongestORF(mRNA):
-    ORF_start = -1
-    ORF_end = -1
-    longestORF = 0
-    for startMatch in re.finditer('ATG',mRNA):
-        remaining = mRNA[startMatch.start():]
-        if re.search('TGA|TAG|TAA',remaining):
-            for stopMatch in re.finditer('TGA|TAG|TAA',remaining):
-                ORF = remaining[0:stopMatch.end()]
-                if len(ORF) % 3 == 0:
-                    if len(ORF) > longestORF:
-                        ORF_start = startMatch.start()
-                        ORF_end = startMatch.start()+stopMatch.end()
-                        longestORF = len(ORF)
-                    break
-    return ORF_start,ORF_end
-
-def make_chunks(lst, n):
-    """Yield successive n-sized chunks from lst."""
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
 
 def codon_scores(saved_file,df,tgt_field,boxplot_file,scatterplot_file,significance_file,mode="attn"):
 
@@ -526,38 +489,6 @@ def significance(codon_df,significance_file):
         outFile.write("Coding : {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_coding,num_out_coding))
         outFile.write("Noncoding: {}/64 higher in CDS, {}/64 higher outside\n".format(num_cds_noncoding,num_out_noncoding))
 
-def IG_correlations(file_a,file_b):
-
-    corrs = []
-    storage = {}
-    
-    with open(file_a) as inFile:
-        for l in inFile:
-            fields = json.loads(l)
-            id_field = "ID"
-            id = fields[id_field]
-            summed = [float(x) for x in fields['summed_attr']] 
-            summed = np.asarray(summed)
-            normed = [float(x) for x in fields['normed_attr']] 
-            normed = np.asarray(normed)
-            storage[id] = summed
-
-    with open(file_b) as inFile:
-        for l in inFile:
-            fields = json.loads(l)
-            id_field = "ID"
-            id = fields[id_field]
-            summed = [float(x) for x in fields['summed_attr']] 
-            summed = np.asarray(summed)
-            normed = [float(x) for x in fields['normed_attr']] 
-            normed = np.asarray(normed)
-            other = storage[id]
-            v = kendalltau(summed,other)[0]
-            corrs.append(v)
-
-    corrs = np.asarray(corrs)
-    print(np.nanmean(corrs))
-    print(np.nanstd(corrs))
 
 def run_attributions(saved_file,df,tgt_field,parent_dir,groups,metrics,mode="attn"):
 
@@ -614,51 +545,6 @@ def get_positional_bias(coding_indices_file,noncoding_indices_file,df_data,hist_
     plt.savefig(hist_file)
     plt.close()
 
-def get_positional_bias_old(saved_file,df,tgt_field,hist_file,mode):
-    
-    storage = []
-    temp_idx = 0
-
-    with open(saved_file) as inFile:
-        for l in inFile:
-            
-            fields = json.loads(l)
-            id_field = "TSCRIPT_ID" if mode == "attn" else "ID"
-            id = fields[id_field]
-            array = fields[tgt_field]
-            seq = df.loc[id,'RNA']
-            tscript_type = df.loc[id,'Type']
-            argmax = np.argmax(array)
-
-            if tscript_type == "<PC>":               
-                # use provided CDS
-                cds = df.loc[id,'CDS']
-                if cds != "-1":
-                    splits = cds.split(":")
-                    clean = lambda x : x[1:] if x.startswith("<") or x.startswith(">") else x
-                    cds_start,cds_end = tuple([int(clean(x)) for x in splits])
-                else:
-                    cds_start,cds_end = getLongestORF(seq)
-
-                entry = {"status" : "coding", "distance" : argmax-cds_start}
-                storage.append(entry)
-            else:
-                # use start and end of longest ORF
-                cds_start,cds_end = getLongestORF(seq)
-                entry = {"status" : "noncoding", "distance" : argmax-cds_start}
-                storage.append(entry)
-
-    plt.figure()
-    df = pd.DataFrame(storage)
-    sns.histplot(df,x="distance",kde=False,hue="status",stat="density",binwidth=10,common_bins=True,element='step')
-    
-    plt.xlabel("Position relative to start/first AUG")
-    plt.ylabel("Density")
-    plt.title("Position of maximum attention")
-    plt.tight_layout(rect=[0,0.03,1,0.95])
-    plt.savefig(hist_file)
-    plt.close()
-
 def visualize_attribution(data_file,attr_file):
 
     # ingest stored data
@@ -691,63 +577,72 @@ def visualize_attribution(data_file,attr_file):
             with open('html_file.html', 'w') as f:
                 f.write(html)
 
-if __name__ == "__main__":
-   
-    # ingest stored data
-    test_file = "data/mammalian_1k_test_nonredundant_80.csv"
-    val_file = "data/mammalian_1k_val_nonredundant_80.csv"
-    train_file = "data/mammalian_1k_train.csv"
 
-    df_test = pd.read_csv(test_file,sep="\t").set_index("ID")
-    df_val = pd.read_csv(val_file,sep="\t").set_index("ID")
-    df_train = pd.read_csv(train_file,sep="\t").set_index("ID")
+def attribution_loci_pipeline(): 
+
+    args, unknown_args = parse_config()
     
-    '''
-    for base in ['avg','zero','A','C','G','T']:
-        f = "best_ED_classify_"+base+"_pos.ig"
-        run_attributions(f,df_val,"summed_attr","attributions/", "IG")
-        f = "seq2seq_3_"+base+"_pos.ig"
-        run_attributions(f,df_val,"summed_attr","attributions/", "IG")
-        run_attributions(f,df_val,"summed_attr","attributions/", "IG")
-    '''
+    # ingest stored data
+    test_file = args.test_csv
+    train_file = args.train_csv
+    val_file = args.val_csv
+    df_test = pd.read_csv(test_file,sep="\t").set_index("ID")
+   
+    # build output directory
+    config = args.c
+    config_prefix = config.split('.yaml')[0]
+    output_dir  =  f'results_{config_prefix}/'
+    attr_dir  =  f'{output_dir}/attr/'
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+    # make subdir for attribution loci results  
+    if not os.path.isdir(attr_dir):
+        os.mkdir(attr_dir)
 
-    # best bioseq2seq train
-    #run_attributions("new_output/IG/seq2seq_3_avg_pos_train.ig",df_train,"summed_attr","new_attr/", "IG")
-    #run_attributions("new_output/IG/seq2seq_3_zero_pos_train.ig",df_train,"summed_attr","new_attr/","IG") 
-
+    # load attribution files from config
+    best_seq_EDA = add_file_list(args.best_seq_EDA,'layers')
+    best_EDC_EDA = add_file_list(args.best_EDC_EDA,'layers')
+    best_seq_IG = add_file_list(args.best_seq_IG,'bases')
+    best_EDC_IG = add_file_list(args.best_EDC_IG,'bases')
+    best_seq_MDIG = add_file_list(args.best_seq_MDIG,'bases')
+    best_EDC_MDIG = add_file_list(args.best_EDC_MDIG,'bases')
+    
     groups = [['PC','NC'],['PC','PC'],['NC','NC']]
     metrics = [['max','max'],['max','min'],['max','random'],['min','random'],['random','random']]
     
     for g in groups:
         for m in metrics:
+            # g[0] and g[1] are transcript type for pos and neg sets
+            # m[0] and m[1] are loci of interest for pos and neg sets
             a = f'{g[0]}-{m[0]}'
             b = f'{g[1]}-{m[1]}'
             # ensure comparison groups are different 
             if a != b:
-                name = f'{a}_{b}'
+                trial_name = f'{a}_{b}'
                 # build directories
-                EDC_dir = f'new_attr/EDC_3_{name}/'
-                if not os.path.isdir(EDC_dir):
-                    os.mkdir(EDC_dir)
-                seq_dir = f'new_attr/seq2seq_3_{name}/'
-                if not os.path.isdir(seq_dir):
-                    os.mkdir(seq_dir)
-          
-                prefix = "new_output/IG/"
-                run_attributions(prefix+'EDC_3_avg_pos_test.ig',df_test,'summed_attr',EDC_dir,g,m,"IG")
-                run_attributions(prefix+'EDC_3_zero_pos_test.ig',df_test,'summed_attr',EDC_dir,g,m,"IG")
-                run_attributions(prefix+'seq2seq_3_avg_pos_test.ig',df_test,'summed_attr',seq_dir,g,m,"IG")
-                run_attributions(prefix+'seq2seq_3_zero_pos_test.ig',df_test,'summed_attr',seq_dir,g,m,"IG")
+                best_EDC_dir = f'{attr_dir}/best_EDC_{trial_name}/'
+                if not os.path.isdir(best_EDC_dir):
+                    os.mkdir(best_EDC_dir)
+                best_seq_dir = f'{attr_dir}/best_seq2seq_{trial_name}/'
+                if not os.path.isdir(best_seq_dir):
+                    os.mkdir(best_seq_dir)
                 
-                '''
-                # run all EDA layers
-                for l in range(4):
-                    #EDC_layer = "new_output/test/EDC_3_test_layer"+str(l)+".enc_dec_attns"
-                    EDC_layer = "new_output/test/EDC_3_test_layer"+str(l)+".enc_dec_attns"
-                    seq_layer = "new_output/test/seq2seq_3_test_layer"+str(l)+".enc_dec_attns"
-                    #seq_layer = "new_output/test/seq2seq_3_test_layer"+str(l)+".enc_dec_attns"
+                # run all IG bases for both models 
+                for f in best_seq_IG['path_list']:
+                    run_attributions(f,df_test,'summed_attr',best_seq_dir,g,m,'IG')
+                for f in best_EDC_IG['path_list']: 
+                    run_attributions(f,df_test,'summed_attr',best_EDC_dir,g,m,'IG')
+                
+                # run all EDA layers for both models
+                for l,f in enumerate(best_seq_EDA['path_list']):
                     for h in range(8):
-                        tgt_head = "layer{}head{}".format(l,h)
-                        run_attributions(EDC_layer,df_test,tgt_head,EDC_dir,g,m,"attn")
-                        run_attributions(seq_layer,df_test,tgt_head,seq_dir,g,m,"attn")
-                '''
+                        tgt_head = f'layer{l}head{h}'
+                        run_attributions(f,df_test,tgt_head,best_seq_dir,g,m,'attn')
+                for l,f in enumerate(best_EDC_EDA['path_list']):
+                    for h in range(8):
+                        tgt_head = f'layer{l}head{h}'
+                        run_attributions(f,df_test,tgt_head,best_EDC_dir,g,m,'attn')
+
+if __name__ == "__main__":
+    
+    attribution_loci_pipeline() 

@@ -170,7 +170,7 @@ class Embeddings(nn.Module):
         embeddings = [nn.Embedding(vocab, dim, padding_idx=pad, sparse=sparse)
                       for vocab, dim, pad in emb_params]
         emb_luts = Elementwise(feat_merge, embeddings)
-
+        
         # The final output size of word + feature vectors. This can vary
         # from the word vector size if and only if features are defined.
         # This is the attribute you should access if you need to know

@@ -60,7 +60,6 @@ class TransformerEncoderLayer(nn.Module):
         self.feed_forward.update_dropout(dropout)
         self.dropout.p = dropout
 
-
 class TransformerEncoder(EncoderBase):
     """The Transformer encoder from "Attention is All You Need"
     :cite:`DBLP:journals/corr/VaswaniSPUJGKP17`

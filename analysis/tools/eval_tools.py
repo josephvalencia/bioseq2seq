@@ -70,7 +70,7 @@ def safe_divide(num,denom):
         return 0.0
 
 if __name__ == "__main__":
-  
+
     '''
     storage = []
     for d in ['mammalian_1k','mammalian_1k-2k','zebrafish_1k']:
@@ -86,5 +86,7 @@ if __name__ == "__main__":
     df.to_csv('competitors_test_results.csv',sep='\t',index=False)
     '''
 
-    results = eval_rnasamba('mammalian_200-1200_rnasamba_test.tsv','new_test')
-    print(results)
+    rnasamba = eval_rnasamba('/nfs0/BB/Hendrix_Lab/valejose/bioseq2seq/mammalian_200-1200_rnasamba_val.tsv','rnasamba val')
+    print(rnasamba)
+    rnasamba = eval_rnasamba('/nfs0/BB/Hendrix_Lab/valejose/bioseq2seq/mammalian_200-1200_rnasamba_test.tsv','rnasamba test')
+    print(rnasamba)

@@ -66,7 +66,7 @@ class TranslationBuilder(object):
         assert(len(translation_batch["gold_score"]) ==
                len(translation_batch["predictions"]))
         batch_size = batch.batch_size
-
+        
         preds, pred_score, self_attn, context_attn, align, gold_score, coding_probs, indices = list(zip(
             *sorted(zip(translation_batch["predictions"],
                         translation_batch["scores"],
@@ -116,7 +116,7 @@ class TranslationBuilder(object):
             #pred_score_probs = [torch.exp(x) for x in pred_score[b]]
             translation = Translation(inds[b],
                 src[:, b] if src is not None else None,
-                        src_raw, pred_sents, self_attn[0].permute(3,0,1,2), context_attn[b], pred_score[b],
+                        src_raw, pred_sents, self_attn[0].permute(3,0,1,2) if self_attn[0] is not None else None, context_attn[b], pred_score[b],
                 #src_raw, pred_sents, self_attn[0].permute(3,0,1,2), context_attn[b], pred_score_probs,
                 gold_sent, gold_score[b], align[b], coding_probs[b]
             )

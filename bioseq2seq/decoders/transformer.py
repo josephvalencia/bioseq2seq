@@ -118,8 +118,8 @@ class TransformerDecoderLayer(nn.Module):
                 dec_mask = torch.gt(tgt_pad_mask + future_mask, 0)
             else:  # only mask padding, result mask in (B, 1, T)
                 dec_mask = tgt_pad_mask
-
         input_norm = self.layer_norm_1(inputs)
+        
         
         if isinstance(self.self_attn, MultiHeadedAttention):
             query, dec_attns = self.self_attn(input_norm, input_norm, input_norm,
@@ -233,30 +233,42 @@ class TransformerDecoder(DecoderBase):
         """Decode, possibly stepwise."""
         if step == 0:
             self._init_cache(memory_bank)
-        
+       
         tgt_words = tgt[:, :, 0].transpose(0, 1)
-        
+        if step is None or step == 0:
+            #print('tgt before embedding',tgt[0,:,:])
+            pass
         emb = self.embeddings(tgt, step=step,grad_mode=grad_mode)
         assert emb.dim() == 3  # len x batch x embedding_dim
-
         output = emb.transpose(0, 1).contiguous()
         src_memory_bank = memory_bank.transpose(0, 1).contiguous()
 
         pad_idx = self.embeddings.word_padding_idx
-        
         src_lens = kwargs["memory_lengths"]
         src_max_len = self.state["src"].shape[0]
-        
         src_pad_mask = ~sequence_mask(src_lens, src_max_len).unsqueeze(1)
         tgt_pad_mask = tgt_words.data.eq(pad_idx).unsqueeze(1)  # [B, 1, T_tgt]
-
         with_align = kwargs.pop('with_align', False)
         context_storage = []
 
         attn_aligns = []
+        
+        # INVESTIGATING EVALUATION DIFFERENCES DURING/AFTER TRAINING
+        '''
+        if not self.training:
+            output = output[:,0,:].unsqueeze(1)
+            tgt_pad_mask = tgt_pad_mask[:,:,0].unsqueeze(2) 
+            #print(tgt_pad_mask)
+        ''' 
+        #print(f'tgt_pad_mask = {tgt_pad_mask}')  
+        # INVESTIGATING EVALUATION DIFFERENCES DURING/AFTER TRAINING
+        
         for i, layer in enumerate(self.transformer_layers):
             layer_cache = self.state["cache"]["layer_{}".format(i)] \
                 if step is not None else None
+            if step == 0:
+                #print(f'layer_cache = {layer_cache}')
+                pass
             output,dec_attn, context_attn, attn_align = layer(
                 output,
                 src_memory_bank,
