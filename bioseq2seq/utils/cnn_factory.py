@@ -25,7 +25,7 @@ class GatedConv(nn.Module):
             input_size, 2 * input_size, kernel_size=(width, 1), stride=(1, 1),
             padding=(width // 2 * (1 - nopad), 0))
         ''' 
-        self.conv = nn.Conv2d(
+        self.conv = nn.Conv1d(
             input_size, 2 * input_size, kernel_size=(width, 1), stride=(1, 1),
             padding=(width // 2 * (1 - nopad), 0))
 

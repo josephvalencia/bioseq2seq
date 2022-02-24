@@ -183,9 +183,9 @@ def parse_predictions(record):
     
     transcript = record[0].split('ID: ')[1]
     src = record[1].split('RNA: ')[1]
-    pc_score = np.exp(float(record[6].split('PC_SCORE: ')[1]))
+    pc_score = np.exp(float(record[4].split('PC_SCORE: ')[1]))
     
-    #preds = record[2:6]
+    preds = record[2:4]
     gold_match  = re.search('GOLD: (<PC>|<NC>)(\S*)?',record[-2])
     
     pred_match  = re.search('PRED: (<PC>|<NC>)(\S*)?',record[2])
@@ -329,8 +329,8 @@ elif mode == "combined":
 storage = []
 with open(pred_file,"r") as inFile:
     lines = inFile.read().split("\n")
-    for i in range(0,len(lines)-9,9):
-        entry = parse_predictions(lines[i:i+9])
+    for i in range(0,len(lines)-7,7):
+        entry = parse_predictions(lines[i:i+7])
         storage.append(entry)
 df = pd.DataFrame(storage)
 

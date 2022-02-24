@@ -42,9 +42,11 @@ class NMTModel(nn.Module):
         """
         #print(f'tgt.shape ={tgt.shape}, start={tgt[:2,:]}, end ={tgt[-1]}')
         dec_in = tgt[:-1]  # exclude last target from inputs
+        #print(f'tgt shape (<eos> removed) = {dec_in.shape}')
         #print(f'dec_in.shape={dec_in.shape}')
         enc_state, memory_bank, lengths, enc_self_attn = self.encoder(src, lengths)
-        
+        #print(memory_bank)
+        #print(enc_state.shape,memory_bank.shape)
         is_clean =  lambda q: torch.all(~torch.isnan(q))
         
         if bptt is False:
@@ -52,8 +54,11 @@ class NMTModel(nn.Module):
         dec_out, enc_dec_attn = self.decoder(dec_in, memory_bank,
                                       memory_lengths=lengths,
                                       with_align=with_align)
-        
-        return dec_out, enc_self_attn, enc_dec_attn
+        if not self.training:
+            src_cache = { "src" : src, "enc_states" : enc_state, "memory_bank" : memory_bank}
+            return dec_out, enc_self_attn, enc_dec_attn, src_cache
+        else:
+            return dec_out, enc_self_attn, enc_dec_attn
 
     def update_dropout(self, dropout):
         self.encoder.update_dropout(dropout)

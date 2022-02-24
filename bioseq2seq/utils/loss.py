@@ -231,6 +231,7 @@ class NMTLossCompute(LossComputeBase):
         bottled_output = self._bottle(output)
         scores = self.generator(bottled_output)
         #isolate PC/NC label for F1 calculation
+        #print(target)
         gt_class = target[0,:]
         pad_tgt_size, batch_size, _ = batch.tgt.size()
         unbottled_scores = self._unbottle(scores,batch_size)

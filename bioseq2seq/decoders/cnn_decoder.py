@@ -65,11 +65,11 @@ class CNNDecoder(DecoderBase):
 
         tgt_emb = emb.transpose(0, 1).contiguous()
         # The output of CNNEncoder.
-        #src_memory_bank_t = memory_bank.transpose(0, 1).contiguous()
-        src_memory_bank_t = memory_bank.permute(1,2,0).contiguous()
+        src_memory_bank_t = memory_bank.transpose(0, 1).contiguous()
+        #src_memory_bank_t = memory_bank.permute(1,2,0).contiguous()
         # The combination of output of CNNEncoder and source embeddings.
-        #src_memory_bank_c = self.state["src"].transpose(0, 1).contiguous()
-        src_memory_bank_c = self.state["src"].permute(1,2,0).contiguous()
+        src_memory_bank_c = self.state["src"].transpose(0, 1).contiguous()
+        #src_memory_bank_c = self.state["src"].permute(1,2,0).contiguous()
 
         emb_reshape = tgt_emb.contiguous().view(
             tgt_emb.size(0) * tgt_emb.size(1), -1)

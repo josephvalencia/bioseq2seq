@@ -284,24 +284,39 @@ class Translator(object):
         #all_scores = []
         all_predictions = []
         #all_golds = []
-
+        
         start_time = time.time()
-
+        
         for batch in tqdm.tqdm(data_iter):
             #try:
-            batch_data = self.translate_batch(
+            batch_data, src_cache = self.translate_batch(
                 batch, data.src_vocabs, save_EDA
             )
+            
             translations = xlation_builder.from_batch(batch_data)
-
-            for trans in translations:
+            
+            special = ['XR_949580.2', 'XR_001748355.1', 'XR_001707416.2', 'XR_003029405.1', 'XR_922291.3','XM_015134081.2', 'XM_032910311.1', 'NM_001375259.1', 'XR_002007359.1', 'XR_003726903.1']
+            
+            for b,idx in enumerate(batch.indices.data):
+                tscript = names[idx]
+                if tscript in special:
+                    src, src_lens = batch.src
+                    l = src_lens[b]
+                    memory_bank = src_cache["memory_bank"][:l,b,:].cpu().numpy()
+                    enc_states = src_cache["enc_states"][:l,b,:].cpu().numpy()
+                    stored_src = src_cache["src"][:l,b,:].cpu().numpy()
+                    filename = f'{tscript}_translator_3.npz'
+                    np.savez(filename,src=stored_src,memory_bank=memory_bank,enc_states=enc_states)
+            
+            for b,trans in enumerate(translations):
 
                 #all_scores += [trans.pred_scores[:self.n_best]]
                 pred_score_total += trans.pred_scores[0]
                 pred_words_total += len(trans.pred_sents[0])
-
+                
                 rna = "".join(trans.src_raw)
                 transcript_name = names[trans.index]
+                
                 #print('transcript:',transcript_name,'\n')
                 #print(trans.index,transcript_name)
                 bounds = cds[trans.index]
@@ -575,8 +590,10 @@ class Translator(object):
 
         # (1) Run the encoder on the src.
         src, enc_states, memory_bank, src_lengths, enc_attn = self._run_encoder(batch)
+        src_cache = { "src" : src, "enc_states" : enc_states, "memory_bank" : memory_bank}
+        
         self.model.decoder.init_state(src, memory_bank, enc_states)
-
+        
         results = {
             "predictions": None,
             "scores": None,
@@ -586,7 +603,7 @@ class Translator(object):
             "gold_score": self._gold_score(
                 batch, memory_bank, src_lengths,
                 enc_states, batch_size, src)}
-
+        
         # (2) prep decode_strategy. Possibly repeat src objects.
         src_map = None
         target_prefix = batch.tgt if self.tgt_prefix else None
@@ -613,6 +630,7 @@ class Translator(object):
                 class_prob_indices = range(0,parallel_paths*batch_size,parallel_paths)
                 coding_probs = [torch.exp(log_probs[i,self._tgt_coding_idx]).item() for i in class_prob_indices]
                 noncoding_probs = [torch.exp(log_probs[i,self._tgt_noncoding_idx]).item() for i in class_prob_indices]
+                #print(f'step ={step}, decoder_input = {decoder_input}')
                 #print(f'prob(<PC>) = {coding_probs}')
                 #print(f'prob(<NC>) = {noncoding_probs}') 
 
@@ -653,7 +671,7 @@ class Translator(object):
                 batch, decode_strategy.predictions)
         else:
             results["alignment"] = [[] for _ in range(batch_size)]
-        return results
+        return results, src_cache
 
     def _score_target(self, batch, memory_bank, src_lengths):
         tgt = batch.tgt

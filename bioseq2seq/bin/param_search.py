@@ -1,38 +1,56 @@
-import optuna
+import ConfigSpace as CS  
+from ray import tune
+from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
+from ray.tune.suggest.bohb import TuneBOHB
 
-def get_cnn_searchspace():
+def base_config():
+    ''' hyperparameters that are independent of architecture''' 
     
-    ''' Return optuna.Trial object describing hyperparams for trial'''
-   
-    # Optimizer hyperparams
-    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True) # 4
-    learning_rate_schedule = trial.suggest_categorical("learning_rate_scheduler", ["Vaswani","CosineAnnealing","ReduceOnPlateau"]) # 3
+    config = {"model_dim": tune.choice([32,64,128]),
+        "n_enc_layers": tune.choice([1,2,4,8,16]),
+        "n_dec_layers": tune.choice([1,2,4,8,16]),
+        "learning_rate" : tune.qloguniform(1e-5,1e-1,1e-5),
+        "dropout" : tune.quniform(0.1,0.5,0.1)}
+    return config
 
-    # Encoder/Decoder hyperparams
-    num_enc_layers = trial.suggest_int("num_enc_layers", 2,16,2) # 8 
-    num_dec_layers = trial.suggest_int("num_dec_layers", 2,16,2) # 8
-    model_dim = trial.suggest_int("model_dim", 32, 256, log=True) # 4
-    enc_kernel_width = trial.suggest_int("enc_kernel_width",3,15,3) # 5
-    dec_kernel_width = trial.suggest_int("dec_kernel_width",3,15,3) # 5
-   
+def cnn_config():
+    ''' hyperparameters for CNN+CNN architecture''' 
     
-    hyperparams = {'learning_rate' : learning_rate,
-                    'learning_rate_schedule' : learning_rate_schedule,
-                    'num_enc_layers' : num_enc_layers,
-                    'num_dec_layers' : num_dec_layers,
-                    'model_dim' : model_dim,
-                    'enc_kernel_width' : enc_kernel_width,
-                    'dec_kernel_width' : dec_kernel_width}
-    return hyperparams
+    config = {"dilation_multipler" : tune.choice([1,2]),
+            "kernel_size" : tune.choice([3,6])}
+    return config
 
+def mixer_config():
+    ''' hyperparameters for GFNet+Transformer architecture''' 
     
+    config = {"filter_size" : tune.choice([50,100,500]),
+             "lambda_L1" : tune.choice([0,1e-3,1e-2,1e-1,1])}
+    return config
+
+if __name__ == "__main__":
+
+    model = "mixer"
+    config = base_config()
+    model_config = mixer_config() if model == "mixer" else cnn_config() 
+    config.update(model_config)
+    print(config)
+    bohb_hyperband = HyperBandForBOHB(time_attr="training_iteration",
+                                        max_t=100,
+                                        reduction_factor=4,
+                                        stop_last_trials=False)
+    bohb_search = TuneBOHB()
+    bohb_search = tune.suggest.ConcurrencyLimiter(bohb_search, max_concurrent=4)
+
+    name = f"BOHB_search{model}"
+    analysis = tune.run(MyTrainableClass,
+                        name=name,
+                        config=config,
+                        scheduler=bohb_hyperband,
+                        search_alg=bohb_search,
+                        num_samples=10,
+                        stop={"training_iteration": 100},
+                        metric="class_accuracy",
+                        mode="max")
     
-'''
-N_TRIALS = 50
-study = optuna.create_study(direction="maximize")
-study.optimize(objective, n_trials=N_TRIALS)
-'''
+    print("Best hyperparameters found were: ", analysis.best_config)
 
-
-for i in range(10):
-    print(get_cnn_searchspace())

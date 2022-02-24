@@ -27,6 +27,9 @@ from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, parti
 from bioseq2seq.bin.models import make_transformer_seq2seq , make_transformer_classifier
 from bioseq2seq.bin.models import make_cnn_seq2seq, make_hybrid_seq2seq, Generator
 
+import warnings
+warnings.filterwarnings('ignore')
+
 def parse_args():
     """Parse required and optional configuration arguments.""" 
     
@@ -84,7 +87,6 @@ def train_helper(rank,args,seq2seq,random_seed):
     df_train = pd.read_csv(args.train,sep='\t')
     df_val = pd.read_csv(args.val,sep='\t')
     train,val = dataset_from_df([df_train.copy(),df_val.copy()],mode=args.mode)
-    
     device = "cpu"
     
     # GPU training
@@ -117,11 +119,12 @@ def train_helper(rank,args,seq2seq,random_seed):
     weights = [] 
     for i,c in enumerate(tgt_vocab):
         if c == "<PC>" or c == "<NC>":
-            #weights.append(1)
-            weights.append(10000)
+            weights.append(1)
+            #weights.append(10000)
         else:
             weights.append(1)
     weights = torch.Tensor(weights).to(device) 
+    #weights = None
 
     # computes position-wise NLLoss
     criterion = torch.nn.NLLLoss(weight=weights,ignore_index=1,reduction='sum')
@@ -131,10 +134,9 @@ def train_helper(rank,args,seq2seq,random_seed):
     # optimizes model parameters
     optimizer = Adam(params = seq2seq.parameters())
     #adafactor = AdaFactor(params=seq2seq.parameters())
-    #optimizer = SGD(params=seq2seq.parameters(),lr=args.learning_rate) #momentum=0.99,nesterov=True)
     
-    #lr_fn = make_learning_rate_decay_fn(4000,args.model_dim)
-    lr_fn = None
+    lr_fn = make_learning_rate_decay_fn(4000,args.model_dim)
+    #lr_fn = None
     #scheduler = ReduceLROnPlateau(optimizer, 'min')
     optim = Optimizer(optimizer,learning_rate = args.learning_rate,learning_rate_decay_fn=lr_fn,fp16=False)
     
@@ -175,7 +177,7 @@ def train_helper(rank,args,seq2seq,random_seed):
                     accum_count=[args.accum_steps],
                     report_manager=report_manager,
                     model_saver=saver,
-                    model_dtype='fp32')
+                    model_dtype='fp16')
     
     # training loop
     trainer.train(train_iter=train_iterator,
@@ -212,10 +214,18 @@ def restore_hybrid_seq2seq(checkpoint,n_input_classes,n_output_classes,args):
         restored model'''
     
     model = make_hybrid_seq2seq(n_input_classes,n_output_classes,
-            n_enc=args.n_enc_layers,n_dec=12,
-            model_dim=args.model_dim)
+            n_enc=args.n_enc_layers,n_dec=args.n_dec_layers,
+            model_dim=args.model_dim,dropout=0.2)
     model.load_state_dict(checkpoint['model'],strict=False)
+
+    #blur_weights(model)
+
     return model
+
+def blur_weights(model):
+    with torch.no_grad():
+        for param in model.parameters():
+            param.add_(torch.randn(param.size()) * 0.025)
 
 def restore_cnn_seq2seq(checkpoint,n_input_classes,n_output_classes,args):
     
@@ -291,6 +301,7 @@ def train(args):
                                             n_dec=args.n_dec_layers,
                                             model_dim=args.model_dim,
                                             max_rel_pos=args.max_rel_pos)
+        
         seq2seq = make_cnn_seq2seq(n_input_classes,
                                     n_output_classes,
                                     n_enc=args.n_enc_layers,
@@ -301,7 +312,8 @@ def train(args):
                                             n_output_classes,
                                             n_enc=args.n_enc_layers,
                                             n_dec=args.n_dec_layers,
-                                            model_dim=args.model_dim)
+                                            model_dim=args.model_dim,
+                                            dim_filter=100)
     
     num_params = sum(p.numel() for p in seq2seq.parameters() if p.requires_grad)
     print(f'# Input classes = {n_input_classes} , # Output classes = {n_output_classes}') 

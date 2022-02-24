@@ -7,6 +7,7 @@ import traceback
 import datetime
 import time
 import tqdm
+import numpy as np
 import bioseq2seq.utils
 from bioseq2seq.utils.logging import logger
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -187,7 +188,7 @@ class Trainer(object):
                 
                 valid_stats = self.validate(valid_iter,moving_average=self.moving_average)
                 valid_stats = self._maybe_gather_stats(valid_stats)
-                print('perplexity',valid_stats.ppl())
+                #print('perplexity',valid_stats.ppl())
 
                 self._report_step(self.optim.learning_rate(),
                                   step, valid_stats=valid_stats)
@@ -237,26 +238,33 @@ class Trainer(object):
 
         # Set model in validating mode.
         valid_model.eval()
-
+        
         with torch.no_grad():
             stats = bioseq2seq.utils.Statistics()
 
             for batch in tqdm.tqdm(valid_iter):
                 src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                                    else (batch.src, None)
+                
                 tgt = batch.tgt
-                print(f'tgt shape = {tgt.shape}')
+                #print(f'tgt shape (outside model) = {tgt.shape}')
                 amp_training = self.model_dtype == 'fp16'
                 # F-prop through the model.
+                
                 with torch.cuda.amp.autocast(enabled=amp_training): 
-                    outputs, enc_attn, attns = valid_model(src, tgt, src_lengths,
+                    
+                    outputs, enc_attn, attns, src_cache = valid_model(src, tgt, src_lengths,
                                                  with_align=self.with_align)
+                    
+                    #outputs, enc_attn, attns = valid_model(src, tgt, src_lengths,
+                    #                             with_align=self.with_align)
+                    
                     # Compute loss.
                     _, batch_stats = self.valid_loss(batch,outputs,attns)
 
                 # Update statistics.
                 stats.update(batch_stats)
-
+                print(f'running total = {stats.class_accuracy()}')
         if moving_average:
             for param_data, param in zip(model_params_data,
                                          self.model.parameters()):
@@ -272,14 +280,13 @@ class Trainer(object):
         if self.accum_count > 1:
             self.optim.zero_grad()
 
+        if self.rank == 0 and (batch_num % 100 == 0):
+            msg = f"batch {batch_num}"
+            print(msg)
+
         for k, batch in enumerate(true_batches):
 
             true_batch_num = batch_num * self.accum_count + k
-            
-            #if self.rank == 0 and (true_batch_num % 100 == 0):
-            msg = "Entering batch {} with src shape {} and tgt shape {} from device {}"
-            print(msg.format(true_batch_num,batch.src[0].shape,batch.tgt.shape,self.rank))
-        
             target_size = batch.tgt.size(0)
 
             # Truncated BPTT: reminder not compatible with accum > 1
@@ -295,7 +302,6 @@ class Trainer(object):
                 report_stats.n_src_words += src_lengths.sum().item()
 
             tgt_outer = batch.tgt
-
             bptt = False
             for j in range(0, target_size-1, trunc_size):
                 # 1. Create truncated target.

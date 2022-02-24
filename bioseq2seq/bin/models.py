@@ -89,11 +89,13 @@ def cnn_init_weights(m):
     elif isinstance(m,nn.modules.linear.Linear):
         f_in,f_out = init._calculate_fan_in_and_fan_out(m.weight)
         init.normal_(m.weight,mean=0.0,std=(1/f_in)**0.5)
+    '''
     elif isinstance(m,FNetEncoder):
         init.xavier_uniform_(m)
     elif isinstance(m,GlobalFilterLayer):
         pass
-
+    '''
+    
 def make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dim_ff=2048, heads=8, dropout=0.1,max_rel_pos=10):
 
     '''construct Transformer encoder-decoder from hyperparameters'''
@@ -145,7 +147,7 @@ def make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,mo
 
     return model
 
-def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dim_ff=2048, heads=8, dropout=0.1):
+def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dim_ff=2048,dim_filter=100, heads=8, dropout=0.1):
 
     '''construct Transformer encoder-decoder from hyperparameters'''
 
@@ -163,7 +165,7 @@ def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_d
     
     encoder_stack = FNetEncoder(num_layers = n_enc,
                                        d_model = model_dim,
-                                       heads = heads,
+                                       d_filter = dim_filter,
                                        d_ff = dim_ff,
                                        dropout = dropout,
                                        embeddings = nucleotide_embeddings,
@@ -171,7 +173,7 @@ def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_d
                                        global_filter=True)
     
     decoder_kernel_size = 3
-    
+   
     decoder_stack = TransformerDecoder(num_layers = n_dec,
                                        d_model = model_dim,
                                        heads = heads,
