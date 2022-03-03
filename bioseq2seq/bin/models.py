@@ -23,21 +23,6 @@ class Generator(nn.Module):
         else:
             return linear
 
-class Classifier(nn.Module):
-
-    def __init__(self,encoder,generator):
-
-        super(Classifier,self).__init__()
-        self.encoder = encoder
-        self.generator = generator
-
-    def forward(self,src,lengths):
-        
-        enc_state, memory_bank, lengths, enc_self_attn = self.encoder(src,lengths)
-        pooled = memory_bank.mean(dim=0)
-        logits = self.generator(pooled)
-        return logits
-
 def make_cnn_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dropout=0.1):
 
     '''construct Transformer encoder-decoder from hyperparameters'''
@@ -48,7 +33,6 @@ def make_cnn_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=
                                        word_vocab_size = n_input_classes,
                                        word_padding_idx = 1,
                                        position_encoding = True)
-
 
     protein_embeddings = Embeddings(word_vec_size = model_dim,
                                     word_vocab_size = n_output_classes,
@@ -63,6 +47,7 @@ def make_cnn_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=
                                        cnn_kernel_width = encoder_kernel_size,
                                        dropout = dropout,
                                        embeddings = nucleotide_embeddings)
+    
     decoder_stack = CNNDecoder(num_layers = n_dec,
                                        hidden_size = model_dim,
                                        cnn_kernel_width = decoder_kernel_size,
@@ -73,11 +58,6 @@ def make_cnn_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=
     model = NMTModel(encoder_stack,decoder_stack)
     model.generator = generator
 
-    '''
-    for p in model.parameters():
-        if p.dim() > 1:
-            nn.init.xavier_uniform_(p)
-    '''
     model.apply(cnn_init_weights)
 
     return model
@@ -89,14 +69,10 @@ def cnn_init_weights(m):
     elif isinstance(m,nn.modules.linear.Linear):
         f_in,f_out = init._calculate_fan_in_and_fan_out(m.weight)
         init.normal_(m.weight,mean=0.0,std=(1/f_in)**0.5)
-    '''
-    elif isinstance(m,FNetEncoder):
+    else:
         init.xavier_uniform_(m)
-    elif isinstance(m,GlobalFilterLayer):
-        pass
-    '''
-    
-def make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dim_ff=2048, heads=8, dropout=0.1,max_rel_pos=10):
+
+def make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dim_ff=2048,heads=8, dropout=0.1,max_rel_pos=8):
 
     '''construct Transformer encoder-decoder from hyperparameters'''
 
@@ -137,7 +113,6 @@ def make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,mo
                                        alignment_layer = None)
 
     generator = Generator(model_dim,n_output_classes)
-
     model = NMTModel(encoder_stack,decoder_stack)
     model.generator = generator
 
@@ -147,7 +122,7 @@ def make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,mo
 
     return model
 
-def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dim_ff=2048,dim_filter=100, heads=8, dropout=0.1):
+def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dim_ff=2048,dim_filter=100,heads=8,dropout=0.1,max_rel_pos=8):
 
     '''construct Transformer encoder-decoder from hyperparameters'''
 
@@ -171,8 +146,6 @@ def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_d
                                        embeddings = nucleotide_embeddings,
                                        attention_dropout = attention_dropout,
                                        global_filter=True)
-    
-    decoder_kernel_size = 3
    
     decoder_stack = TransformerDecoder(num_layers = n_dec,
                                        d_model = model_dim,
@@ -182,24 +155,14 @@ def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_d
                                        embeddings = protein_embeddings,
                                        self_attn_type = 'scaled-dot',
                                        copy_attn = False,
-                                       max_relative_positions = 10,
+                                       max_relative_positions = max_rel_pos,
                                        aan_useffn = False,
                                        attention_dropout = attention_dropout,
                                        full_context_alignment = False,
                                        alignment_heads = None,
                                        alignment_layer = None)
-    '''
-
-    decoder_stack = CNNDecoder(num_layers = n_dec,
-                                       hidden_size = model_dim,
-                                       cnn_kernel_width = decoder_kernel_size,
-                                       dropout = dropout,
-                                       embeddings = protein_embeddings)
-    ''' 
+    
     generator = Generator(model_dim,n_output_classes)
-    
-    #model = Classifier(encoder_stack,generator)
-    
     model = NMTModel(encoder_stack,decoder_stack)
     model.generator = generator
 
@@ -209,27 +172,3 @@ def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_d
 
     return model
 
-def make_transformer_classifier(n_input_classes,n_output_classes,n_enc=4,model_dim=128,dim_ff=2048,heads=8,dropout=0.1,max_rel_pos=10):
-
-    nucleotide_embeddings = Embeddings(word_vec_size = model_dim,
-                                       word_vocab_size = n_input_classes,
-                                       word_padding_idx = 1,
-                                       position_encoding = True)
-
-    encoder_stack = TransformerEncoder(num_layers = n_enc,
-                                    d_model = model_dim,
-                                    heads = heads,
-                                    d_ff = dim_ff,
-                                    dropout = dropout,
-                                    embeddings = nucleotide_embeddings,
-                                    max_relative_positions = max_rel_pos,
-                                    attention_dropout = dropout)
-
-    generator = Generator(model_dim,n_output_classes)
-    model = Classifier(encoder_stack,generator)
-
-    for p in model.parameters():
-        if p.dim() > 1:
-            nn.init.xavier_uniform_(p)
-
-    return model

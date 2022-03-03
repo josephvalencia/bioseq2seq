@@ -2,6 +2,51 @@
 
 import torch.nn as nn
 
+class ComplexLinear(nn.Module):
+    
+    def __init__(self,n_blocks,d_per_block):
+        self.weight = nn.Parameter(torch.randn(n_blocks,d_per_block,d_per_block,dtype=torch.cfloat)*0.02) 
+        self.bias = nn.Parameter(torch.randn(n_blocks,d_per_block,dtype=torch.cfloat)*0.02) 
+
+    def forward(self,x):
+        return torch.matmul(self.weight,x) + self.bias
+
+class ComplexBlockwiseMLP(nn.Module):
+    """ A two-layer Feed-Forward-Network with residual layer norm.
+
+    Args:
+        d_model (int): the size of input for the first-layer of the FFN.
+        d_ff (int): the hidden layer size of the second-layer
+            of the FNN.
+        dropout (float): dropout probability in :math:`[0, 1)`.
+    """
+
+    def __init__(self, n_blocks, d_per_block, spatial_size=50, dropout=0.1):
+        super(ComplexBlockwiseMLP, self).__init__()
+       
+        self.w_1 = ComplexLinear(n_blocks,d_per_block)
+        self.w_2 = ComplexLinear(n_blocks,d_per_block)
+        self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
+        self.dropout_1 = nn.Dropout(dropout)
+        self.relu = nn.ReLU()
+        self.dropout_2 = nn.Dropout(dropout)
+
+    def forward(self, x):
+        """Layer definition.
+
+        Args:
+            x: ``(batch_size, input_len, model_dim)``
+
+        Returns:
+            (FloatTensor): Output ``(batch_size, input_len, model_dim)``.
+        """
+        inter = self.dropout_1(self.relu(self.w_1(self.layer_norm(x))))
+        output = self.dropout_2(self.w_2(inter))
+        return output + x
+
+    def update_dropout(self, dropout):
+        self.dropout_1.p = dropout
+        self.dropout_2.p = dropout
 
 class PositionwiseFeedForward(nn.Module):
     """ A two-layer Feed-Forward-Network with residual layer norm.

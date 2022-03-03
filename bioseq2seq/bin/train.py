@@ -24,7 +24,7 @@ from bioseq2seq.utils.loss import NMTLossCompute
 
 from bioseq2seq.bin.translate import make_vocab
 from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition
-from bioseq2seq.bin.models import make_transformer_seq2seq , make_transformer_classifier
+from bioseq2seq.bin.models import make_transformer_seq2seq 
 from bioseq2seq.bin.models import make_cnn_seq2seq, make_hybrid_seq2seq, Generator
 
 import warnings
@@ -184,9 +184,7 @@ def train_helper(rank,args,seq2seq,random_seed):
                 train_steps=args.max_epochs,
                 save_checkpoint_steps=args.report_every,
                 valid_iter=valid_iterator,
-                valid_steps=args.report_every,
-                valid_state=None,
-                mode=args.mode)
+                valid_steps=args.report_every)
 
 def restore_transformer_seq2seq(checkpoint,n_input_classes,n_output_classes,args):
     

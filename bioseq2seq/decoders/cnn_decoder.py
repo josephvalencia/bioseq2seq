@@ -64,9 +64,11 @@ class CNNDecoder(DecoderBase):
         assert emb.dim() == 3  # len x batch x embedding_dim
 
         tgt_emb = emb.transpose(0, 1).contiguous()
+        
         # The output of CNNEncoder.
         src_memory_bank_t = memory_bank.transpose(0, 1).contiguous()
         #src_memory_bank_t = memory_bank.permute(1,2,0).contiguous()
+        
         # The combination of output of CNNEncoder and source embeddings.
         src_memory_bank_c = self.state["src"].transpose(0, 1).contiguous()
         #src_memory_bank_c = self.state["src"].permute(1,2,0).contiguous()
@@ -84,14 +86,10 @@ class CNNDecoder(DecoderBase):
         
         lyr = 0
         for conv, attention in zip(self.conv_layers, self.attn_layers):
-            is_clean =  lambda q: torch.all(~torch.isnan(q))
-            #print(f'layer={lyr}, x is clean ={is_clean(x)}')
             new_target_input = torch.cat([pad, x], 2)
             out = conv(new_target_input)
-            #print(f'layer={lyr}, out is clean ={is_clean(out)}')
             c, attn = attention(base_target_emb, out,
                                 src_memory_bank_t, src_memory_bank_c)
-            #print(f'layer={lyr}, c is clean ={is_clean(c)}')
             x = (x + (c + out) * SCALE_WEIGHT) * SCALE_WEIGHT
             lyr+=1
         output = x.squeeze(3).transpose(1, 2)

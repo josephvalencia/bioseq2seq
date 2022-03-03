@@ -12,6 +12,9 @@ from bioseq2seq.modules import MultiHeadedAttention
 from bioseq2seq.modules.position_ffn import PositionwiseFeedForward
 from bioseq2seq.utils.misc import sequence_mask
 
+def soft_shrink(x,sparsity):
+    return torch.sign(x)*torch.max(torch.abs(x) - sparsity,0)
+
 class GlobalFilterEncoderLayer(nn.Module):
     """
     A single layer of the transformer encoder.
@@ -50,38 +53,9 @@ class GlobalFilterEncoderLayer(nn.Module):
         """
         x = self.input_norm(inputs)
         mixed_tokens = self.mix_interpolated_filter(x,mask) 
-        #mixed_tokens = self.mix_decimate_frequencies(x,mask) 
         x = self.feed_forward_norm(mixed_tokens)
         ff_output = self.feed_forward(x) 
         return inputs+self.dropout(ff_output).masked_fill(mask,0.0)
-
-    def mix_decimate_frequencies(self,x,mask):
-
-        axes = (1,2)
-        # pad with trailing zeros
-        is_pad = torch.where(mask,torch.ones_like(mask,dtype=torch.long),0)
-        x = x.masked_fill(mask,0.0)
-        num_padding_tokens = torch.count_nonzero(is_pad,dim=1)
-        batch_size,seq_len,model_dim = x.shape 
-        # FFT
-        freq_domain =  torch.fft.rfft2(x,dim=axes,norm='ortho')
-        batch_freq,len_freq,dim_freq = freq_domain.shape 
-        hidden,_,spatial = self.global_filter.shape 
-        # downsample frequency domain to match filter 
-        freq_domain = torch.view_as_real(freq_domain).reshape(batch_freq,len_freq,2*dim_freq)
-        freq_domain = F.interpolate(freq_domain.permute(0,2,1),spatial,mode='linear',align_corners=True).permute(0,2,1)
-        freq_domain = freq_domain.reshape(batch_freq,spatial,dim_freq,2)
-        # elementwise multplication 
-        upscaled_filter = self.global_filter.permute(2,0,1) 
-        x = torch.view_as_complex(freq_domain.contiguous()) * torch.view_as_complex(upscaled_filter.contiguous())
-        # interpolate result back to input size
-        x = torch.view_as_real(x).reshape(batch_freq,spatial,dim_freq*2)
-        x = F.interpolate(x.permute(0,2,1),len_freq,mode='linear',align_corners=True).permute(0,2,1) 
-        x = x.reshape(batch_freq,len_freq,dim_freq,2)
-        x = torch.view_as_complex(x.contiguous())
-        # inverse FFT
-        mixed_tokens =  torch.fft.irfft2(x,dim=axes,s=(seq_len,model_dim),norm='ortho')
-        return mixed_tokens
 
     def mix_interpolated_filter(self,x,mask):
 
@@ -97,12 +71,75 @@ class GlobalFilterEncoderLayer(nn.Module):
         # elementwise multiplication by resampled filter 
         upscaled_filter = F.interpolate(self.global_filter,len_freq,mode='linear',align_corners=True).permute(2,0,1)
         x = freq_domain * torch.view_as_complex(upscaled_filter.contiguous())
-        #complex_weight = torch.view_as_complex(upscaled_filter.contiguous())
-        #complex_weight = complex_weight[:,0].reshape(1,-1,1)
-        #x = freq_domain * complex_weight
-        #print(freq_domain.shape,complex_weight.shape)
         # inverse FFT 
         mixed_tokens =  torch.fft.irfft2(x,dim=axes,s=(seq_len,model_dim),norm='ortho')
+        return mixed_tokens
+
+    def update_dropout(self, dropout):
+        self.feed_forward.update_dropout(dropout)
+        self.dropout.p = dropout
+
+
+class AFNOEncoderLayer(nn.Module):
+    """
+    A single layer of the transformer encoder.
+ 
+    Args:
+        d_model (int): the dimension of keys/values/queries in
+                   MultiHeadedAttention, also the input size of
+                   the first-layer of the PositionwiseFeedForward.
+        heads (int): the number of head for MultiHeadedAttention.
+        d_ff (int): the second-layer of the PositionwiseFeedForward.
+        dropout (float): dropout probability(0-1.0).
+    """
+
+    def __init__(self, d_model, d_spatial, d_ff,n_blocks,dropout, attention_dropout,sparsity):
+        
+        super(AFNOEncoderLayer, self).__init__()
+        
+        self.input_norm = nn.LayerNorm(d_model, eps=1e-12)
+        self.n_blocks = n_blocks
+        self.d_per_block = d_model // n_blocks
+        self.mlp = ComplexBlockwiseMLP(self.n_blocks,self.d_per_block,dropout)
+        self.feed_forward = PositionwiseFeedForward(d_model, d_ff, dropout)
+        self.feed_forward_norm = nn.LayerNorm(d_model, eps=1e-12)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, inputs,mask):
+        """
+        Args:
+            inputs (FloatTensor): ``(batch_size, src_len, model_dim)``
+            mask (LongTensor): ``(batch_size, 1, src_len)``
+
+        Returns:
+            (FloatTensor):
+
+            * outputs ``(batch_size, src_len, model_dim)``
+        """
+        x = self.input_norm(inputs)
+        mixed_tokens = self.neural_operator(x,mask) 
+        x = self.feed_forward_norm(mixed_tokens)
+        ff_output = self.feed_forward(x) 
+        return inputs+self.dropout(ff_output).masked_fill(mask,0.0)
+
+    def neural_operator(self,x,mask):
+
+        axes = (1,2)
+        # pad with trailing zeros
+        is_pad = torch.where(mask,torch.ones_like(mask,dtype=torch.long),0)
+        x = x.masked_fill(mask,0.0)
+        num_padding_tokens = torch.count_nonzero(is_pad,dim=1)
+        batch_size,seq_len,model_dim = x.shape 
+        # FFT
+        freq_domain =  torch.fft.rfft(x,dim=1,norm='ortho')
+        b,l,d = freq_domain.shape
+        freq_domain = freq_domain.reshape(b,l,self.n_blocks,self.d_per_block)
+        # multilayer perceptron
+        x = self.mlp(freq_domain)
+        x = x.reshape(b,l,d)
+        x = soft_shrink(x,self.sparsity) 
+        # inverse FFT 
+        mixed_tokens =  torch.fft.irfft(x,dim=axes,s=(seq_len,model_dim),norm='ortho')
         return mixed_tokens
 
     def update_dropout(self, dropout):
