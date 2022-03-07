@@ -40,25 +40,16 @@ class NMTModel(nn.Module):
             * decoder output ``(tgt_len, batch, hidden)``
             * dictionary attention dists of ``(tgt_len, batch, src_len)``
         """
-        #print(f'tgt.shape ={tgt.shape}, start={tgt[:2,:]}, end ={tgt[-1]}')
         dec_in = tgt[:-1]  # exclude last target from inputs
-        #print(f'tgt shape (<eos> removed) = {dec_in.shape}')
-        #print(f'dec_in.shape={dec_in.shape}')
         enc_state, memory_bank, lengths, enc_self_attn = self.encoder(src, lengths)
-        #print(memory_bank)
-        #print(enc_state.shape,memory_bank.shape)
-        is_clean =  lambda q: torch.all(~torch.isnan(q))
         
         if bptt is False:
             self.decoder.init_state(src, memory_bank, enc_state)
         dec_out, enc_dec_attn = self.decoder(dec_in, memory_bank,
                                       memory_lengths=lengths,
                                       with_align=with_align)
-        if not self.training:
-            src_cache = { "src" : src, "enc_states" : enc_state, "memory_bank" : memory_bank}
-            return dec_out, enc_self_attn, enc_dec_attn, src_cache
-        else:
-            return dec_out, enc_self_attn, enc_dec_attn
+        
+        return dec_out, enc_self_attn, enc_dec_attn
 
     def update_dropout(self, dropout):
         self.encoder.update_dropout(dropout)

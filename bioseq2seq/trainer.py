@@ -12,7 +12,6 @@ import bioseq2seq.utils
 from bioseq2seq.utils.logging import logger
 from torch.nn.parallel import DistributedDataParallel as DDP
 from bioseq2seq.evaluate.evaluator import Evaluator
-from bioseq2seq.bin.translate import translate
 
 class Trainer(object):
     """
@@ -139,9 +138,7 @@ class Trainer(object):
               train_steps,
               save_checkpoint_steps=5000,
               valid_iter=None,
-              valid_steps=10000,
-              valid_state=None,
-              mode=None):
+              valid_steps=10000):
         """
         The main training loop by iterating over `train_iter` and possibly
         running validation on `valid_iter`.
@@ -188,7 +185,6 @@ class Trainer(object):
                 
                 valid_stats = self.validate(valid_iter,moving_average=self.moving_average)
                 valid_stats = self._maybe_gather_stats(valid_stats)
-                #print('perplexity',valid_stats.ppl())
 
                 self._report_step(self.optim.learning_rate(),
                                   step, valid_stats=valid_stats)
@@ -241,30 +237,24 @@ class Trainer(object):
         
         with torch.no_grad():
             stats = bioseq2seq.utils.Statistics()
-
-            for batch in tqdm.tqdm(valid_iter):
+            
+            for batch in valid_iter:
                 src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                                    else (batch.src, None)
                 
                 tgt = batch.tgt
-                #print(f'tgt shape (outside model) = {tgt.shape}')
                 amp_training = self.model_dtype == 'fp16'
                 # F-prop through the model.
                 
                 with torch.cuda.amp.autocast(enabled=amp_training): 
                     
-                    outputs, enc_attn, attns, src_cache = valid_model(src, tgt, src_lengths,
+                    outputs, enc_attn, attns = valid_model(src, tgt, src_lengths,
                                                  with_align=self.with_align)
-                    
-                    #outputs, enc_attn, attns = valid_model(src, tgt, src_lengths,
-                    #                             with_align=self.with_align)
-                    
                     # Compute loss.
                     _, batch_stats = self.valid_loss(batch,outputs,attns)
 
                 # Update statistics.
                 stats.update(batch_stats)
-                print(f'running total = {stats.class_accuracy()}')
         if moving_average:
             for param_data, param in zip(model_params_data,
                                          self.model.parameters()):
