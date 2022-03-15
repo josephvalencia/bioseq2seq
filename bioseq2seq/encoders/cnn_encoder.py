@@ -14,14 +14,14 @@ class CNNEncoder(EncoderBase):
     """
 
     def __init__(self, num_layers, hidden_size,
-                 cnn_kernel_width, dropout, embeddings):
+                 cnn_kernel_width, dropout, embeddings,dilation_factor=1):
         super(CNNEncoder, self).__init__()
 
         self.embeddings = embeddings
         input_size = embeddings.embedding_size
         self.linear = nn.Linear(input_size, hidden_size)
         self.cnn = StackedCNN(num_layers, hidden_size,
-                              cnn_kernel_width, dropout)
+                              cnn_kernel_width,dropout,dilation_factor=dilation_factor)
 
 
     def forward(self, input, lengths=None, hidden=None):

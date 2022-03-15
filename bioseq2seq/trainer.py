@@ -168,7 +168,7 @@ class Trainer(object):
             step = self.optim.training_step
 
             self._maybe_update_dropout(step)
-
+            
             self._gradient_accumulation(i,
                 batches, normalization, total_stats,
                 report_stats)
@@ -238,7 +238,7 @@ class Trainer(object):
         with torch.no_grad():
             stats = bioseq2seq.utils.Statistics()
             
-            for batch in valid_iter:
+            for batch in tqdm.tqdm(valid_iter):
                 src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                                    else (batch.src, None)
                 
@@ -312,7 +312,6 @@ class Trainer(object):
                         outputs,enc_attn,attns = self.model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
                 
                 bptt = True
-
                 # 3. Compute loss.
                 try:
                     with torch.cuda.amp.autocast(enabled=amp_training): 

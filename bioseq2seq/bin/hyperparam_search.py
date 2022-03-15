@@ -9,17 +9,16 @@ from ray.tune.suggest.bohb import TuneBOHB
 from ray.tune.logger import DEFAULT_LOGGERS
 from ray.tune.integration.wandb import WandbLoggerCallback
 
-from bioseq2seq.utils.report_manager import RayTuneReportMgr
 from bioseq2seq.bin.train_utils import train_seq2seq, parse_train_args
 
 def base_config():
     ''' hyperparameters that are independent of architecture''' 
     
-    #"learning_rate" : tune.qloguniform(1e-5,1e-1,1e-5),
     config = {"model_dim": tune.choice([32,64,128]),
         "n_enc_layers": tune.choice([1,2,4,8,12,16]),
         "n_dec_layers": tune.choice([1,2,4,8,12,16]),
-        "dropout" : tune.quniform(0.1,0.5,0.1)}
+        "dropout" : tune.quniform(0.1,0.5,0.1),
+        "lr_warmup_steps" : tune.quniform(2000,10000,2000)}
     return config
 
 def cnn_config():
@@ -32,8 +31,7 @@ def cnn_config():
 def mixer_config():
     ''' hyperparameters for GFNet+Transformer architecture''' 
     
-    config = {"filter_size" : tune.choice([50,100,500]),
-             "lambda_L1" : tune.choice([0,1e-3,1e-2,1e-1,1])}
+    config = {"filter_size" : tune.choice([50,100,500])}
     return config
 
 def train_protein_coding_potential(config,cmd_args):
@@ -71,7 +69,7 @@ if __name__ == "__main__":
                         search_alg=bohb_search,
                         num_samples=20,
                         time_budget_s=total_time_allowed,
-                        resources_per_trial={'gpu': 1, 'cpu' : 4},
+                        resources_per_trial={'gpu': 0, 'cpu' : 1},
                         stop={"valid_step": 10000},
                         metric="valid_class_accuracy",
                         mode="max",

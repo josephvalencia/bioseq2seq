@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 import argparse
 import pandas as pd
 import torch
@@ -11,7 +11,6 @@ from bioseq2seq.inputters import TextDataReader,get_fields
 from bioseq2seq.inputters.text_dataset import TextMultiField
 from bioseq2seq.translate import Translator, GNMTGlobalScorer
 from bioseq2seq.bin.models import make_transformer_seq2seq, make_hybrid_seq2seq, Generator
-from bioseq2seq.modules.embeddings import PositionalEncoding
 
 from torchtext.data import RawField
 from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset
@@ -70,7 +69,7 @@ def make_vocab(fields,src,tgt):
         src (list(str)): input data
         tgt (list(str)): output data
     Returns:
-        fields (dict)
+        
     """
 
     src = TextMultiField('src',fields['src'],[])
@@ -128,8 +127,8 @@ def run_helper(rank,model,vocab,args):
     state = random.getstate()
     file_prefix = args.output_name
     
-    device = "cuda:{}".format(rank)
-    #device = 'cpu'
+    #device = "cuda:{}".format(rank)
+    device = 'cpu'
 
     data = pd.read_csv(args.input,sep="\t")
     #special = ['XR_949580.2', 'XR_001748355.1', 'XR_001707416.2', 'XR_003029405.1', 'XR_922291.3','XM_015134081.2', 'XM_032910311.1', 'NM_001375259.1', 'XR_002007359.1', 'XR_003726903.1']

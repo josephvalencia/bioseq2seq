@@ -8,24 +8,20 @@ import pandas as pd
 import random
 import torch
 import functools
-from math import log, floor
-from torch import nn
-from torchsummary import summary
-
+from math import log,floor
 from datetime import datetime
+from torch import nn
+
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim import Adam, SGD
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from bioseq2seq.utils.optimizers import Optimizer,noam_decay,AdaFactor
 from bioseq2seq.trainer import Trainer
-from bioseq2seq.utils.report_manager import ReportMgr, RayTuneReportMgr
+from bioseq2seq.utils.report_manager import ReportMgr
 from bioseq2seq.utils.earlystopping import EarlyStopping, AccuracyScorer, ClassAccuracyScorer
 from bioseq2seq.models import ModelSaver
-from bioseq2seq.translate import Translator
 from bioseq2seq.utils.loss import NMTLossCompute
 
-from bioseq2seq.bin.translate import make_vocab
 from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition
 from bioseq2seq.bin.models import make_cnn_seq2seq, make_transformer_seq2seq, make_hybrid_seq2seq, Generator
 
@@ -37,11 +33,10 @@ def parse_train_args():
     # required args
     parser.add_argument("--train",help = "File containing RNA to Protein dataset")
     parser.add_argument("--val",help = "File containing RNA to Protein dataset")
-    
-    # optional args
     parser.add_argument("--save-directory","--s", default = "checkpoints/", help = "Name of directory for saving model checkpoints")
     parser.add_argument("--model_type","--m", default = "GFNet", help = "Model architecture type.|Transformer|CNN|GFNet|")
     parser.add_argument("--learning-rate","--lr", type = float, default = 1.0,help = "Optimizer learning rate")
+    parser.add_argument("--lr_warmup_steps", type = int, default = 4000,help = "Warmup steps for Noam learning rate schedule")
     parser.add_argument("--max-epochs","--e", type = int, default = 100000,help = "Maximum number of training epochs" )
     parser.add_argument("--report-every",'--r', type = int, default = 750, help = "Number of iterations before calculating statistics")
     parser.add_argument("--mode", default = "bioseq2seq", help = "Training mode. EDC for binary classification. bioseq2seq for full translation")
@@ -259,10 +254,8 @@ def train_helper(rank,args,seq2seq,random_seed,tune=False):
     val_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
 
     # optimizes model parameters
-    #optimizer = AdaFactor(params=seq2seq.parameters())
     optimizer = Adam(params=seq2seq.parameters())
-    
-    lr_fn = make_learning_rate_decay_fn(4000,args.model_dim)
+    lr_fn = make_learning_rate_decay_fn(args.lr_warmup_steps,args.model_dim)
     optim = Optimizer(optimizer,learning_rate = args.learning_rate,learning_rate_decay_fn=lr_fn,fp16=True)
 
     saver = None
@@ -270,13 +263,14 @@ def train_helper(rank,args,seq2seq,random_seed,tune=False):
     report_manager = None
     
     # Ray Tune manages early stopping externally when in tuning mode
-    early_stopping = None if tune else EarlyStopping(tolerance=args.patience)#,scorers=[ClassAccuracyScorer(),AccuracyScorer()])
+    early_stopping = None if tune else EarlyStopping(tolerance=args.patience,scorers=[ClassAccuracyScorer(),AccuracyScorer()])
 
     # only rank 0 device is responsible for saving models and reporting progress
     if rank == 0:
-        if tune: # use Ray Tune to log
+        if tune: # use Ray Tune monitoring
+            from bioseq2seq.utils.raytune_utils import RayTuneReportMgr # unconditional import is unsafe, Ray takes over exception handling
             report_manager = RayTuneReportMgr(report_every=args.report_every)
-        else: # use original ONMT
+        else: # ONMT monitoring 
             report_manager = ReportMgr(report_every=args.report_every,tensorboard_writer=SummaryWriter())
         save_path =  args.save_directory + datetime.now().strftime('%b%d_%H-%M-%S')+"/"
         if not os.path.isdir(save_path):
@@ -304,18 +298,12 @@ def train_helper(rank,args,seq2seq,random_seed,tune=False):
                     model_saver=saver,
                     model_dtype='fp16')
     
-    try:
-        # training loop
-        trainer.train(train_iter=train_iterator,
+    # training loop
+    trainer.train(train_iter=train_iterator,
                     train_steps=args.max_epochs,
                     save_checkpoint_steps=args.report_every,
                     valid_iter=valid_iterator,
                     valid_steps=args.report_every)
-    except Exception as e:
-        print(f'My error is {e}')
-        if args.num_gpus > 1:
-            torch.distributed.destroy_process_group()
-            quit()
 
 def train_seq2seq(args,tune=False):
     
@@ -325,7 +313,7 @@ def train_seq2seq(args,tune=False):
 
     if args.num_gpus > 1:
         print("Multi-GPU training")
-        torch.multiprocessing.spawn(train_helper, nprocs=args.num_gpus, args=(args,seq2seq,seed,tune))
+        torch.multiprocessing.spawn(train_helper, nprocs=args.num_gpus, join=True, args=(args,seq2seq,seed,tune))
         torch.distributed.destroy_process_group()
     elif args.num_gpus == 1:
         print("Single-GPU training")

@@ -306,7 +306,6 @@ class Optimizer(object):
         if self._learning_rate_decay_fn is None:
             return self._learning_rate
         scale = self._learning_rate_decay_fn(self._decay_step)
-        #print(f'Step={self._decay_step}, scale ={scale}')
         return scale * self._learning_rate
 
     def state_dict(self):

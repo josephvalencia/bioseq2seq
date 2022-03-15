@@ -26,7 +26,6 @@ class RayTuneReportMgr(ReportMgrBase):
         """
         report_stats.output(step, num_steps,
                             learning_rate, self.start_time)
-
         report_stats = bioseq2seq.utils.Statistics()
         return report_stats
 
@@ -37,9 +36,9 @@ class RayTuneReportMgr(ReportMgrBase):
         if train_stats is not None:
             self.log('Train perplexity: %g' % train_stats.ppl())
             self.log('Train accuracy: %g' % train_stats.accuracy())
-            #tune.report(train_step=step,train_accuracy=train_stats.accuracy(),train_class_accuracy=train_stats.class_accuracy())
+            tune.report(train_step=step,train_accuracy=train_stats.accuracy(),train_class_accuracy=train_stats.class_accuracy())
         
         if valid_stats is not None:
             self.log('Validation perplexity: %g' % valid_stats.ppl())
             self.log('Validation accuracy: %g' % valid_stats.accuracy())
-            #tune.report(valid_step=step,valid_accuracy=valid_stats.accuracy(),valid_class_accuracy=valid_stats.class_accuracy())
+            tune.report(valid_step=step,valid_accuracy=valid_stats.accuracy(),valid_class_accuracy=valid_stats.class_accuracy())
