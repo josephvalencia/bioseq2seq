@@ -124,7 +124,6 @@ def train_helper(rank,args,seq2seq,random_seed):
         else:
             weights.append(1)
     weights = torch.Tensor(weights).to(device) 
-    #weights = None
 
     # computes position-wise NLLoss
     criterion = torch.nn.NLLLoss(weight=weights,ignore_index=1,reduction='sum')
@@ -213,17 +212,11 @@ def restore_hybrid_seq2seq(checkpoint,n_input_classes,n_output_classes,args):
     
     model = make_hybrid_seq2seq(n_input_classes,n_output_classes,
             n_enc=args.n_enc_layers,n_dec=args.n_dec_layers,
-            model_dim=args.model_dim,dropout=0.2)
+            model_dim=args.model_dim,dropout=args.dropout)
     model.load_state_dict(checkpoint['model'],strict=False)
-
-    #blur_weights(model)
 
     return model
 
-def blur_weights(model):
-    with torch.no_grad():
-        for param in model.parameters():
-            param.add_(torch.randn(param.size()) * 0.025)
 
 def restore_cnn_seq2seq(checkpoint,n_input_classes,n_output_classes,args):
     

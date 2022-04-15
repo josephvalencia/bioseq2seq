@@ -203,6 +203,9 @@ def dataset_from_df(df_list,mode="bioseq2seq",saved_vocab = None):
         PROTEIN.build_vocab(*splits)
         RNA.build_vocab(*splits)
 
+    print("from dataset RNA:",RNA.vocab.stoi)
+    print("from dataset Protein:",PROTEIN.vocab.stoi)
+    
     return tuple(splits)
 
 def iterator_from_dataset(dataset, max_tokens, device, train):

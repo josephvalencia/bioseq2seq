@@ -1,24 +1,22 @@
 # -*- coding: utf-8 -*-
-import glob
 import os
 import codecs
 import math
 
-from collections import Counter, defaultdict
-from itertools import chain, cycle
+from collections import Counter, defaultdict, OrderedDict
 
 import torch
-import torchtext.data
 from torchtext.data import Field, RawField, LabelField
 from torchtext.vocab import Vocab
-from torchtext.data.utils import RandomShuffler
 
-from bioseq2seq.inputters.text_dataset import text_fields, TextMultiField
+from bioseq2seq.constants import DefaultTokens, ModelTask
+from bioseq2seq.inputters.text_dataset import text_fields
 from bioseq2seq.utils.logging import logger
 # backwards compatibility
 from bioseq2seq.inputters.text_dataset import _feature_tokenize  # noqa: F401
 
 import gc
+
 
 # monkey-patch to make torchtext Vocab's pickleable
 def _getstate(self):
@@ -56,6 +54,7 @@ class AlignField(LabelField):
     """
     Parse ['<src>-<tgt>', ...] into ['<src>','<tgt>', ...]
     """
+
     def __init__(self, **kwargs):
         kwargs['use_vocab'] = False
         kwargs['preprocessing'] = parse_align_idx
@@ -92,26 +91,45 @@ def parse_align_idx(align_pharaoh):
     return flatten_align_idx
 
 
+def get_task_spec_tokens(data_task, pad, bos, eos):
+    """
+    Retrieve pad/bos/eos tokens for each data tasks
+    """
+    if data_task == ModelTask.SEQ2SEQ:
+        return {
+            "src": {"pad": pad, "bos": None, "eos": None},
+            "tgt": {"pad": pad, "bos": bos, "eos": eos},
+        }
+    elif data_task == ModelTask.LANGUAGE_MODEL:
+        return {
+            "src": {"pad": pad, "bos": bos, "eos": None},
+            "tgt": {"pad": pad, "bos": None, "eos": eos},
+        }
+    else:
+        raise ValueError(f"No task specific tokens defined for {data_task}")
+
+
 def get_fields(
     src_data_type,
-    n_src_feats,
-    n_tgt_feats,
-    pad='<blank>',
-    bos='<s>',
-    eos='</s>',
+    src_feats,
+    tgt_feats,
+    pad=DefaultTokens.PAD,
+    bos=DefaultTokens.BOS,
+    eos=DefaultTokens.EOS,
     dynamic_dict=False,
     with_align=False,
     src_truncate=None,
-    tgt_truncate=None
+    tgt_truncate=None,
+    data_task=ModelTask.SEQ2SEQ
 ):
     """
     Args:
-        src_data_type: type of the source input. Options are [text|img|audio].
-        n_src_feats (int): the number of source features (not counting tokens)
+        src_data_type: type of the source input. Options are [text].
+        src_feats (Optional[Dict]): source features dict containing their names
             to create a :class:`torchtext.data.Field` for. (If
             ``src_data_type=="text"``, these fields are stored together
             as a ``TextMultiField``).
-        n_tgt_feats (int): See above.
+        tgt_feats (Optional[Dict]): See above.
         pad (str): Special pad symbol. Used on src and tgt side.
         bos (str): Special beginning of sequence symbol. Only relevant
             for tgt.
@@ -130,26 +148,35 @@ def get_fields(
         the dataset example attributes.
     """
 
-    assert src_data_type in ['text', 'img', 'audio', 'vec'], \
+    assert src_data_type in ['text'], \
         "Data type not implemented"
     assert not dynamic_dict or src_data_type == 'text', \
         'it is not possible to use dynamic_dict with non-text input'
     fields = {}
 
     fields_getters = {"text": text_fields}
+    task_spec_tokens = get_task_spec_tokens(data_task, pad, bos, eos)
 
-    src_field_kwargs = {"n_feats": n_src_feats,
-                        "include_lengths": True,
-                        "pad": pad, "bos": None, "eos": None,
-                        "truncate": src_truncate,
-                        "base_name": "src"}
+    src_field_kwargs = {
+        "feats": src_feats,
+        "include_lengths": True,
+        "pad": task_spec_tokens["src"]["pad"],
+        "bos": task_spec_tokens["src"]["bos"],
+        "eos": task_spec_tokens["src"]["eos"],
+        "truncate": src_truncate,
+        "base_name": "src",
+    }
     fields["src"] = fields_getters[src_data_type](**src_field_kwargs)
 
-    tgt_field_kwargs = {"n_feats": n_tgt_feats,
-                        "include_lengths": False,
-                        "pad": pad, "bos": bos, "eos": eos,
-                        "truncate": tgt_truncate,
-                        "base_name": "tgt"}
+    tgt_field_kwargs = {
+        "feats": tgt_feats,
+        "include_lengths": False,
+        "pad": task_spec_tokens["tgt"]["pad"],
+        "bos": task_spec_tokens["tgt"]["bos"],
+        "eos": task_spec_tokens["tgt"]["eos"],
+        "truncate": tgt_truncate,
+        "base_name": "tgt",
+    }
     fields["tgt"] = fields_getters["text"](**tgt_field_kwargs)
 
     indices = Field(use_vocab=False, dtype=torch.long, sequential=False)
@@ -174,6 +201,39 @@ def get_fields(
         fields["align"] = word_align
 
     return fields
+
+
+class IterOnDevice(object):
+    """Sent items from `iterable` on `device_id` and yield."""
+
+    def __init__(self, iterable, device_id):
+        self.iterable = iterable
+        self.device_id = device_id
+
+    @staticmethod
+    def batch_to_device(batch, device_id):
+        """Move `batch` to `device_id`, cpu if `device_id` < 0."""
+        curr_device = batch.indices.device
+        device = torch.device(device_id) if device_id >= 0 \
+            else torch.device('cpu')
+        if curr_device != device:
+            if isinstance(batch.src, tuple):
+                batch.src = tuple([_.to(device) for _ in batch.src])
+            else:
+                batch.src = batch.src.to(device)
+            batch.tgt = batch.tgt.to(device)
+            batch.indices = batch.indices.to(device)
+            batch.alignment = batch.alignment.to(device) \
+                if hasattr(batch, 'alignment') else None
+            batch.src_map = batch.src_map.to(device) \
+                if hasattr(batch, 'src_map') else None
+            batch.align = batch.align.to(device) \
+                if hasattr(batch, 'align') else None
+
+    def __iter__(self):
+        for batch in self.iterable:
+            self.batch_to_device(batch, self.device_id)
+            yield batch
 
 
 def filter_example(ex, use_src_len=True, use_tgt_len=True,
@@ -209,77 +269,103 @@ def _pad_vocab_to_multiple(vocab, multiple):
     if vocab_size % multiple == 0:
         return
     target_size = int(math.ceil(vocab_size / multiple)) * multiple
-    padding_tokens = [
-        "averyunlikelytoken%d" % i for i in range(target_size - vocab_size)]
+    padding_tokens = ["{}{}".format(DefaultTokens.VOCAB_PAD, i)
+                      for i in range(target_size - vocab_size)]
     vocab.extend(Vocab(Counter(), specials=padding_tokens))
     return vocab
 
 
 def _build_field_vocab(field, counter, size_multiple=1, **kwargs):
     # this is basically copy-pasted from torchtext.
-    all_specials = [
+    all_special = [
         field.unk_token, field.pad_token, field.init_token, field.eos_token
     ]
-    specials = [tok for tok in all_specials if tok is not None]
+    all_special.extend(list(kwargs.pop('specials', [])))
+    specials = list(OrderedDict.fromkeys(
+        tok for tok in all_special if tok is not None))
     field.vocab = field.vocab_cls(counter, specials=specials, **kwargs)
     if size_multiple > 1:
         _pad_vocab_to_multiple(field.vocab, size_multiple)
 
 
-def _load_vocab(vocab_path, name, counters, min_freq):
+def _load_vocab(vocab_path, name, counters, min_freq=0):
+    """Inplace update `counters`[`name`] with vocab in `vocab_path`.
+
+    Each line of `vocab_path` have a token, possible with a count.
+    If not with count, each token will be assigned one so that the order
+    of counters[name] will be same with `vocab_path`, and the minimum count
+    number to be `min_freq` which defaults 0.
+    """
     # counters changes in place
-    vocab = _read_vocab_file(vocab_path, name)
+    vocab, has_count = _read_vocab_file(vocab_path, name)
     vocab_size = len(vocab)
     logger.info('Loaded %s vocab has %d tokens.' % (name, vocab_size))
-    for i, token in enumerate(vocab):
-        # keep the order of tokens specified in the vocab file by
-        # adding them to the counter with decreasing counting values
-        counters[name][token] = vocab_size - i + min_freq
+    if not has_count:
+        for i, token in enumerate(vocab):
+            # keep the order of tokens specified in the vocab file by
+            # adding them to the counter with decreasing counting values
+            counters[name][token] = vocab_size - i + min_freq
+    else:
+        for token_and_count in vocab:
+            if len(token_and_count) != 2:
+                logger.info(f'Filtered invalid vocab token {token_and_count}')
+                continue
+            token, count = token_and_count
+            counters[name][token] = int(count)
     return vocab, vocab_size
 
 
-def _build_fv_from_multifield(multifield, counters, build_fv_args,
+def _build_fv_from_multifield(multifield, counters, build_fv_kwargs,
                               size_multiple=1):
     for name, field in multifield:
         _build_field_vocab(
             field,
             counters[name],
             size_multiple=size_multiple,
-            **build_fv_args[name])
+            **build_fv_kwargs[name])
         logger.info(" * %s vocab size: %d." % (name, len(field.vocab)))
 
 
 def _build_fields_vocab(fields, counters, data_type, share_vocab,
                         vocab_size_multiple,
                         src_vocab_size, src_words_min_frequency,
-                        tgt_vocab_size, tgt_words_min_frequency):
-    build_fv_args = defaultdict(dict)
-    build_fv_args["src"] = dict(
-        max_size=src_vocab_size, min_freq=src_words_min_frequency)
-    build_fv_args["tgt"] = dict(
-        max_size=tgt_vocab_size, min_freq=tgt_words_min_frequency)
+                        tgt_vocab_size, tgt_words_min_frequency,
+                        src_specials=None, tgt_specials=None):
+    src_specials = list(src_specials) if src_specials is not None else []
+    tgt_specials = list(tgt_specials) if tgt_specials is not None else []
+    build_fv_kwargs = defaultdict(dict)
+    build_fv_kwargs["src"] = dict(
+        max_size=src_vocab_size, min_freq=src_words_min_frequency,
+        specials=src_specials)
+    build_fv_kwargs["tgt"] = dict(
+        max_size=tgt_vocab_size, min_freq=tgt_words_min_frequency,
+        specials=tgt_specials)
     tgt_multifield = fields["tgt"]
     _build_fv_from_multifield(
         tgt_multifield,
         counters,
-        build_fv_args,
+        build_fv_kwargs,
         size_multiple=vocab_size_multiple if not share_vocab else 1)
+
     if data_type == 'text':
         src_multifield = fields["src"]
         _build_fv_from_multifield(
             src_multifield,
             counters,
-            build_fv_args,
+            build_fv_kwargs,
             size_multiple=vocab_size_multiple if not share_vocab else 1)
+
         if share_vocab:
             # `tgt_vocab_size` is ignored when sharing vocabularies
             logger.info(" * merging src and tgt vocab...")
             src_field = src_multifield.base_field
             tgt_field = tgt_multifield.base_field
+            _all_specials = [item for item in src_specials + tgt_specials]
             _merge_field_vocabs(
                 src_field, tgt_field, vocab_size=src_vocab_size,
                 min_freq=src_words_min_frequency,
-                vocab_size_multiple=vocab_size_multiple)
+                vocab_size_multiple=vocab_size_multiple,
+                specials=_all_specials)
             logger.info(" * merged vocab size: %d." % len(src_field.vocab))
 
     return fields
@@ -379,16 +465,19 @@ def build_vocab(train_dataset_files, fields, data_type, share_vocab,
 
 
 def _merge_field_vocabs(src_field, tgt_field, vocab_size, min_freq,
-                        vocab_size_multiple):
+                        vocab_size_multiple, specials):
     # in the long run, shouldn't it be possible to do this by calling
     # build_vocab with both the src and tgt data?
-    specials = [tgt_field.unk_token, tgt_field.pad_token,
-                tgt_field.init_token, tgt_field.eos_token]
+    init_specials = [tgt_field.unk_token, tgt_field.pad_token,
+                     tgt_field.init_token, tgt_field.eos_token]
+    all_specials = list(OrderedDict.fromkeys(
+        tok for tok in init_specials + specials
+        if tok is not None))
     merged = sum(
         [src_field.vocab.freqs, tgt_field.vocab.freqs], Counter()
     )
     merged_vocab = Vocab(
-        merged, specials=specials,
+        merged, specials=all_specials,
         max_size=vocab_size, min_freq=min_freq
     )
     if vocab_size_multiple > 1:
@@ -403,9 +492,8 @@ def _read_vocab_file(vocab_path, tag):
 
     Args:
         vocab_path (str): Path to utf-8 text file containing vocabulary.
-            Each token should be on a line by itself. Tokens must not
-            contain whitespace (else only before the whitespace
-            is considered).
+            Each token should be on a line, may followed with a count number
+            seperate by space if `with_count`. No extra whitespace is allowed.
         tag (str): Used for logging which vocab is being read.
     """
 
@@ -416,334 +504,11 @@ def _read_vocab_file(vocab_path, tag):
             "{} vocabulary not found at {}".format(tag, vocab_path))
     else:
         with codecs.open(vocab_path, 'r', 'utf-8') as f:
-            return [line.strip().split()[0] for line in f if line.strip()]
-
-
-def batch_iter(data, batch_size, batch_size_fn=None, batch_size_multiple=1):
-    """Yield elements from data in chunks of batch_size, where each chunk size
-    is a multiple of batch_size_multiple.
-
-    This is an extended version of torchtext.data.batch.
-    """
-    if batch_size_fn is None:
-        def batch_size_fn(new, count, sofar):
-            return count
-    minibatch, size_so_far = [], 0
-    for ex in data:
-        minibatch.append(ex)
-        size_so_far = batch_size_fn(ex, len(minibatch), size_so_far)
-        if size_so_far >= batch_size:
-            overflowed = 0
-            if size_so_far > batch_size:
-                overflowed += 1
-            if batch_size_multiple > 1:
-                overflowed += (
-                    (len(minibatch) - overflowed) % batch_size_multiple)
-            if overflowed == 0:
-                yield minibatch
-                minibatch, size_so_far = [], 0
+            lines = [line.strip() for line in f if line.strip()]
+            first_line = lines[0].split(None, 1)
+            has_count = (len(first_line) == 2 and first_line[-1].isdigit())
+            if has_count:
+                vocab = [line.split(None, 1) for line in lines]
             else:
-                if overflowed == len(minibatch):
-                    logger.warning(
-                        "An example was ignored, more tokens"
-                        " than allowed by tokens batch_size")
-                else:
-                    yield minibatch[:-overflowed]
-                    minibatch = minibatch[-overflowed:]
-                    size_so_far = 0
-                    for i, ex in enumerate(minibatch):
-                        size_so_far = batch_size_fn(ex, i + 1, size_so_far)
-    if minibatch:
-        yield minibatch
-
-
-def _pool(data, batch_size, batch_size_fn, batch_size_multiple,
-          sort_key, random_shuffler, pool_factor):
-    for p in torchtext.data.batch(
-            data, batch_size * pool_factor,
-            batch_size_fn=batch_size_fn):
-        p_batch = list(batch_iter(
-            sorted(p, key=sort_key),
-            batch_size,
-            batch_size_fn=batch_size_fn,
-            batch_size_multiple=batch_size_multiple))
-        for b in random_shuffler(p_batch):
-            yield b
-
-
-class OrderedIterator(torchtext.data.Iterator):
-
-    def __init__(self,
-                 dataset,
-                 batch_size,
-                 pool_factor=1,
-                 batch_size_multiple=1,
-                 yield_raw_example=False,
-                 **kwargs):
-        super(OrderedIterator, self).__init__(dataset, batch_size, **kwargs)
-        self.batch_size_multiple = batch_size_multiple
-        self.yield_raw_example = yield_raw_example
-        self.dataset = dataset
-        self.pool_factor = pool_factor
-
-    def create_batches(self):
-        if self.train:
-            if self.yield_raw_example:
-                self.batches = batch_iter(
-                    self.data(),
-                    1,
-                    batch_size_fn=None,
-                    batch_size_multiple=1)
-            else:
-                self.batches = _pool(
-                    self.data(),
-                    self.batch_size,
-                    self.batch_size_fn,
-                    self.batch_size_multiple,
-                    self.sort_key,
-                    self.random_shuffler,
-                    self.pool_factor)
-        else:
-            self.batches = []
-            for b in batch_iter(
-                    self.data(),
-                    self.batch_size,
-                    batch_size_fn=self.batch_size_fn,
-                    batch_size_multiple=self.batch_size_multiple):
-                self.batches.append(sorted(b, key=self.sort_key))
-
-    def __iter__(self):
-        """
-        Extended version of the definition in torchtext.data.Iterator.
-        Added yield_raw_example behaviour to yield a torchtext.data.Example
-        instead of a torchtext.data.Batch object.
-        """
-        while True:
-            self.init_epoch()
-            for idx, minibatch in enumerate(self.batches):
-                # fast-forward if loaded from state
-                if self._iterations_this_epoch > idx:
-                    continue
-                self.iterations += 1
-                self._iterations_this_epoch += 1
-                if self.sort_within_batch:
-                    # NOTE: `rnn.pack_padded_sequence` requires that a
-                    # minibatch be sorted by decreasing order, which
-                    #  requires reversing relative to typical sort keys
-                    if self.sort:
-                        minibatch.reverse()
-                    else:
-                        minibatch.sort(key=self.sort_key, reverse=True)
-                if self.yield_raw_example:
-                    yield minibatch[0]
-                else:
-                    yield torchtext.data.Batch(
-                        minibatch,
-                        self.dataset,
-                        self.device)
-            if not self.repeat:
-                return
-
-
-class MultipleDatasetIterator(object):
-    """
-    This takes a list of iterable objects (DatasetLazyIter) and their
-    respective weights, and yields a batch in the wanted proportions.
-    """
-    def __init__(self,
-                 train_shards,
-                 fields,
-                 device,
-                 opt):
-        self.index = -1
-        self.iterables = []
-        for shard in train_shards:
-            self.iterables.append(
-                build_dataset_iter(shard, fields, opt, multi=True))
-        self.init_iterators = True
-        self.weights = opt.data_weights
-        self.batch_size = opt.batch_size
-        self.batch_size_fn = max_tok_len \
-            if opt.batch_type == "tokens" else None
-        self.batch_size_multiple = 8 if opt.model_dtype == "fp16" else 1
-        self.device = device
-        # Temporarily load one shard to retrieve sort_key for data_type
-        temp_dataset = torch.load(self.iterables[0]._paths[0])
-        self.sort_key = temp_dataset.sort_key
-        self.random_shuffler = RandomShuffler()
-        self.pool_factor = opt.pool_factor
-        del temp_dataset
-
-    def _iter_datasets(self):
-        if self.init_iterators:
-            self.iterators = [iter(iterable) for iterable in self.iterables]
-            self.init_iterators = False
-        for weight in self.weights:
-            self.index = (self.index + 1) % len(self.iterators)
-            for i in range(weight):
-                yield self.iterators[self.index]
-
-    def _iter_examples(self):
-        for iterator in cycle(self._iter_datasets()):
-            yield next(iterator)
-
-    def __iter__(self):
-        while True:
-            for minibatch in _pool(
-                    self._iter_examples(),
-                    self.batch_size,
-                    self.batch_size_fn,
-                    self.batch_size_multiple,
-                    self.sort_key,
-                    self.random_shuffler,
-                    self.pool_factor):
-                minibatch = sorted(minibatch, key=self.sort_key, reverse=True)
-                yield torchtext.data.Batch(minibatch,
-                                           self.iterables[0].dataset,
-                                           self.device)
-
-
-class DatasetLazyIter(object):
-    """Yield data from sharded dataset files.
-
-    Args:
-        dataset_paths: a list containing the locations of dataset files.
-        fields (dict[str, Field]): fields dict for the
-            datasets.
-        batch_size (int): batch size.
-        batch_size_fn: custom batch process function.
-        device: See :class:`OrderedIterator` ``device``.
-        is_train (bool): train or valid?
-    """
-
-    def __init__(self, dataset_paths, fields, batch_size, batch_size_fn,
-                 batch_size_multiple, device, is_train, pool_factor,
-                 repeat=True, num_batches_multiple=1, yield_raw_example=False):
-        self._paths = dataset_paths
-        self.fields = fields
-        self.batch_size = batch_size
-        self.batch_size_fn = batch_size_fn
-        self.batch_size_multiple = batch_size_multiple
-        self.device = device
-        self.is_train = is_train
-        self.repeat = repeat
-        self.num_batches_multiple = num_batches_multiple
-        self.yield_raw_example = yield_raw_example
-        self.pool_factor = pool_factor
-
-    def _iter_dataset(self, path):
-        logger.info('Loading dataset from %s' % path)
-        cur_dataset = torch.load(path)
-        logger.info('number of examples: %d' % len(cur_dataset))
-        cur_dataset.fields = self.fields
-        cur_iter = OrderedIterator(
-            dataset=cur_dataset,
-            batch_size=self.batch_size,
-            pool_factor=self.pool_factor,
-            batch_size_multiple=self.batch_size_multiple,
-            batch_size_fn=self.batch_size_fn,
-            device=self.device,
-            train=self.is_train,
-            sort=False,
-            sort_within_batch=True,
-            repeat=False,
-            yield_raw_example=self.yield_raw_example
-        )
-        for batch in cur_iter:
-            self.dataset = cur_iter.dataset
-            yield batch
-
-        # NOTE: This is causing some issues for consumer/producer,
-        # as we may still have some of those examples in some queue
-        # cur_dataset.examples = None
-        # gc.collect()
-        # del cur_dataset
-        # gc.collect()
-
-    def __iter__(self):
-        num_batches = 0
-        paths = self._paths
-        if self.is_train and self.repeat:
-            # Cycle through the shards indefinitely.
-            paths = cycle(paths)
-        for path in paths:
-            for batch in self._iter_dataset(path):
-                yield batch
-                num_batches += 1
-        if self.is_train and not self.repeat and \
-           num_batches % self.num_batches_multiple != 0:
-            # When the dataset is not repeated, we might need to ensure that
-            # the number of returned batches is the multiple of a given value.
-            # This is important for multi GPU training to ensure that all
-            # workers have the same number of batches to process.
-            for path in paths:
-                for batch in self._iter_dataset(path):
-                    yield batch
-                    num_batches += 1
-                    if num_batches % self.num_batches_multiple == 0:
-                        return
-
-
-def max_tok_len(new, count, sofar):
-    """
-    In token batching scheme, the number of sequences is limited
-    such that the total number of src/tgt tokens (including padding)
-    in a batch <= batch_size
-    """
-    # Maintains the longest src and tgt length in the current batch
-    global max_src_in_batch, max_tgt_in_batch  # this is a hack
-    # Reset current longest length at a new batch (count=1)
-    if count == 1:
-        max_src_in_batch = 0
-        max_tgt_in_batch = 0
-    # Src: [<bos> w1 ... wN <eos>]
-    max_src_in_batch = max(max_src_in_batch, len(new.src[0]) + 2)
-    # Tgt: [w1 ... wM <eos>]
-    max_tgt_in_batch = max(max_tgt_in_batch, len(new.tgt[0]) + 1)
-    src_elements = count * max_src_in_batch
-    tgt_elements = count * max_tgt_in_batch
-    return max(src_elements, tgt_elements)
-
-
-def build_dataset_iter(corpus_type, fields, opt, is_train=True, multi=False):
-    """
-    This returns user-defined train/validate data iterator for the trainer
-    to iterate over. We implement simple ordered iterator strategy here,
-    but more sophisticated strategy like curriculum learning is ok too.
-    """
-    dataset_paths = list(sorted(
-        glob.glob(opt.data + '.' + corpus_type + '.[0-9]*.pt')))
-    if not dataset_paths:
-        if is_train:
-            raise ValueError('Training data %s not found' % opt.data)
-        else:
-            return None
-    if multi:
-        batch_size = 1
-        batch_fn = None
-        batch_size_multiple = 1
-    else:
-        batch_size = opt.batch_size if is_train else opt.valid_batch_size
-        batch_fn = max_tok_len \
-            if is_train and opt.batch_type == "tokens" else None
-        batch_size_multiple = 8 if opt.model_dtype == "fp16" else 1
-
-    device = "cuda" if opt.gpu_ranks else "cpu"
-
-    return DatasetLazyIter(
-        dataset_paths,
-        fields,
-        batch_size,
-        batch_fn,
-        batch_size_multiple,
-        device,
-        is_train,
-        opt.pool_factor,
-        repeat=not opt.single_pass,
-        num_batches_multiple=max(opt.accum_count) * opt.world_size,
-        yield_raw_example=multi)
-
-
-def build_dataset_iter_multiple(train_shards, fields, opt):
-    return MultipleDatasetIterator(
-        train_shards, fields, "cuda" if opt.gpu_ranks else "cpu", opt)
+                vocab = [line.strip().split()[0] for line in lines]
+            return vocab, has_count

@@ -1,6 +1,5 @@
-from __future__ import division
 import torch
-import numpy as np
+import math
 
 class PenaltyBuilder(object):
     """Returns the Length and Coverage Penalty function for Beam Search.
@@ -92,16 +91,18 @@ class PenaltyBuilder(object):
 
         See "Google's Neural Machine Translation System" :cite:`wu2016google`.
         """
+
         return ((5 + cur_len) / 6.0) ** alpha
+
+
+    def length_expected_score(self, cur_len,alpha=0.):
+        """Returns an expected score assuming a constant probability per residue"""
+        return cur_len * math.log(0.85)
 
     def length_average(self, cur_len, alpha=0.):
         """Returns the current sequence length."""
         return cur_len
 
-    def length_expected_score(self, cur_len,alpha=0.):
-        """Returns an expected score assuming a constant probability per residue"""
-        return cur_len * np.log(0.85)
-    
     def length_none(self, cur_len, alpha=0.):
         """Returns unmodified scores."""
         return 1.0

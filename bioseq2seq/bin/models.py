@@ -3,7 +3,8 @@ import torch.nn.functional as F
 import torch.nn.init as init
 
 from bioseq2seq.models import NMTModel
-from bioseq2seq.encoders import TransformerEncoder, CNNEncoder, FourierEncoder
+from bioseq2seq.encoders import TransformerEncoder, CNNEncoder, FourierEncoder, GlobalFilterEncoderLayer,\
+        LocalFilterEncoderLayer,FNetEncoderLayer,AFNOEncoderLayer
 from bioseq2seq.decoders import TransformerDecoder, CNNDecoder
 from bioseq2seq.modules import Embeddings
 
@@ -117,7 +118,8 @@ def make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,mo
 
     return model
 
-def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dim_ff=2048,dim_filter=100,heads=8,dropout=0.1,max_rel_pos=8):
+def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dim_ff=2048,dropout=0.1,\
+        fourier_type='LFNet',dim_filter=100,heads=8,max_rel_pos=8,sparsity=1e-2,num_blocks=8,window_size=200,lambd_L1=0.5):
 
     '''construct Transformer encoder-decoder from hyperparameters'''
 
@@ -133,14 +135,20 @@ def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_d
                                     word_padding_idx = 1,
                                     position_encoding = True)
     
-    encoder_stack = FourierEncoder(num_layers = n_enc,
-                                       d_model = model_dim,
-                                       d_filter = dim_filter,
-                                       d_ff = dim_ff,
-                                       dropout = dropout,
-                                       embeddings = nucleotide_embeddings,
-                                       attention_dropout = attention_dropout,
-                                       layer_type='GFNet')
+    if fourier_type == 'GFNet':
+        model_template_fn =  lambda x: GlobalFilterEncoderLayer(model_dim,dim_ff,dropout,dim_filter,lambd_L1=lambd_L1)
+    elif fourier_type == 'FNet':
+        model_template_fn =  lambda x: FNetEncoderLayer(model_dim,dim_ff,dropout)
+    elif fourier_type == 'LFNet':
+        #model_template_fn = lambda x : GlobalFilterEncoderLayer(model_dim,dim_ff,dropout,dim_filter) if x % 2 == 0 else LocalFilterEncoderLayer(model_dim,dim_ff,dropout,window_size,share_hidden_weights=False)
+        model_template_fn = lambda x : LocalFilterEncoderLayer(model_dim,dim_ff,dropout,window_size,share_hidden_weights=False,lambd_L1=lambd_L1)
+    elif fourier_type == 'AFNO':
+        model_template_fn = lambda x :  AFNOEncoderLayer(model_dim,dim_ff,dropout,num_blocks,sparsity)
+    
+    encoder_stack = FourierEncoder(model_template_fn,
+                                    num_layers = n_enc,
+                                    d_model = model_dim,
+                                    embeddings = nucleotide_embeddings)
    
     decoder_stack = TransformerDecoder(num_layers = n_dec,
                                        d_model = model_dim,

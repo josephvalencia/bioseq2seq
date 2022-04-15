@@ -1,10 +1,10 @@
 """ Statistics calculation utility """
-from __future__ import division
 import time
 import math
 import sys
 
 from bioseq2seq.utils.logging import logger
+
 
 class Statistics(object):
     """
@@ -17,8 +17,6 @@ class Statistics(object):
     """
 
     def __init__(self, loss=0, n_words=0, n_correct=0,n_batches=0,n_correct_class=0):
-
-        # Unstructured Metrics
         self.loss = loss
         self.n_words = n_words
         self.n_correct = n_correct
@@ -26,14 +24,6 @@ class Statistics(object):
         self.start_time = time.time()
         self.n_batches = n_batches
         self.n_correct_class = n_correct_class
-
-        # Structured metrics (Top1)
-        self.kmer_precision_best = None
-        self.kmer_recall_best = None
-        self.exact_match_best = None
-        self.align_id_best = None
-        self.f1 = None
-
 
     @staticmethod
     def all_gather_stats(stat, max_size=4096):
@@ -98,26 +88,6 @@ class Statistics(object):
         if update_n_src_words:
             self.n_src_words += stat.n_src_words
 
-    def update_structured(self,best_results,best_n_results = None):
-
-        self.kmer_recall_best = best_results['avg_kmer_recall']
-        self.kmer_precision_best = best_results['avg_kmer_precision']
-        if 'avg_align_id' in best_results:
-            self.align_id_best = best_results['avg_align_id']
-        if 'exact_match_rate' in best_results:
-            self.exact_match_best = best_results['exact_match_rate']
-
-        self.f1 = best_results["F1"]
-
-        if best_n_results is not None:
-            self.kmer_recall_best_n = best_results['avg_kmer_recall']
-            self.kmer_precision_best_n = best_n_results['avg_kmer_precision']
-            if 'avg_align_id' in best_results:
-                self.align_id_best_n = best_n_results['avg_align_id']
-            if 'exact_match_rate' in best_results:
-                self.exact_match_best_n = best_n_results['exact_match_rate']
-
-
     def accuracy(self):
         """ compute accuracy """
         return 100 * (self.n_correct / self.n_words)
@@ -151,10 +121,11 @@ class Statistics(object):
         if num_steps > 0:
             step_fmt = "%s/%5d" % (step_fmt, num_steps)
         logger.info(
-            ("Step %s; acc: %6.2f; ppl: %5.2f; xent: %4.2f; " +
+                ("Step %s; acc: %6.2f; class_acc: %6.2f; ppl: %5.2f; xent: %4.2f; " +
              "lr: %7.5f; %3.0f/%3.0f tok/s; %6.0f sec")
             % (step_fmt,
                self.accuracy(),
+               self.class_accuracy(),
                self.ppl(),
                self.xent(),
                learning_rate,
@@ -163,7 +134,7 @@ class Statistics(object):
                time.time() - start))
         sys.stdout.flush()
 
-    def log_tensorboard(self, prefix, writer, learning_rate, step):
+    def log_tensorboard(self, prefix, writer, learning_rate, patience, step):
         """ display statistics to tensorboard """
         t = self.elapsed_time()
         writer.add_scalar(prefix + "/xent", self.xent(), step)
@@ -172,24 +143,5 @@ class Statistics(object):
         writer.add_scalar(prefix + "/class_accuracy", self.class_accuracy(), step)
         writer.add_scalar(prefix + "/tgtper", self.n_words / t, step)
         writer.add_scalar(prefix + "/lr", learning_rate, step)
-
-        # display structured statistics, if they exist
-
-        if self.kmer_recall_best is not None:
-            writer.add_scalar(prefix + "/krecall", self.kmer_recall_best, step)
-
-        if self.kmer_precision_best is not None:
-            writer.add_scalar(prefix + "/kprecision", self.kmer_precision_best, step)
-
-        if self.exact_match_best is not None:
-            writer.add_scalar(prefix + "/exactmatch",self.exact_match_best,step)
-
-        if self.align_id_best is not None:
-            writer.add_scalar(prefix + "/alignid",self.align_id_best,step)
-
-        if self.f1 is not None:
-            writer.add_scalar(prefix + "/class_f1",self.f1,step)
-
-
-
-
+        if patience is not None:
+            writer.add_scalar(prefix + "/patience", patience, step)
