@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 import argparse
 import pandas as pd
 import torch
@@ -11,7 +11,6 @@ from bioseq2seq.inputters import TextDataReader,get_fields
 from bioseq2seq.inputters.text_dataset import TextMultiField
 from bioseq2seq.translate import Translator, GNMTGlobalScorer
 from bioseq2seq.bin.models import make_transformer_seq2seq, make_hybrid_seq2seq, Generator
-from bioseq2seq.modules.embeddings import PositionalEncoding
 
 from torchtext.data import RawField
 from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset
@@ -49,15 +48,30 @@ def restore_transformer_model(checkpoint,machine,opts):
         machine : torch device
     Returns:
         restored model'''
+    
+    vocab_fields = checkpoint['vocab'] 
+    
+    src_text_field = vocab_fields["src"].base_field
+    src_vocab = src_text_field.vocab
+    src_padding = src_vocab.stoi[src_text_field.pad_token]
 
+    tgt_text_field = vocab_fields['tgt'].base_field
+    tgt_vocab = tgt_text_field.vocab
+    tgt_padding = tgt_vocab.stoi[tgt_text_field.pad_token]
+
+    n_input_classes = len(src_vocab.stoi)
+    n_output_classes = len(tgt_vocab.stoi)
+    '''
     vocab = checkpoint['vocab'] 
     print(vocab['tgt'].vocab.stoi)
     n_input_classes = len(vocab['src'].vocab.stoi)
     n_output_classes = len(vocab['tgt'].vocab.stoi)
+    ''' 
     print(f'n_enc = {opts.n_enc_layers} ,n_dec={opts.n_dec_layers}, n_output_classes= {n_output_classes} ,n_input_classes ={n_input_classes}')
-    n_output_classes = 28 
-    model = make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=opts.n_enc_layers,n_dec=12,model_dim=opts.model_dim,dim_filter=100)
+    model = make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=opts.n_enc_layers,\
+            n_dec=opts.n_dec_layers,model_dim=opts.model_dim,dim_filter=100,max_rel_pos=8)
     #model = make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=opts.n_enc_layers,n_dec=opts.n_dec_layers,model_dim=opts.model_dim,max_rel_pos=opts.max_rel_pos)
+    
     model.load_state_dict(checkpoint['model'],strict=False)
     model.generator.load_state_dict(checkpoint['generator'])
     model.to(device = machine)
@@ -70,7 +84,7 @@ def make_vocab(fields,src,tgt):
         src (list(str)): input data
         tgt (list(str)): output data
     Returns:
-        fields (dict)
+        
     """
 
     src = TextMultiField('src',fields['src'],[])
@@ -129,11 +143,8 @@ def run_helper(rank,model,vocab,args):
     file_prefix = args.output_name
     
     device = "cuda:{}".format(rank)
-    #device = 'cpu'
 
     data = pd.read_csv(args.input,sep="\t")
-    #special = ['XR_949580.2', 'XR_001748355.1', 'XR_001707416.2', 'XR_003029405.1', 'XR_922291.3','XM_015134081.2', 'XM_032910311.1', 'NM_001375259.1', 'XR_002007359.1', 'XR_003726903.1']
-    #data = data[data['ID'].isin(special)].sample(frac=1.0)
     data["CDS"] = ["-1" for _ in range(data.shape[0])]
     print(data)
     if args.num_gpus > 1:
@@ -149,12 +160,6 @@ def run_helper(rank,model,vocab,args):
 
     protein,ids,rna,cds = arrange_data_by_mode(data,args.mode)
     text_fields = make_vocab(vocab,rna,protein)
-        
-    def test_dropout(m):
-        if isinstance(m,torch.nn.Dropout):
-            print(m.training)
-    
-    #model.apply(test_dropout)
     
     translate(model,
             text_fields,
@@ -230,6 +235,7 @@ def translate_from_transformer_checkpt(args):
     device = 'cpu'
     checkpoint = torch.load(args.checkpoint,map_location = device)
     options = checkpoint['opt']
+    '''
     vocab = checkpoint['vocab']
 
     if not options is None:
@@ -239,8 +245,10 @@ def translate_from_transformer_checkpt(args):
         print("----------- Saved Parameters for ------------ {}".format("SAVED MODEL"))
         for k,v in vars(options).items():
             print(k,v)
+    '''
     
     model = restore_transformer_model(checkpoint,device,options)
+    
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"# trainable parameters = {human_format(num_params)}")
     model.eval()

@@ -102,7 +102,7 @@ class GreedySearch(DecodeStrategy):
         eos (int): See base.
         unk (int): See base.
         batch_size (int): See base.
-        global_scorer (onmt.translate.GNMTGlobalScorer): Scorer instance.
+        global_scorer (bioseq2seq.translate.GNMTGlobalScorer): Scorer instance.
         min_length (int): See base.
         max_length (int): See base.
         ban_unk_token (Boolean): See base.
@@ -111,11 +111,11 @@ class GreedySearch(DecodeStrategy):
         return_attention (bool): See base.
         max_length (int): See base.
         sampling_temp (float): See
-            :func:`~onmt.translate.greedy_search.sample_with_temperature()`.
+            :func:`~bioseq2seq.translate.greedy_search.sample_with_temperature()`.
         keep_topk (int): See
-            :func:`~onmt.translate.greedy_search.sample_with_temperature()`.
+            :func:`~bioseq2seq.translate.greedy_search.sample_with_temperature()`.
         keep_topp (float): See
-            :func:`~onmt.translate.greedy_search.sample_with_temperature()`.
+            :func:`~bioseq2seq.translate.greedy_search.sample_with_temperature()`.
         beam_size (int): Number of beams to use.
     """
 

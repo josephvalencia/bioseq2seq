@@ -14,23 +14,28 @@ def mammalian_partitions(combined_file,max_len):
     
     random_seed = 65
     data = pd.read_csv(combined_file,sep='\t')
-    # filter to <1000 nt and 80/10/10 split
+    
+    # filter to 200 <=x<= max_len  nt and 80/10/10 split
     train,test,val = train_test_val_split(data,max_len,random_seed,min_len=200,splits=[0.8,0.1,0.1])
-    
-    # save to CSV and FASTA formats 
-    train.to_csv(f'mammalian_200-{max_len}_train.csv',sep='\t',index=False)
-    to_fasta(train,f'mammalian_200-{max_len}_train_RNA.fa')
+    prefix = f'mammalian_200-{max_len}'
+    train.to_csv(f'{prefix}_train.csv',sep='\t',index=False)
+   
+    # balance mRNA and lncRNA
     balanced = balance_class_and_length(train,max_len)     
-    balanced.to_csv(f'mammalian_200-{max_len}_train_balanced.csv',sep='\t',index=False)
-    to_fasta(balanced,f'mammalian_200-{max_len}_train_RNA_balanced.fa')
-    
-    test.to_csv(f'mammalian_200-{max_len}_test.csv',sep='\t',index=False)
-    to_fasta(test,f'mammalian_200-{max_len}_test_RNA.fa')
-    reduce_redundancy(f'mammalian_200-{max_len}_train_RNA.fa',f'mammalian_200-{max_len}_test')
+    balanced.to_csv(f'{prefix}_train_balanced.csv',sep='\t',index=False)
+    to_fasta(balanced,f'{prefix}_train_RNA_balanced.fa',column='RNA')
+    to_fasta(balanced,f'{prefix}_train_PROTEIN_balanced.fa',column='Protein')
+    to_fasta(balanced,f'{prefix}_train_CLASS_balanced.fa',column='Type')
+   
+    # save unreduced then remove tscripts >80% alignment
+    test.to_csv(f'{prefix}_test.csv',sep='\t',index=False)
+    to_fasta(test,f'{prefix}_test_RNA.fa',column='RNA')
+    reduce_redundancy(f'{prefix}_train_RNA_balanced.fa',f'{prefix}_test')
 
-    val.to_csv(f'mammalian_200-{max_len}_val.csv',sep='\t',index=False)
-    to_fasta(val,f'mammalian_200-{max_len}_val_RNA.fa')
-    reduce_redundancy(f'mammalian_200-{max_len}_train_RNA.fa',f'mammalian_200-{max_len}_val')
+    # save unreduced then remove tscripts >80% alignment
+    val.to_csv(f'{prefix}_val.csv',sep='\t',index=False)
+    to_fasta(val,f'{prefix}_val_RNA.fa',column='RNA')
+    reduce_redundancy(f'{prefix}_train_RNA_balanced.fa',f'{prefix}_val')
 
 def balance_class_and_length(df,max_len):
 
@@ -53,14 +58,15 @@ def balance_class_and_length(df,max_len):
     N = len(pc_ids)
     print(f'len(pc_ids) = {N} , len(nc_ids) = {len(nc_ids)}, diff = {len(pc)-N}')
     
-    residual_pc = pc[~pc['ID'].isin(pc_ids)]
-    fake_lnc = generate_shuffled_seqs(residual_pc)
-    #balanced_ids = pc_ids+nc_ids
+    #residual_pc = pc[~pc['ID'].isin(pc_ids)]
+    #fake_lnc = generate_shuffled_seqs(residual_pc)
+    #df = pd.concat([df,fake_lnc])
     
-    #df = df.set_index('ID')
-    #df = df.loc[balanced_ids]
-    #df = df.reset_index()
-    df = pd.concat([df,fake_lnc])
+    balanced_ids = pc_ids+nc_ids
+    df = df.set_index('ID')
+    df = df.loc[balanced_ids]
+    
+    df = df.reset_index()
     df = df.sample(frac=1.0,random_state=random_seed)
 
     sns.histplot(data=df,hue='Type',x = 'RNA_len',binwidth=1)
@@ -79,7 +85,7 @@ def generate_shuffled_seqs(df):
 
     ids = ['XR_shuffled_'+t for t in ids]
     cds = [-1 for c in cds]
-    protein = ['?' for p in protein]
+    protein = ['[NONE]' for p in protein]
     rna = [str(shuffle(r.encode('utf-8'),2)) for r in rna]
     types = ['<NC>' for t in types]
 
@@ -131,15 +137,17 @@ def longer_mammalian(combined_file):
     #to_fasta(longer,'mammalian_1k-2k_RNA.fa')
     reduce_redundancy('data/mammalian_1k_train_RNA.fa','data/mammalian_1k-2k')
     
-def to_fasta(df,name):
+def to_fasta(df,name,column='RNA'):
 
     ids = df['ID'].tolist()
-    sequences  = df['RNA'].tolist()
+    sequences  = df[column].tolist()
     records = [make_record(name,seq) for name,seq in zip(ids,sequences)]
+    print(f'Writing {name}')
     SeqIO.write(records, name, "fasta")
 
+
 def make_record(id,rna):
-    return SeqRecord(Seq(rna),id=id)
+    return SeqRecord(Seq(rna),id=id,description='')
 
 def short_zebrafish(zebrafile):
 
@@ -156,9 +164,9 @@ def filter_by_length(df,max_len,min_len=0):
     df['Protein_LEN'] = [len(x) for x in df['Protein'].values]
 
     # filter by maximum length, and optionally minimum length
-    df = df[df['RNA_LEN'] < max_len]
+    df = df[df['RNA_LEN'] <= max_len]
     if min_len > 0:
-        df =  df[df['RNA_LEN'] > min_len]
+        df =  df[df['RNA_LEN'] >= min_len]
 
     return df[['ID','RNA', 'CDS', 'Type','Protein']]
 
@@ -191,23 +199,29 @@ def parse_nonredundant_transcripts(filtered_fa):
 def reduce_redundancy(train_fa,eval_prefix):
 
     eval_fa = eval_prefix+'_RNA.fa'
-    reduced_fa = eval_prefix+'_RNA_nonredundant_80.fa'
     eval_csv = eval_prefix+'.csv' 
+    
     reduced_csv = eval_prefix+'_nonredundant_80.csv'
+    reduced_rna_fa = eval_prefix+'_RNA_nonredundant_80.fa'
+    reduced_protein_fa = eval_prefix+'_PROTEIN_nonredundant_80.fa'
+    reduced_class_fa = eval_prefix+'_CLASS_nonredundant_80.fa'
 
-    #cmd = f'cd-hit-est-2d -i {train_fa} -i2 {eval_fa} -c 0.80 -n 5 -M 16000 -T 8 -o {reduced_fa}'
-    cmd = f'cd-hit-est-2d -i {train_fa} -i2 {eval_fa} -c 0.80 -n 5 -T 32 -o {reduced_fa}'
+    cmd = f'cd-hit-est-2d -i {train_fa} -i2 {eval_fa} -c 0.80 -n 5 -M 16000 -T 8 -o {reduced_rna_fa}'
     os.system(cmd) 
-    filtered = parse_nonredundant_transcripts(reduced_fa)
+    filtered = parse_nonredundant_transcripts(reduced_rna_fa)
     
     df = pd.read_csv(eval_csv,sep='\t').set_index('ID')
     df_reduced = df.loc[filtered]
     df_reduced = df_reduced.reset_index()
     df_reduced.to_csv(reduced_csv,sep='\t',index=False)
+    
+    to_fasta(df_reduced,reduced_protein_fa,column='Protein')
+    to_fasta(df_reduced,reduced_class_fa,column='Type')
 
 if __name__ == "__main__":
    
-    mammalian_file = 'data/old/mammalian_refseq.csv' 
+    #mammalian_file = 'data/old/mammalian_refseq.csv' 
+    mammalian_file = 'mammalian_refseq.csv' 
     zebrafish_file = 'data/zebrafish_refseq.csv' 
     
     mammalian_partitions(mammalian_file,int(sys.argv[1])) 

@@ -80,7 +80,7 @@ def refseq_RNA(prefix,mRNA,lncRNA,cds,prot2rna,table):
                     table[tscript] = new_entry
             elif tscript.startswith("NR_") or tscript.startswith("XR_"):                
                 if tscript in lncRNA:
-                    new_entry = {"RNA" : seq_record.seq, "TYPE" : "<NC>", "PROTEIN" : "?", "CDS" : "-1"}
+                    new_entry = {"RNA" : seq_record.seq, "TYPE" : "<NC>", "PROTEIN" : "[NONE]", "CDS" : "-1"}
                     table[tscript] = new_entry
                     
     with gzip.open(prot_fasta,"rt") as inFile:
@@ -138,8 +138,8 @@ if __name__ == "__main__":
 
     zebrafish = {'zebrafish': 'danio_rerio/GCF_000002035.6_GRCz11_'}
     
-    #build_dataset(mammalian,'mammalian_refseq.csv')
-    build_dataset(zebrafish,'zebrafish_refseq.csv')
+    build_dataset(mammalian,'mammalian_refseq.csv')
+    #build_dataset(zebrafish,'zebrafish_refseq.csv')
 
     #covid_genome_path = "/nfs0/BB/Hendrix_Lab/CoV/FASTA/SARSCoV2_genome.fasta"
     #parse_SARSCov2(covid_genome_path)

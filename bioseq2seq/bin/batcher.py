@@ -9,6 +9,8 @@ import random
 
 global max_src_in_batch, max_tgt_in_batch
 
+'''batching utils heavily borrowed from https://nlp.seas.harvard.edu/2018/04/03/attention.html and Open-NMT-py implementation'''
+
 def batch_size_fn(new, count, sofar):
 
     '''Keep augmenting batch and calculate total number of tokens + padding.'''
@@ -19,15 +21,14 @@ def batch_size_fn(new, count, sofar):
         max_src_in_batch = 0
         max_tgt_in_batch = 0
 
-    max_src_in_batch = max(max_src_in_batch,  len(new.src))
-    max_tgt_in_batch = max(max_tgt_in_batch,  len(new.tgt) + 2)
-
+    max_src_in_batch = max(max_src_in_batch,len(new.src))
+    max_tgt_in_batch = max(max_tgt_in_batch,len(new.tgt)+2)
+    
     src_elements = count * max_src_in_batch
     tgt_elements = count * max_tgt_in_batch
-
     return src_elements+tgt_elements
 
-class BatchMaker(torchtext.data.Iterator):
+class DynamicBatchMaker(torchtext.data.Iterator):
 
     def __init__(self,dataset,batch_size,device,repeat,train=True,sort_mode = "total"):
 
@@ -51,11 +52,7 @@ class BatchMaker(torchtext.data.Iterator):
 
             def pool(d, random_shuffler):
                 for p in torchtext.data.batch(d, self.batch_size * 100):
-
-                    p_batch = torchtext.data.batch(
-                        sorted(p, key=self.sort_key),
-                        self.batch_size, batch_size_fn)
-
+                    p_batch = torchtext.data.batch(sorted(p, key=self.sort_key),self.batch_size, batch_size_fn)
                     for b in random_shuffler(list(p_batch)):
                         yield b
 
@@ -66,7 +63,7 @@ class BatchMaker(torchtext.data.Iterator):
             for b in Batch(self.data(), self.batch_size,batch_size_fn):
                 self.batches.append(sorted(b, key=self.sort_key))
 
-class TransformerBatch(torchtext.data.Batch):
+class DynamicBatch(torchtext.data.Batch):
 
         @classmethod
         def from_batch(cls,batch):
@@ -77,8 +74,7 @@ class TransformerBatch(torchtext.data.Batch):
             batch_size = batch_items.pop('batch_size',None)
             fields = batch_items.pop('fields',None)
 
-            translation_batch = super().fromvars(dataset=dataset,batch_size = batch_size,train=True,**batch_items)
-
+            translation_batch = super().fromvars(dataset=dataset,batch_size =batch_size,train=True,**batch_items)
             return translation_batch
 
         def setup(self):
@@ -88,9 +84,9 @@ class TransformerBatch(torchtext.data.Batch):
             # add dummy dimension at axis = 2, src is a tuple
             self.src = torch.unsqueeze(x,2), x_lens
             self.tgt = torch.unsqueeze(getattr(self,'tgt'),2)
-            self.id = getattr(self,'id')
+            #self.id = getattr(self,'id')
 
-class TranslationIterator:
+class DataIterator:
 
     def __init__(self, iterator):
 
@@ -101,31 +97,12 @@ class TranslationIterator:
     def __iter__(self):
 
         for batch in self.iterator:
-            batch = TransformerBatch.from_batch(batch)
+            batch = DynamicBatch.from_batch(batch)
             batch.setup()
             yield batch
 
     def __len__(self):
         return len(self.iterator.dataset)
-
-    def __test_batch_sizes__(self):
-        '''Summarize batch sizes'''
-
-        batch_sizes = []
-
-        for batch in self.iterator:
-            src_size = torch.sum(batch.src[1])
-            tgt_size = batch.tgt.size(0)*batch.tgt.size(1)
-            batch_sizes.append(batch.tgt.size()[1])
-            total_tokens = src_size+tgt_size
-            memory = torch.cuda.memory_allocated() / (1024*1024)
-
-        df = pd.DataFrame()
-        df['BATCH_SIZE'] = batch_sizes
-        print(df.describe())
-
-def basic_tokenize(original):
-    return [c for c in original]
 
 def src_tokenize(original):
     "Converts genome into list of nucleotides"
@@ -134,7 +111,7 @@ def src_tokenize(original):
 def tgt_tokenize(original):
     "Converts protein into list of amino acids prepended with class label "
 
-    splits = re.match("(<\w*>)(\w*)",original)
+    splits = re.match("(<\\w*>)(\\w*)",original)
     if not splits is None:
         label = splits.group(1)
         protein = splits.group(2)
@@ -142,7 +119,6 @@ def tgt_tokenize(original):
         label = "<UNK>"
         protein = original
     return [label]+[c for c in protein]
-
 
 def partition(dataset, split_ratios, random_state):
 
@@ -172,52 +148,43 @@ def partition(dataset, split_ratios, random_state):
     splits = tuple(Dataset(d, dataset.fields) for d in data )
     return splits
 
-def dataset_from_df(df_list,mode="combined",saved_vocab = None):
+def dataset_from_df(df_list,mode="bioseq2seq",saved_vocab = None):
 
     # Fields define tensor attributes
     if saved_vocab is None:
 
-        rna_init = "[CLS]" if mode == "ENC_only" else None
         RNA = Field(tokenize=src_tokenize,
                     use_vocab=True,
                     batch_first=False,
-                    include_lengths=True,
-                    init_token=rna_init)
+                    include_lengths=True)
 
-        prot_init = None if mode == "ENC_only" else "<sos>"
-        prot_eos = None if mode == "ENC_only" else "<eos>"
         PROTEIN =  Field(tokenize=tgt_tokenize,
                         use_vocab=True,
                         batch_first=False,
                         is_target=True,
                         include_lengths=False,
-                        init_token=prot_init,
-                        eos_token=prot_eos)
+                        init_token='<sos>',
+                        eos_token='<eos>')
     else:
         RNA = saved_vocab['src']
         PROTEIN = saved_vocab['tgt']
 
-    # ID is string not tensor
-    ID = RawField()
     splits = []
-    
     # map column name to batch attribute and Field object
-    for translation_table in df_list:
-        
-        # for classification, only the class is the target
-        if mode == "ED_classify" or mode == "ENC_only":
-            fields = {'ID':('id', ID),'RNA':('src', RNA),'Type':('tgt', PROTEIN)}
-        # for bioseq2seq, target is protein prepended with class
+    for df in df_list:
+        # for bioseq2seq target is protein prepended with class
+        if mode == "bioseq2seq":
+            for df in df_list:
+                df['Protein'] = df['Type']+df['Protein']
+            
+        # map column name to batch attribute and Field object
+        if mode == "ED_classify":
+            fields = {'RNA':('src', RNA),'Type':('tgt', PROTEIN)}
         elif mode == "bioseq2seq":
-            translation_table['Protein'] = translation_table['Type']+translation_table['Protein']
-            fields = {'ID':('id', ID),'RNA':('src', RNA),'Protein':('tgt', PROTEIN)}
-        # for translation, target is protein only for mRNA set
-        elif mode == "translate_only":
-            translation_table = translation_table[translation_table['Type'] == "<PC>"]
-            fields = {'ID':('id', ID),'RNA':('src', RNA),'Protein':('tgt', PROTEIN)}
-
+            fields = {'RNA':('src', RNA),'Protein':('tgt', PROTEIN)}
+        
         # [{col:value}]
-        reader = translation_table.to_dict(orient='records')
+        reader = df.to_dict(orient='records')
         examples = [Example.fromdict(line, fields) for line in reader]
 
         # Dataset expects fields as list
@@ -238,12 +205,12 @@ def dataset_from_df(df_list,mode="combined",saved_vocab = None):
 
     print("from dataset RNA:",RNA.vocab.stoi)
     print("from dataset Protein:",PROTEIN.vocab.stoi)
-
+    
     return tuple(splits)
 
 def iterator_from_dataset(dataset, max_tokens, device, train):
 
-    return TranslationIterator(BatchMaker(dataset,
+    return DataIterator(DynamicBatchMaker(dataset,
                                           batch_size=max_tokens,
                                           device=device,
                                           repeat=train,

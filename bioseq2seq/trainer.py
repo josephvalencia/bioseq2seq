@@ -1,17 +1,79 @@
 """
     This is the loadable seq2seq trainer library that is
     in charge of training details, loss compute, and statistics.
+    See train.py for a use case of this library.
+
+    Note: To make this a general library, we implement *only*
+          mechanism things here(i.e. what to do), and leave the strategy
+          things to users(i.e. how to do it). Also see train.py(one of the
+          users of this library) for the strategy things we do.
 """
+
 import torch
 import traceback
-import datetime
-import time
-import tqdm
-import numpy as np
+
 import bioseq2seq.utils
-from bioseq2seq.utils.logging import logger
-from torch.nn.parallel import DistributedDataParallel as DDP
-from bioseq2seq.evaluate.evaluator import Evaluator
+from bioseq2seq.utils.distributed import all_reduce_and_rescale_tensors,all_gather_list 
+from bioseq2seq.utils.logging import logger, init_logger
+
+
+def build_trainer(opt, device_id, model, fields, optim, model_saver=None):
+    """
+    Simplify `Trainer` creation based on user `opt`s*
+
+    Args:
+        opt (:obj:`Namespace`): user options (usually from argument parsing)
+        model (:obj:`bioseq2seq.models.NMTModel`): the model to train
+        fields (dict): dict of fields
+        optim (:obj:`bioseq2seq.utils.Optimizer`): optimizer used during training
+        data_type (str): string describing the type of data
+            e.g. "text"
+        model_saver(:obj:`bioseq2seq.models.ModelSaverBase`): the utility object
+            used to save the model
+    """
+
+    tgt_field = dict(fields)["tgt"].base_field
+    train_loss = bioseq2seq.utils.loss.build_loss_compute(model, tgt_field, opt)
+    valid_loss = bioseq2seq.utils.loss.build_loss_compute(
+        model, tgt_field, opt, train=False)
+
+    trunc_size = opt.truncated_decoder  # Badly named...
+    shard_size = opt.max_generator_batches if opt.model_dtype == 'fp32' else 0
+    norm_method = opt.normalization
+    accum_count = opt.accum_count
+    accum_steps = opt.accum_steps
+    n_gpu = opt.world_size
+    average_decay = opt.average_decay
+    average_every = opt.average_every
+    dropout = opt.dropout
+    dropout_steps = opt.dropout_steps
+    if device_id >= 0:
+        gpu_rank = opt.gpu_ranks[device_id]
+    else:
+        gpu_rank = -1
+        n_gpu = 0
+    gpu_verbose_level = opt.gpu_verbose_level
+
+    earlystopper = bioseq2seq.utils.EarlyStopping(
+        opt.early_stopping, scorers=bioseq2seq.utils.scorers_from_opts(opt)) \
+        if opt.early_stopping > 0 else None
+
+    report_manager = bioseq2seq.utils.build_report_manager(opt, gpu_rank)
+    trainer = bioseq2seq.Trainer(model, train_loss, valid_loss, optim, trunc_size,
+                           shard_size, norm_method,
+                           accum_count, accum_steps,
+                           n_gpu, gpu_rank,
+                           gpu_verbose_level, report_manager,
+                           with_align=True if opt.lambda_align > 0 else False,
+                           model_saver=model_saver if gpu_rank <= 0 else None,
+                           average_decay=average_decay,
+                           average_every=average_every,
+                           model_dtype=opt.model_dtype,
+                           earlystopper=earlystopper,
+                           dropout=dropout,
+                           dropout_steps=dropout_steps)
+    return trainer
+
 
 class Trainer(object):
     """
@@ -28,7 +90,7 @@ class Trainer(object):
                the optimizer responsible for update
             trunc_size(int): length of truncated back propagation through time
             shard_size(int): compute loss in shards of this size for efficiency
-            data_type(string): type of the source input: [text|img|audio]
+            data_type(string): type of the source input: [text]
             norm_method(string): normalization methods: [sents|tokens]
             accum_count(list): accumulate gradients this many times.
             accum_steps(list): steps for accum gradients changes.
@@ -39,7 +101,7 @@ class Trainer(object):
                 Thus nothing will be saved if this parameter is None
     """
 
-    def __init__(self, model, train_loss, valid_loss, optim,rank,gpus,
+    def __init__(self, model, train_loss, valid_loss, optim,
                  trunc_size=0, shard_size=32,
                  norm_method="sents", accum_count=[1],
                  accum_steps=[0],
@@ -47,7 +109,6 @@ class Trainer(object):
                  report_manager=None, with_align=False, model_saver=None,
                  average_decay=0, average_every=1, model_dtype='fp32',
                  earlystopper=None, dropout=[0.3], dropout_steps=[0]):
-
         # Basic attributes.
         self.model = model
         self.train_loss = train_loss
@@ -72,9 +133,6 @@ class Trainer(object):
         self.earlystopper = earlystopper
         self.dropout = dropout
         self.dropout_steps = dropout_steps
-        self.rank = rank
-        self.num_gpus = gpus
-        self.evaluator = Evaluator()
 
         for i in range(len(self.accum_count_l)):
             assert self.accum_count_l[i] > 0
@@ -84,6 +142,7 @@ class Trainer(object):
                        you must disable target sequence truncating."""
 
         # Set model in training mode.
+        init_logger()
         self.model.train()
 
     def _accum_count(self, step):
@@ -103,11 +162,11 @@ class Trainer(object):
         batches = []
         normalization = 0
         self.accum_count = self._accum_count(self.optim.training_step)
-        
         for batch in iterator:
             batches.append(batch)
             if self.norm_method == "tokens":
-                num_tokens = batch.tgt[1:, :, 0].ne(self.train_loss.padding_idx).sum()
+                num_tokens = batch.tgt[1:, :, 0].ne(
+                    self.train_loss.padding_idx).sum()
                 normalization += num_tokens.item()
             else:
                 normalization += batch.batch_size
@@ -126,7 +185,7 @@ class Trainer(object):
             self.moving_average = copy_params
         else:
             average_decay = max(self.average_decay,
-                                1 - (step + 1)/(step + 10))
+                                1 - (step + 1) / (step + 10))
             for (i, avg), cpt in zip(enumerate(self.moving_average),
                                      self.model.parameters()):
                 self.moving_average[i] = \
@@ -154,22 +213,33 @@ class Trainer(object):
         Returns:
             The gathered statistics.
         """
-
+        if valid_iter is None:
+            logger.info('Start training loop without validation...')
+        else:
+            logger.info('Start training loop and validate every %d steps...',
+                        valid_steps)
+        
         total_stats = bioseq2seq.utils.Statistics()
         report_stats = bioseq2seq.utils.Statistics()
         self._start_report_manager(start_time=total_stats.start_time)
 
-        begin_time = time.time()
-
         for i, (batches, normalization) in enumerate(
                 self._accum_batches(train_iter)):
-
-            effective_batch_size = sum([x.tgt.shape[1] for x in batches])
             step = self.optim.training_step
-
+            # UPDATE DROPOUT
             self._maybe_update_dropout(step)
 
-            self._gradient_accumulation(i,
+            if self.gpu_verbose_level > 1:
+                logger.info("GpuRank %d: index: %d", self.gpu_rank, i)
+            if self.gpu_verbose_level > 0:
+                logger.info("GpuRank %d: reduce_counter: %d \
+                            n_minibatch %d"
+                            % (self.gpu_rank, i + 1, len(batches)))
+
+            if self.n_gpu > 1:
+                normalization = sum(all_gather_list(normalization))
+
+            self._gradient_accumulation(
                 batches, normalization, total_stats,
                 report_stats)
 
@@ -181,29 +251,31 @@ class Trainer(object):
                 self.optim.learning_rate(),
                 report_stats)
 
-            if valid_iter is not None and step % valid_steps == 0 and self.rank == 0:
-                
-                valid_stats = self.validate(valid_iter,moving_average=self.moving_average)
+            if valid_iter is not None and step % valid_steps == 0:
+                if self.gpu_verbose_level > 0:
+                    logger.info('GpuRank %d: validate step %d'
+                                % (self.gpu_rank, step))
+                valid_stats = self.validate(
+                    valid_iter, moving_average=self.moving_average)
+                if self.gpu_verbose_level > 0:
+                    logger.info('GpuRank %d: gather valid stat \
+                                step %d' % (self.gpu_rank, step))
                 valid_stats = self._maybe_gather_stats(valid_stats)
-
+                if self.gpu_verbose_level > 0:
+                    logger.info('GpuRank %d: report stat step %d'
+                                % (self.gpu_rank, step))
                 self._report_step(self.optim.learning_rate(),
                                   step, valid_stats=valid_stats)
-
-                elapsed = time.time() - begin_time
-                print("Elapsed time: {} minutes".format(elapsed/60.))
-
                 # Run patience mechanism
                 if self.earlystopper is not None:
                     self.earlystopper(valid_stats, step)
                     # If the patience has reached the limit, stop training
                     if self.earlystopper.has_stopped():
-                        print("EARLY STOPPING!!Finishing Training")
                         break
 
             if (self.model_saver is not None
-                and (save_checkpoint_steps != 0
-                     and step % save_checkpoint_steps == 0)):
-                print(f'Saving at step {step}')
+                    and (save_checkpoint_steps != 0
+                         and step % save_checkpoint_steps == 0)):
                 self.model_saver.save(step, moving_average=self.moving_average)
 
             if train_steps > 0 and step >= train_steps:
@@ -211,11 +283,9 @@ class Trainer(object):
 
         if self.model_saver is not None:
             self.model_saver.save(step, moving_average=self.moving_average)
-
         return total_stats
 
     def validate(self, valid_iter, moving_average=None):
-
         """ Validate model.
             valid_iter: validate data iterator
         Returns:
@@ -234,24 +304,22 @@ class Trainer(object):
 
         # Set model in validating mode.
         valid_model.eval()
-        
+
         with torch.no_grad():
             stats = bioseq2seq.utils.Statistics()
-            
+
             for batch in valid_iter:
                 src, src_lengths = batch.src if isinstance(batch.src, tuple) \
-                                   else (batch.src, None)
-                
+                    else (batch.src, None)
                 tgt = batch.tgt
-                amp_training = self.model_dtype == 'fp16'
-                # F-prop through the model.
-                
-                with torch.cuda.amp.autocast(enabled=amp_training): 
-                    
-                    outputs, enc_attn, attns = valid_model(src, tgt, src_lengths,
+
+                with torch.cuda.amp.autocast(enabled=self.optim.amp):
+                    # F-prop through the model.
+                    outputs,enc_attns, attns = valid_model(src, tgt, src_lengths,
                                                  with_align=self.with_align)
+
                     # Compute loss.
-                    _, batch_stats = self.valid_loss(batch,outputs,attns)
+                    _, batch_stats = self.valid_loss(batch, outputs, attns)
 
                 # Update statistics.
                 stats.update(batch_stats)
@@ -265,20 +333,13 @@ class Trainer(object):
 
         return stats
 
-    def _gradient_accumulation(self,batch_num,true_batches, normalization, total_stats,
+    def _gradient_accumulation(self, true_batches, normalization, total_stats,
                                report_stats):
         if self.accum_count > 1:
             self.optim.zero_grad()
 
-        if self.rank == 0 and (batch_num % 100 == 0):
-            msg = f"batch {batch_num}"
-            print(msg)
-
         for k, batch in enumerate(true_batches):
-
-            true_batch_num = batch_num * self.accum_count + k
             target_size = batch.tgt.size(0)
-
             # Truncated BPTT: reminder not compatible with accum > 1
             if self.trunc_size:
                 trunc_size = self.trunc_size
@@ -287,13 +348,13 @@ class Trainer(object):
 
             src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                 else (batch.src, None)
-
-            if src_lengths is not None and report_stats is not None:
+            if src_lengths is not None:
                 report_stats.n_src_words += src_lengths.sum().item()
 
             tgt_outer = batch.tgt
+
             bptt = False
-            for j in range(0, target_size-1, trunc_size):
+            for j in range(0, target_size - 1, trunc_size):
                 # 1. Create truncated target.
                 tgt = tgt_outer[j: j + trunc_size]
 
@@ -301,51 +362,64 @@ class Trainer(object):
                 if self.accum_count == 1:
                     self.optim.zero_grad()
 
-                amp_training = self.model_dtype == 'fp16'
+                with torch.cuda.amp.autocast(enabled=self.optim.amp):
+                    is_pad = torch.eq(src,1)
+                    num_padding_tokens = torch.count_nonzero(is_pad,dim=0)
+                    
+                    outputs, enc_attns, attns = self.model(
+                        src, tgt, src_lengths, bptt=bptt,
+                        with_align=self.with_align)
+                    bptt = True
+                    
+                    # 3. Compute loss.
+                    loss, batch_stats = self.train_loss(
+                        batch,
+                        outputs,
+                        attns,
+                        normalization=normalization,
+                        shard_size=self.shard_size,
+                        trunc_start=j,
+                        trunc_size=trunc_size)
 
-                if self.num_gpus > 1:
-                    with torch.cuda.amp.autocast(enabled=amp_training): 
-                        parallel_model = DDP(self.model,device_ids = [self.rank],output_device = self.rank)
-                        outputs,enc_attn,attns = parallel_model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
-                else:
-                    with torch.cuda.amp.autocast(enabled=amp_training): 
-                        outputs,enc_attn,attns = self.model(src, tgt, src_lengths, bptt=bptt, with_align=self.with_align)
-                
-                bptt = True
-
-                # 3. Compute loss.
                 try:
-                    with torch.cuda.amp.autocast(enabled=amp_training): 
-                        loss, batch_stats = self.train_loss(
-                            batch,
-                            outputs,
-                            attns,
-                            normalization=normalization,
-                            shard_size=0,
-                            trunc_start=j,
-                            trunc_size=trunc_size)
                     if loss is not None:
                         self.optim.backward(loss)
 
-                    if total_stats is not None and report_stats is not None:
-                        total_stats.update(batch_stats)
-                        report_stats.update(batch_stats)
+                    total_stats.update(batch_stats)
+                    report_stats.update(batch_stats)
 
                 except Exception:
                     traceback.print_exc()
                     logger.info("At step %d, we removed a batch - accum %d",
                                 self.optim.training_step, k)
 
+                # 4. Update the parameters and statistics.
                 if self.accum_count == 1:
+                    # Multi GPU gradient gather
+                    if self.n_gpu > 1:
+                        grads = [p.grad.data for p in self.model.parameters()
+                                 if p.requires_grad
+                                 and p.grad is not None]
+                        all_reduce_and_rescale_tensors(
+                            grads, float(1))
                     self.optim.step()
 
                 # If truncated, don't backprop fully.
+                # TO CHECK
+                # if dec_state is not None:
+                #    dec_state.detach()
                 if self.model.decoder.state is not None:
                     self.model.decoder.detach_state()
-            
-        # in case of multi-step gradient accumulation,
-        #update only after accum batches
+
+        # in case of multi step gradient accumulation,
+        # update only after accum batches
         if self.accum_count > 1:
+            if self.n_gpu > 1:
+                grads = [p.grad.data for p in self.model.parameters()
+                         if p.requires_grad
+                         and p.grad is not None]
+                all_reduce_and_rescale_tensors(
+                    grads, float(1))
             self.optim.step()
 
     def _start_report_manager(self, start_time=None):
@@ -359,17 +433,19 @@ class Trainer(object):
                 self.report_manager.start_time = start_time
 
     def _maybe_gather_stats(self, stat):
-            """
-            Gather statistics in multi-processes cases
-            Args:
-                stat(:obj:onmt.utils.Statistics): a Statistics object to gather
-                    or None (it returns None in this case)
-            Returns:
-                stat: the updated (or unchanged) stat object
-            """
-            if stat is not None and self.n_gpu > 1:
-                return bioseq2seq.utils.Statistics.all_gather_stats(stat)
-            return stat
+        """
+        Gather statistics in multi-processes cases
+
+        Args:
+            stat(:obj:bioseq2seq.utils.Statistics): a Statistics object to gather
+                or None (it returns None in this case)
+
+        Returns:
+            stat: the updated (or unchanged) stat object
+        """
+        if stat is not None and self.n_gpu > 1:
+            return bioseq2seq.utils.Statistics.all_gather_stats(stat)
+        return stat
 
     def _maybe_report_training(self, step, num_steps, learning_rate,
                                report_stats):
@@ -379,7 +455,12 @@ class Trainer(object):
         """
         if self.report_manager is not None:
             return self.report_manager.report_training(
-                step, num_steps, learning_rate, report_stats,
+                step,
+                num_steps,
+                learning_rate,
+                None if self.earlystopper is None
+                else self.earlystopper.current_tolerance,
+                report_stats,
                 multigpu=self.n_gpu > 1)
 
     def _report_step(self, learning_rate, step, train_stats=None,
@@ -390,5 +471,8 @@ class Trainer(object):
         """
         if self.report_manager is not None:
             return self.report_manager.report_step(
-                learning_rate, step, train_stats=train_stats,
+                learning_rate,
+                None if self.earlystopper is None
+                else self.earlystopper.current_tolerance,
+                step, train_stats=train_stats,
                 valid_stats=valid_stats)

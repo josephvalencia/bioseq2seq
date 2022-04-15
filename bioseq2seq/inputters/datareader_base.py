@@ -1,9 +1,11 @@
 # coding: utf-8
 
+
 # several data readers need optional dependencies. There's no
 # appropriate builtin exception
 class MissingDependencyException(Exception):
     pass
+
 
 class DataReaderBase(object):
     """Read data from file system and yield as dicts.
@@ -14,6 +16,15 @@ class DataReaderBase(object):
             If any are missing, this will be raised.
     """
 
+    @classmethod
+    def from_opt(cls, opt):
+        """Alternative constructor.
+
+        Args:
+            opt (argparse.Namespace): The parsed arguments.
+        """
+
+        return cls()
 
     @classmethod
     def _read_file(cls, path):
@@ -29,6 +40,6 @@ class DataReaderBase(object):
             "Could not create reader. Be sure to install "
             "the following dependencies: " + ", ".join(missing_deps))
 
-    def read(self, data, side, src_dir):
+    def read(self, data, side):
         """Read data from file system and yield as dicts."""
         raise NotImplementedError()

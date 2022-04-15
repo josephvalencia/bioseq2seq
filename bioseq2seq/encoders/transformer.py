@@ -122,9 +122,10 @@ class TransformerEncoder(EncoderBase):
             layer_attentions.append(attn)
 
         self_attns = torch.stack(layer_attentions,dim=4)
+        enc_cache = {'self_attns' : self_attns}
         out = self.layer_norm(out)
-
-        return emb, out.transpose(0, 1).contiguous(), lengths , self_attns
+        
+        return emb, out.transpose(0, 1).contiguous(), lengths , enc_cache
 
     def update_dropout(self, dropout, attention_dropout):
         self.embeddings.update_dropout(dropout)

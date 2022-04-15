@@ -41,7 +41,7 @@ class NMTModel(nn.Module):
             * dictionary attention dists of ``(tgt_len, batch, src_len)``
         """
         dec_in = tgt[:-1]  # exclude last target from inputs
-        enc_state, memory_bank, lengths, enc_self_attn = self.encoder(src, lengths)
+        enc_state, memory_bank, lengths, enc_cache  = self.encoder(src, lengths)
         
         if bptt is False:
             self.decoder.init_state(src, memory_bank, enc_state)
@@ -49,7 +49,7 @@ class NMTModel(nn.Module):
                                       memory_lengths=lengths,
                                       with_align=with_align)
         
-        return dec_out, enc_self_attn, enc_dec_attn
+        return dec_out, enc_cache, enc_dec_attn
 
     def update_dropout(self, dropout):
         self.encoder.update_dropout(dropout)

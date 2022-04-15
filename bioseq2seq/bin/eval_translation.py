@@ -1,4 +1,4 @@
-from bioseq2seq.evaluate.evaluator import Evaluator
+#from bioseq2seq.evaluate.evaluator import Evaluator
 import sys,re
 import numpy as np
 import matplotlib.pyplot as plt
@@ -182,33 +182,22 @@ def get_all_stops(mRNA):
 def parse_predictions(record):
     
     transcript = record[0].split('ID: ')[1]
-    src = record[1].split('RNA: ')[1]
-    pc_score = np.exp(float(record[4].split('PC_SCORE: ')[1]))
+    pred_match  = re.search('PRED: (<PC>|<NC>)(\S*)?',record[1])
     
-    preds = record[2:4]
-    gold_match  = re.search('GOLD: (<PC>|<NC>)(\S*)?',record[-2])
-    
-    pred_match  = re.search('PRED: (<PC>|<NC>)(\S*)?',record[2])
     if pred_match is not None:
         pred_class = pred_match.group(1)
         pred_peptide = pred_match.group(2)
     else:
-        print(record)
-        #raise ValueError('Bad format')
-        pred_class = ":("
-        pred_peptide = record[2]
-
-    if gold_match is not None:
-        gold_class = gold_match.group(1)
-        gold_peptide = gold_match.group(2)
-    else:
         raise ValueError('Bad format')
    
+    is_coding = lambda x : x.startswith('XM') or x.startswith('NM')
+    gold_class = '<PC>' if is_coding(transcript) else '<NC>' 
+
     entry = {'transcript' : transcript,
             'pred_class' : pred_class, 
             'pred_seq': pred_peptide,
             'gold_class' : gold_class,
-            'gold_seq' : gold_peptide}
+            'gold_seq' : ''}
     return entry
 
 def has_upstream_inframe_stop(start,stop_locs):
@@ -319,18 +308,12 @@ def analysis_pipeline(groupA_df,groupB_df,names,test='KS'):
 
 
 pred_file = sys.argv[1]
-mode = sys.argv[2]
-
-if mode == "classify":
-    evaluator = Evaluator(mode=mode,best_of=1,k=0,full_align=False,exact_match=False)
-elif mode == "combined":
-    evaluator = Evaluator(mode=mode,best_of=1,k=8,full_align=True,exact_match=True)
 
 storage = []
 with open(pred_file,"r") as inFile:
     lines = inFile.read().split("\n")
-    for i in range(0,len(lines)-7,7):
-        entry = parse_predictions(lines[i:i+7])
+    for i in range(0,len(lines)-6,6):
+        entry = parse_predictions(lines[i:i+6])
         storage.append(entry)
 df = pd.DataFrame(storage)
 
@@ -347,7 +330,6 @@ TP = tscripts[pos_preds & pos_gt]
 FP = tscripts[pos_preds & ~pos_gt]
 TN  = tscripts[~pos_preds & ~pos_gt]
 FN  = tscripts[~pos_preds & pos_gt]
-print(FN)
 print(f'{separator}\nPerformance Summary\n{separator}')
 print(f'TP = {TP.shape[0]}  FP = {FP.shape[0]}\nTN = {TN.shape[0]} FN = {FN.shape[0]}')
 print(f'accuracy = {accuracy}')
@@ -357,7 +339,7 @@ mcc = matthews_corrcoef(gt,preds)
 f1 = f1_score(gt,preds)
 print(f'MCC = {mcc}, F1 = {f1}')
 
-val_file = 'data/mammalian_200-1200/mammalian_200-1200_val_nonredundant_80.csv'
+val_file = 'new_data/mammalian_200-1200_val_nonredundant_80.csv'
 val_df = pd.read_csv(val_file,sep='\t').set_index('ID')
 
 # add columns of interest
@@ -385,6 +367,12 @@ fn_df = val_df.loc[FN]
 fp_df = val_df.loc[FP]
 tp_df = val_df.loc[TP]
 tn_df = val_df.loc[TN]
+
+print('FP')
+print(fp_df[fp_df['annotation_status'] == 'confirmed'])
+
+
+print('FN')
 print(fn_df[fn_df['annotation_status'] == 'confirmed'])
 
 print(f'{separator}\n False Negatives vs True Positives\n{separator}')

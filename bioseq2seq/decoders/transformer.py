@@ -235,9 +235,6 @@ class TransformerDecoder(DecoderBase):
             self._init_cache(memory_bank)
        
         tgt_words = tgt[:, :, 0].transpose(0, 1)
-        if step is None or step == 0:
-            #print('tgt before embedding',tgt[0,:,:])
-            pass
         emb = self.embeddings(tgt, step=step,grad_mode=grad_mode)
         assert emb.dim() == 3  # len x batch x embedding_dim
         output = emb.transpose(0, 1).contiguous()
@@ -253,22 +250,9 @@ class TransformerDecoder(DecoderBase):
 
         attn_aligns = []
         
-        # INVESTIGATING EVALUATION DIFFERENCES DURING/AFTER TRAINING
-        '''
-        if not self.training:
-            output = output[:,0,:].unsqueeze(1)
-            tgt_pad_mask = tgt_pad_mask[:,:,0].unsqueeze(2) 
-            #print(tgt_pad_mask)
-        ''' 
-        #print(f'tgt_pad_mask = {tgt_pad_mask}')  
-        # INVESTIGATING EVALUATION DIFFERENCES DURING/AFTER TRAINING
-        
         for i, layer in enumerate(self.transformer_layers):
             layer_cache = self.state["cache"]["layer_{}".format(i)] \
                 if step is not None else None
-            if step == 0:
-                #print(f'layer_cache = {layer_cache}')
-                pass
             output,dec_attn, context_attn, attn_align = layer(
                 output,
                 src_memory_bank,
