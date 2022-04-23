@@ -1,80 +1,68 @@
-# BioSeq2Seq: Open-Source Neural Machine Translation of biologial sequence.
+# bioseq2seq
 
-This repo adapts [OpenNMT](https://github.com/OpenNMT/OpenNMT),
-a neural machine translation system, to perform biological translation.
+## Overview
+This is the official code for the preprint [Learning to translate with LocalFilterNets improves prediction of protein coding potential](https://arxiv.org/pdf/1805.11462).
+In this work, we demonstrate the utility of incorporating a training task based on biological translation into a deep learning classifier for distinguishing messenger RNAs (mRNAs) from long noncoding RNAs (lncRNAs). We introduce an architecture called LocalFilterNet which helps to capture the nonstationary 3-nucleotide periodicity that is typically present in coding RNA regions. Finally, we perform model interpretation and uncover both well-known and potentially novel sequence features that may be related to translational regulation. 
 
-## Installation
-
-Install `OpenNMT-py` from `pip`:
-```bash
-pip install OpenNMT-py
-```
-
-or from the sources:
-```bash
-git clone https://github.com/OpenNMT/OpenNMT-py.git
-cd OpenNMT-py
-python setup.py install
-```
-
-## Quickstart
-
-[Full Documentation](http://opennmt.net/OpenNMT-py/)
-
-
-### Step 1: Preprocess the data
-
-```bash
-onmt_preprocess -train_src data/src-train.txt -train_tgt data/tgt-train.txt -valid_src data/src-val.txt -valid_tgt data/tgt-val.txt -save_data data/demo
-```
-
-We will be working with some example data in `data/` folder.
-
-The data consists of parallel source (`src`) and target (`tgt`) data containing one sentence per line with tokens separated by a space:
-
-* `src-train.txt`
-* `tgt-train.txt`
-* `src-val.txt`
-* `tgt-val.txt`
-
-Validation files are required and used to evaluate the convergence of the training. It usually contains no more than 5000 sentences.
-
-
-After running the preprocessing, the following files are generated:
-
-* `demo.train.pt`: serialized PyTorch file containing training data
-* `demo.valid.pt`: serialized PyTorch file containing validation data
-* `demo.vocab.pt`: serialized PyTorch file containing vocabulary data
-
-
-Internally the system never touches the words themselves, but uses these indices.
-
-### Step 2: Train the model
-
-```bash
-onmt_train -data data/demo -save_model demo-model
-```
-
-The main train command is quite simple. Minimally it takes a data file
-and a save file.  This will run the default model, which consists of a
-2-layer LSTM with 500 hidden units on both the encoder/decoder.
-If you want to train on GPU, you need to set, as an example:
-CUDA_VISIBLE_DEVICES=1,3
-`-world_size 2 -gpu_ranks 0 1` to use (say) GPU 1 and 3 on this node only.
-To know more about distributed training on single or multi nodes, read the FAQ section.
-
-### Step 3: Translate
-
-```bash
-onmt_translate -model demo-model_acc_XX.XX_ppl_XXX.XX_eX.pt -src data/src-test.txt -output pred.txt -replace_unk -verbose
-```
-
-Now you have a model which you can use to predict on new data. We do this by running beam search. This will output predictions into `pred.txt`.
-
-!!! note "Note"
-    The predictions are going to be quite terrible, as the demo dataset is small. Try running on some larger datasets! For example you can download millions of parallel sentences for [translation](http://www.statmt.org/wmt16/translation-task.html) or [summarization](https://github.com/harvardnlp/sent-summary).
+This repository began as a fork of [OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py),a library for neural machine translation which we have modified for modeling biological translation.
 
 ## Citation
 
-[Learning to translate improves prediction and interpretbility of Transformer neural networks for protein coding potential](https://arxiv.org/pdf/1805.11462)
+If you use our code or data for academic work please cite our preprint:
+
+```
+@article{valencia2022translating,
+title={Learning to translate with LocalFilterNets improves prediction of protein coding potential},
+author={Valencia, Joseph and Hendrix, David},
+journaltitle={},
+pages={},
+year={2022},
+pdf={http://arxiv.org/abs/}
+}
+```
+
+## Installation
+
+bioseq2seq requires Python 3.6 or higher and PyTorch 1.8 or higher.
+
+Install `bioseq2seq` from `pip`:
+```bash
+pip install bioseq2seq
+```
+or from  source:
+```bash
+git clone https://github.com/josephvalencia/bioseq2seq.git
+cd bioseq2seq
+python setup.py install
+
+All dependencies for single-model training and inference are included in the pip distribution as well as [requirements.txt](requirements.txt). Additional dependencies are needed for fully replicating the paper. 
+```
+
+## Pretrained model
+
+We provide pretrained PyTorch weights for our best model `bioseq2seq_mammalian\_refseq.pth`
+
+## Usage
+
+### Running inference with a pretrained model
+
+To obtain predictions from a pretrained model, use the `bioseq2seq translate` The only required arguments are `--input` for the name of a FASTA file of RNAs, and `--checkpoint` 
+for the model weights (.pth).
+
+### Training a new model
+
+To obtain predictions from a pretrained model, use the `bioseq2seq translate` The only required arguments are `--input` for the name of a FASTA file of RNAs, and `--checkpoint` 
+for the model weights (.pth).
+
+## Paper experiments
+
+Detailed instructions and code for reproducing the paper results are given in the [valencia22/](valencia22/) directory. This includes:
+* data preprocessing
+* hyperparameter tuning
+* model training 
+* inference and evaluation 
+* comparisons with alternative software for protein coding potential
+* filter visualization
+* attribution calculation and motif finding 
+* plotting 
 

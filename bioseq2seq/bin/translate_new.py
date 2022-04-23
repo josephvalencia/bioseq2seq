@@ -60,6 +60,7 @@ def restore_transformer_model(checkpoint,machine,opts):
     Returns:
         restored model'''
     
+    print(opts)
     vocab_fields = checkpoint['vocab'] 
     
     src_text_field = vocab_fields["src"].base_field
@@ -75,9 +76,20 @@ def restore_transformer_model(checkpoint,machine,opts):
     print(f'n_enc = {opts.n_enc_layers} ,n_dec={opts.n_dec_layers}, n_output_classes= {n_output_classes} ,n_input_classes ={n_input_classes}')
     n_output_classes = 28 
     print('WINDOW',opts.window_size) 
-    model = make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=opts.n_enc_layers,n_dec=opts.n_dec_layers,\
-                                model_dim=opts.model_dim,dim_filter=opts.filter_size,window_size=opts.window_size)
+    #model = make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=opts.n_enc_layers,n_dec=opts.n_dec_layers,\
+    #                            model_dim=opts.model_dim,dim_filter=opts.filter_size,window_size=opts.window_size,dropout=opts.dropout)
     
+    model = make_hybrid_seq2seq(n_input_classes,
+                                    n_output_classes,
+                                    n_enc=opts.n_enc_layers,
+                                    n_dec=opts.n_dec_layers,
+                                    fourier_type=opts.model_type,
+                                    model_dim=opts.model_dim,
+                                    max_rel_pos=opts.max_rel_pos,
+                                    dim_filter=opts.filter_size,
+                                    window_size=opts.window_size,
+                                    lambd_L1=opts.lambd_L1,
+                                    dropout=opts.dropout)
     #model = make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=opts.n_enc_layers,n_dec=opts.n_dec_layers,\
     #        model_dim=opts.model_dim,max_rel_pos=opts.max_rel_pos)
 

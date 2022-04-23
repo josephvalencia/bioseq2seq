@@ -33,6 +33,7 @@
 data/
 new_data/
 ray_tune/
+tune_bioseq2seq/
 old_logs/
 /output/
 /all_old/

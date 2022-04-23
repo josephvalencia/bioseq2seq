@@ -523,7 +523,7 @@ class Inference(object):
 
                     transcript_name = ids[trans.index]
                     mod_freq = trans.freq_content 
-                    plot_frequency_heatmap(transcript_name,mod_freq)
+                    #plot_frequency_heatmap(transcript_name,mod_freq)
 
                     n_best_preds = [
                         "".join(pred) for pred in trans.pred_sents[: self.n_best]
