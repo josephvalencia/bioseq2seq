@@ -368,12 +368,12 @@ fp_df = val_df.loc[FP]
 tp_df = val_df.loc[TP]
 tn_df = val_df.loc[TN]
 
-print('FP')
-print(fp_df[fp_df['annotation_status'] == 'confirmed'])
+#print('FP')
+#print(fp_df[fp_df['annotation_status'] == 'confirmed'])
 
 
-print('FN')
-print(fn_df[fn_df['annotation_status'] == 'confirmed'])
+#print('FN')
+#print(fn_df[fn_df['annotation_status'] == 'confirmed'])
 
 print(f'{separator}\n False Negatives vs True Positives\n{separator}')
 analysis_pipeline(fn_df,tp_df,('FN','TP'),test='MW')

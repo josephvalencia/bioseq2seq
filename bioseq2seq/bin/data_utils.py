@@ -87,6 +87,8 @@ def iterator_from_fasta(src,tgt,vocab_fields,mode,is_train,max_tokens,rank=0,wor
     else:
         corpora_info = {corpus_name: {"weight": 1 , "transforms": ["attach_class_label", "omit_peptide"]}}
 
+    offset = rank if world_size > 1 else 0 
+    
     # build the training iterator
     iterator = DynamicDatasetIter(corpora={corpus_name: corpus},
                                     corpora_info=corpora_info,
@@ -100,7 +102,7 @@ def iterator_from_fasta(src,tgt,vocab_fields,mode,is_train,max_tokens,rank=0,wor
                                     batch_size_multiple=1,
                                     data_type="text",
                                     stride=world_size,
-                                    offset=rank)
+                                    offset=offset)
     return iterator
 
 def test_effective_batch_size(iterator,dataset_size):
@@ -129,18 +131,3 @@ def test_effective_batch_size(iterator,dataset_size):
     print(f'% batch sizes = {np.mean(batch_sizes)} +- {np.std(batch_sizes)}')
 
 
-train_src = "new_data/mammalian_200-1200_train_RNA_balanced.fa" 
-train_tgt = "new_data/mammalian_200-1200_train_PROTEIN_balanced.fa" 
-val_src = "new_data/mammalian_200-1200_val_RNA_balanced.fa" 
-val_tgt = "new_data/mammalian_200-1200_val_PROTEIN_balanced.fa" 
-
-vocab_fields = build_standard_vocab()
-
-train_iter = iterator_from_fasta(src=train_src,
-                                tgt=train_tgt,
-                                vocab_fields=vocab_fields,
-                                mode='bioseq2seq',
-                                is_train=True,
-                                max_tokens=16000,
-                                rank=0,
-                                world_size=1) 

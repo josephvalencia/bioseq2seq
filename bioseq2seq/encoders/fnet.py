@@ -239,11 +239,11 @@ class FourierEncoder(EncoderBase):
             out, layer_cache = layer(out,mask)
             #  save all
             freq_data.append(layer_cache['mod_freq'])
-            #space_data.append(layer_cache['mod_space'])
+            space_data.append(layer_cache['mod_space'])
        
-        #mod_freq = torch.stack(freq_data,dim=1)
-        #mod_space = torch.stack(space_data,dim=1)
-        all_cache = {'mod_freq' : None } # 'mod_space' : mod_space}
+        mod_freq = torch.stack(freq_data,dim=1)
+        mod_space = torch.stack(space_data,dim=1)
+        all_cache = {'mod_freq' : mod_freq , 'mod_space' : mod_space}
 
         out = self.layer_norm(out)
         return emb, out.transpose(0, 1).contiguous(), lengths , all_cache

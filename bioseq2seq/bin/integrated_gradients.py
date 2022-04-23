@@ -21,7 +21,37 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from bioseq2seq.modules import PositionalEncoding
 from bioseq2seq.bin.translate import make_vocab, restore_transformer_model
 from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition
+from bioseq2seq.bin.data_utils import iterator_from_fasta, build_standard_vocab, IterOnDevice, test_effective_batch_size
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+import subprocess
 
+def dinucleotide_shuffle(sequence,num_shuffled):
+
+    tmp_infile = "tmp.fa"
+    tmp_outfile = "tmp_shuff.fa"
+    
+    base_record = SeqRecord(Seq(sequence),
+                        id="tmp_seq",
+                        name="",
+                        description="",)
+    records = [base_record]*num_shuffled 
+    
+    with open(tmp_infile,'w') as unshuffled: 
+        SeqIO.write(records,unshuffled,'fasta')
+        
+    cmd = f'fasta-shuffle-letters -kmer 2 {tmp_infile}'
+    print(cmd)
+    subprocess.run(['fasta-shuffle-letters'],input=)
+    
+    shuffled_seqs = []
+    for r in SeqIO.parse(tmp_outfile,'fasta'):
+        shuffled_seqs.append(r.seq)
+    
+    os.remove(tmp_infile)
+    os.remove(tmp_outfile)
+    return shuffled_seqs
 
 class PredictionWrapper(torch.nn.Module):
     
@@ -34,7 +64,7 @@ class PredictionWrapper(torch.nn.Module):
     def forward(self,src,src_lens,decoder_input,batch_size):
 
         src = src.transpose(0,1)
-        src, enc_states, memory_bank, src_lengths, enc_attn = self.run_encoder(src,src_lens,batch_size)
+        src, enc_states, memory_bank, src_lengths, enc_cache = self.run_encoder(src,src_lens,batch_size)
 
         self.model.decoder.init_state(src,memory_bank,enc_states)
         memory_lengths = src_lens
@@ -53,7 +83,7 @@ class PredictionWrapper(torch.nn.Module):
 
     def run_encoder(self,src,src_lengths,batch_size):
 
-        enc_states, memory_bank, src_lengths, enc_attn = self.model.encoder(src,src_lengths,grad_mode=False)
+        enc_states, memory_bank, src_lengths, enc_cache = self.model.encoder(src,src_lengths,grad_mode=False)
 
         if src_lengths is None:
             assert not isinstance(memory_bank, tuple), \
@@ -63,7 +93,7 @@ class PredictionWrapper(torch.nn.Module):
                                 .long() \
                                 .fill_(memory_bank.size(0))
 
-        return src, enc_states, memory_bank, src_lengths,enc_attn
+        return src, enc_states, memory_bank, src_lengths,enc_cache
 
     def decode_and_generate(self,decoder_in, memory_bank, memory_lengths, step=None):
 
@@ -82,7 +112,7 @@ class PredictionWrapper(torch.nn.Module):
 
 class FeatureAttributor:
 
-    def __init__(self,model,device,vocab,method,rank=0,world_size=1,softmax=True):
+    def __init__(self,model,device,vocab,method,softmax=True):
         
         self.device = device
         self.model = model
@@ -97,13 +127,11 @@ class FeatureAttributor:
             self.run_fn = self.run_inputXgradient
         elif method == "ISM":
             self.run_fn = self.run_ISM
-        
-        self.rank = rank
-        self.world_size=world_size
-
-        self.sos_token = vocab['tgt'].vocab['<sos>']
-        self.pc_token = vocab['tgt'].vocab['<PC>']
-        self.src_vocab = vocab['src'].vocab
+       
+        tgt_vocab = vocab['tgt'].base_field.vocab
+        self.sos_token = tgt_vocab['<sos>']
+        self.pc_token = tgt_vocab['<PC>']
+        self.src_vocab = vocab["src"].base_field.vocab
 
         self.average = None
         self.nucleotide = None
@@ -197,11 +225,11 @@ class FeatureAttributor:
 
     def run_deeplift(self,savefile,val_iterator,target_pos,baseline):
 
-        dl = DeepLift(self.predictor)
+        dl = DeepLiftShap(self.predictor)
        
         with open(savefile,'w') as outFile:
             for batch in tqdm.tqdm(val_iterator):
-                ids = batch.id
+                #ids = batch.id
                 src, src_lens = batch.src
                 src = src.transpose(0,1)
                 
@@ -222,7 +250,7 @@ class FeatureAttributor:
                         raise ValueError('Invalid IG baseline given')
 
                     decoder_input = self.decoder_input(1) 
-                    curr_ids = batch.id
+                    #curr_ids = batch.id
                     curr_tgt = batch.tgt[target_pos,j,:]
                     curr_tgt = torch.unsqueeze(curr_tgt,0)
                     curr_tgt = torch.unsqueeze(curr_tgt,2)
@@ -236,7 +264,9 @@ class FeatureAttributor:
                     n_steps = 500
                     saved_src = np.squeeze(np.squeeze(curr_src.detach().cpu().numpy(),axis=0),axis=1).tolist()
                     saved_src = "".join([self.src_vocab.itos[x] for x in saved_src])
-                     
+                    saved_src = saved_src.split('<blank>')[0]
+                    true_len = len(saved_src)
+
                     attributions,convergence_delta = dl.attribute(inputs=curr_src_embed,
                                                 target=pc_class,
                                                 baselines=baseline_embed,
@@ -253,14 +283,14 @@ class FeatureAttributor:
                         summed = -summed
                         normed = -normed
 
-                    true_len = len(saved_src)
                     summed_attr = ['{:.3e}'.format(x) for x in summed.tolist()[:true_len]]
                     normed_attr = ['{:.3e}'.format(x) for x in normed.tolist()[:true_len]]
                     unreduced_attr = ['{:.3e}'.format(x) for x in attributions.ravel().tolist()]
 
-                    entry = {"ID" : ids[j] , "summed_attr" : summed_attr, "normed_attr" : normed_attr, "src" : saved_src}
+                    entry = {"ID" : "transcript" , "summed_attr" : summed_attr, "normed_attr" : normed_attr, "src" : saved_src}
                     summary = json.dumps(entry)
                     outFile.write(summary+"\n")
+    
     '''
     def run_deeplift(self,savefile,val_iterator,target_pos,baseline):
 
@@ -317,6 +347,7 @@ class FeatureAttributor:
                     summary = json.dumps(entry)
                     outFile.write(summary+"\n")
     ''' 
+   
     def run_integrated_gradients(self,savefile,val_iterator,target_pos,baseline):
 
         global_attr = True
@@ -355,6 +386,7 @@ class FeatureAttributor:
                     pred_classes = self.predictor(curr_src_embed,curr_src_lens,decoder_input,1)
                     pred,answer_idx = pred_classes.data.cpu().max(dim=-1)
                     print(pred,answer_idx)
+                    
                     '''
                     pc_class = torch.tensor([[[self.pc_token]]]).to(self.device)
                     
@@ -398,7 +430,7 @@ class FeatureAttributor:
         with open(savefile,'w') as outFile:
             
             for batch in tqdm.tqdm(val_iterator):
-                ids = batch.id
+                #ids = batch.id
                 src, src_lens = batch.src
                 src = src.transpose(0,1)
                 batch_size = batch.batch_size
@@ -409,8 +441,10 @@ class FeatureAttributor:
                 pred,answer_idx = pred_classes.data.cpu().max(dim=-1)
                 pc_class = torch.tensor([[[self.pc_token]]]).to(self.device)
 
-                attributions = sl.attribute(inputs=src_embed,target=pc_class,additional_forward_args = (src_lens,decoder_input,batch_size))
+                attributions = sl.attribute(inputs=src_embed,target=pc_class,\
+                                    additional_forward_args = (src_lens,decoder_input,batch_size))
                 attributions = attributions.detach().cpu().numpy()
+                
                 saved_src = src.detach().cpu().numpy()
 
                 summed = np.sum(attributions,axis=2)
@@ -423,12 +457,14 @@ class FeatureAttributor:
 
                 for j in range(batch_size):
                     curr_saved_src = "".join([self.src_vocab.itos[x] for x in saved_src[j,:,0]])
-                    curr_saved_src = curr_saved_src.split('<pad>')[0]
-                                
+                    curr_saved_src = curr_saved_src.split('<blank>')[0]
+                    print(curr_saved_src)
+                    dinucleotide_shuffle(curr_saved_src,25)
+
                     true_len = len(curr_saved_src)
                     summed_attr = ['{:.3e}'.format(x) for x in summed[j,:].tolist()[:true_len]]
                     normed_attr = ['{:.3e}'.format(x) for x in normed[j,:].tolist()[:true_len]]
-                    entry = {"ID" : ids[j] , "summed_attr" : summed_attr, "normed_attr" : normed_attr, "src" : curr_saved_src}
+                    entry = {"ID" : "transcript" , "summed_attr" : summed_attr, "normed_attr" : normed_attr, "src" : curr_saved_src}
 
                     summary = json.dumps(entry)
                     outFile.write(summary+"\n")
@@ -503,7 +539,7 @@ def parse_args():
     parser.add_argument("--inference_mode",default ="combined")
     parser.add_argument("--attribution_mode",default="ig")
     parser.add_argument("--baseline",default="zero", help="zero|avg|A|C|G|T")
-    parser.add_argument("--dataset",default="validation",help="train|test|validation")
+    parser.add_argument("--max_tokens",type = int , default = 4500, help = "Max number of tokens in training batch")
     parser.add_argument("--name",default = "temp")
     parser.add_argument("--rank",type=int,default=0)
     parser.add_argument("--num_gpus","--g", type = int, default = 1, help = "Number of GPUs to use on node")
@@ -518,44 +554,46 @@ def run_helper(rank,args,model,vocab,use_splits=False):
     random.seed(random_seed)
     random_state = random.getstate()
 
-    df = pd.read_csv(args.input,sep="\t")
-    df["CDS"] = ["-1" for _ in range(df.shape[0])]
-    print(vocab['tgt'].vocab.stoi)
-    
-    dataset = dataset_from_df([df],mode=args.inference_mode,saved_vocab=vocab)[0]
-    max_tokens_in_batch = 2000
+    target_pos = 1
+
+    vocab_fields = build_standard_vocab()
+
     device = "cpu"
-    savefile = "{}.{}.rank_{}".format(args.name,args.attribution_mode,rank)
-    
-    apply_softmax = False if args.attribution_mode == 'deeplift' else True
-    
-    if args.num_gpus > 0: # GPU training
+    # GPU training
+    if args.num_gpus > 0:
         # One CUDA device per process
         device = torch.device("cuda:{}".format(rank))
         torch.cuda.set_device(device)
-        model.cuda()
-
+        seq2seq.cuda()
+    
+    # multi-GPU training
     if args.num_gpus > 1:
-        splits = [1.0/args.num_gpus for _ in range(args.num_gpus)]
-        dev_partitions = partition(dataset,split_ratios = splits,random_state = random_state)
-        local_slice = dev_partitions[rank]
-        
-        data = [local_slice.examples[i] for i in range(50)]
-        local_slice = Dataset(data, local_slice.fields)
-
-        # iterator over evaluation batches
-        val_iterator = iterator_from_dataset(local_slice,max_tokens_in_batch,device,train=False)
-        attributor = FeatureAttributor(model,device,vocab,args.attribution_mode,rank=rank,world_size=args.num_gpus,softmax=apply_softmax)
-
-    else:
-        data = [dataset.examples[i] for i in range(50)]
-        dataset = Dataset(data, dataset.fields)
-        attributor = FeatureAttributor(model,device,vocab,args.attribution_mode,softmax=apply_softmax)
-        val_iterator = iterator_from_dataset(dataset,max_tokens_in_batch,device,train=False)
-
-    target_pos = 1
-
-    attributor.run(savefile,val_iterator,target_pos,args.baseline)
+        # configure distributed training with environmental variables
+        os.environ['MASTER_ADDR'] = args.address
+        os.environ['MASTER_PORT'] = args.port
+        torch.distributed.init_process_group(
+            backend="nccl",
+            init_method= "env://",
+            world_size=args.num_gpus,
+            rank=rank)
+   
+    gpu = rank if args.num_gpus > 0 else -1
+    world_size = args.num_gpus if args.num_gpus > 0 else 1
+    savefile = "{}.{}.rank_{}".format(args.name,args.attribution_mode,rank)
+    
+    valid_iter = iterator_from_fasta(src=args.input,
+                                    tgt=None,
+                                    vocab_fields=vocab_fields,
+                                    mode=args.inference_mode,
+                                    is_train=False,
+                                    max_tokens=args.max_tokens,
+                                    rank=rank,
+                                    world_size=world_size) 
+    valid_iter = IterOnDevice(valid_iter,gpu)
+   
+    apply_softmax = False
+    attributor = FeatureAttributor(model,device,vocab,args.attribution_mode,softmax=apply_softmax)
+    attributor.run(savefile,valid_iter,target_pos,args.baseline)
 
 def run_attribution(args,device):
     
