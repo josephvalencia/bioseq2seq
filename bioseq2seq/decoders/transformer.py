@@ -67,7 +67,7 @@ class TransformerDecoderLayer(nn.Module):
         output, dec_attns, context_attns = self._forward(*args, **kwargs)
         
         top_attn = context_attns
-        #top_attn = context_attns[:, 1, :, :].contiguous()
+        #top_attn = context_attns[:, 0, :, :].contiguous()
         
         attn_align = None
         if with_align:
@@ -249,7 +249,6 @@ class TransformerDecoder(DecoderBase):
         context_storage = []
 
         attn_aligns = []
-        
         for i, layer in enumerate(self.transformer_layers):
             layer_cache = self.state["cache"]["layer_{}".format(i)] \
                 if step is not None else None
@@ -269,9 +268,10 @@ class TransformerDecoder(DecoderBase):
         dec_outs = output.transpose(0, 1).contiguous()
         
         #attn = context_storage[-1].transpose(0,1).contiguous()
+        #print('alt attn inside decoder',attn.shape) 
         #attn =  torch.stack(context_storage).transpose(1,2).transpose(2,3).contiguous()
         attn = torch.unsqueeze(context_storage[attn_save_layer].permute(1,2,0,3),dim=0)
-        
+        #print('attn inside decoder',attn.shape) 
         attns = {"std": attn}
         if self._copy:
             attns["copy"] = attn

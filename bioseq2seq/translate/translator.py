@@ -520,7 +520,6 @@ class Inference(object):
                     if tgt is not None:
                         gold_score_total += trans.gold_score
                         gold_words_total += len(trans.gold_sent) + 1
-
                     transcript_name = ids[trans.index]
                     mod_freq = trans.freq_content 
                     #plot_frequency_heatmap(transcript_name,mod_freq)
@@ -568,7 +567,8 @@ class Inference(object):
                     if attn_debug:
                         preds = trans.pred_sents[0]
                         preds.append(DefaultTokens.EOS)
-                        attns = trans.attns[0].tolist()
+                        print('attns before report_matrix',trans.attns[0].shape) 
+                        attns = trans.attns[0][0,0,:,:].tolist()
                         if self.data_type == "text":
                             srcs = trans.src_raw
                         else:
@@ -576,6 +576,7 @@ class Inference(object):
                         output = report_matrix(srcs, preds, attns)
                         if self.logger:
                             self.logger.info(output)
+                            pass
                         else:
                             os.write(1, output.encode("utf-8"))
 

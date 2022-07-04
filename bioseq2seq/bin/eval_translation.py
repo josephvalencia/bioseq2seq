@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.metrics import classification_report, f1_score, matthews_corrcoef
 from scipy.stats import chisquare, ks_2samp, mannwhitneyu
+from os import listdir
+from os.path import isfile, join
+import seaborn as sns
 
 def findPositionProbability(position_x, base):
     '''Calculate the Position probablity of a base in codon'''
@@ -306,39 +309,65 @@ def analysis_pipeline(groupA_df,groupB_df,names,test='KS'):
         stat,p = mannwhitneyu(groupA_cds_cov,groupB_cds_cov)
     print(f'CDS coverage {names[0]} ({groupA_cds_cov_mean:.2f}+-{groupA_cds_cov_std:.2f}) vs {names[1]} ({groupB_cds_cov_mean:.2f}+-{groupB_cds_cov_std:.2f}) ({stat_name}) p={p:.2e}')
 
+def evaluate(pred_file):
 
-pred_file = sys.argv[1]
+    storage = []
+    with open(pred_file,"r") as inFile:
+        lines = inFile.read().split("\n")
+        for i in range(0,len(lines)-6,6):
+            entry = parse_predictions(lines[i:i+6])
+            storage.append(entry)
+    df = pd.DataFrame(storage)
 
-storage = []
-with open(pred_file,"r") as inFile:
-    lines = inFile.read().split("\n")
-    for i in range(0,len(lines)-6,6):
-        entry = parse_predictions(lines[i:i+6])
-        storage.append(entry)
-df = pd.DataFrame(storage)
+    preds = df['pred_class'].to_numpy() 
+    gt = df['gold_class'].to_numpy()
+    tscripts = df['transcript'].to_numpy()
+    pos_preds = preds == '<PC>'
+    pos_gt = gt == '<PC>'
 
-preds = df['pred_class'].to_numpy() 
-gt = df['gold_class'].to_numpy()
-tscripts = df['transcript'].to_numpy()
-pos_preds = preds == '<PC>'
-pos_gt = gt == '<PC>'
+    accuracy = (preds == gt).sum() / len(df)
 
-accuracy = (preds == gt).sum() / len(df)
+    separator = '_____________________________________________________________________'
+    TP = tscripts[pos_preds & pos_gt]
+    FP = tscripts[pos_preds & ~pos_gt]
+    TN  = tscripts[~pos_preds & ~pos_gt]
+    FN  = tscripts[~pos_preds & pos_gt]
+    #print(f'{separator}\nPerformance Summary\n{separator}')
+    #print(f'TP = {TP.shape[0]}  FP = {FP.shape[0]}\nTN = {TN.shape[0]} FN = {FN.shape[0]}')
+    #print(f'accuracy = {accuracy}')
+    preds = pos_preds.astype(int)
+    gt = pos_gt.astype(int)
+    mcc = matthews_corrcoef(gt,preds)
+    f1 = f1_score(gt,preds)
+    #print(f'MCC = {mcc}, F1 = {f1}')
+    name = pred_file.split('.')[0]
+    return {'trial' : name , 'validation performance-accuracy' : accuracy, 'validation performance-F1' : f1 , 'validation performance-MCC' : mcc}
 
-separator = '_____________________________________________________________________'
-TP = tscripts[pos_preds & pos_gt]
-FP = tscripts[pos_preds & ~pos_gt]
-TN  = tscripts[~pos_preds & ~pos_gt]
-FN  = tscripts[~pos_preds & pos_gt]
-print(f'{separator}\nPerformance Summary\n{separator}')
-print(f'TP = {TP.shape[0]}  FP = {FP.shape[0]}\nTN = {TN.shape[0]} FN = {FN.shape[0]}')
-print(f'accuracy = {accuracy}')
-preds = pos_preds.astype(int)
-gt = pos_gt.astype(int)
-mcc = matthews_corrcoef(gt,preds)
-f1 = f1_score(gt,preds)
-print(f'MCC = {mcc}, F1 = {f1}')
 
+all_model_performances = []
+
+onlyfiles = [f for f in listdir('.') if isfile(join('.', f))]
+all_preds = [f for f in onlyfiles if f.endswith('preds')]
+print(all_preds)
+
+all_results = []
+for f in all_preds:
+    results = evaluate(f)
+    model = 'EDC' if results['trial'].startswith('EDC') else 'bioseq2seq'
+    results['model'] = model
+    all_results.append(results)
+
+results_df = pd.DataFrame(all_results)
+results_df['id'] = results_df.index
+long_df = pd.wide_to_long(results_df,stubnames='validation performance',i='id',j='metric',suffix=r'\w+\d?',sep='-')
+long_df = long_df.reset_index()
+print(long_df)
+sns.set_theme(style='whitegrid')
+ax = sns.boxplot(data=long_df,x='metric',y='validation performance',hue='model',width=0.6,palette='Set2')
+plt.xlabel('')
+plt.savefig('boxplot_comparison.svg')
+plt.close()
+'''
 val_file = 'new_data/mammalian_200-1200_val_nonredundant_80.csv'
 val_df = pd.read_csv(val_file,sep='\t').set_index('ID')
 
@@ -385,7 +414,7 @@ print(f'{separator}\n False Positives vs True Positives \n{separator}')
 analysis_pipeline(fp_df,tp_df,('FP','TP'),test='MW')
 print(f'{separator}\n False Negatives vs True Negatives \n{separator}')
 analysis_pipeline(fn_df,tn_df,('FN','TN'),test='MW')
-
+'''
 '''
 best_scores, best_n_scores = evaluator.calculate_stats(all_preds,all_golds,all_ids,log_all=True)
 for k,v in best_scores.items():

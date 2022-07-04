@@ -155,6 +155,8 @@ class BeamSearchBase(DecodeStrategy):
         # Penalize beams that finished.
         _B_old = self.topk_log_probs.shape[0]
         step = self.alive_seq.shape[-1]  # 1 greater than the step in advance
+        
+        print('seq shape in update_finished',self.alive_seq.shape)
         self.topk_log_probs.masked_fill_(self.is_finished, -1e10)
         # on real data (newstest2017) with the pretrained transformer,
         # it's faster to not move this back to the original device

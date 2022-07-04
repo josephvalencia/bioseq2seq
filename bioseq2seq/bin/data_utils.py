@@ -9,30 +9,12 @@ from bioseq2seq.inputters.dynamic_iterator import DynamicDatasetIter
 from bioseq2seq.translate import GNMTGlobalScorer, Translator, TranslationBuilder
 from bioseq2seq.utils.misc import set_random_seed
 from Bio import SeqIO
-from bioseq2seq.transforms import Transform
+import bioseq2seq.bin.transforms as xfm
+import copy
 import numpy as np
 import os
 import time
-
-class AttachClassLabel(Transform):
-    '''Pre-pend class label based on FASTA sequence '''
-    def apply(self, example, is_train=False, stats=None, **kwargs):
-        
-        curr_tgt = example['tgt'] 
-        if curr_tgt[0] == '[NONE]':
-            example['tgt'] = ['<NC>']
-        else:
-            example['tgt'] = ['<PC>'] + curr_tgt
-        return example
-
-class OmitPeptide(Transform):
-    '''Remove amino acid sequence'''
-    
-    def apply(self, example, is_train=False, stats=None, **kwargs):
-        
-        curr_tgt = example['tgt']
-        example['tgt'] = [curr_tgt[0]]
-        return example
+import random
 
 def std_vocab():
 
@@ -73,22 +55,29 @@ def build_standard_vocab(src_vocab_path=None,tgt_vocab_path=None):
 
     return vocab_fields
 
-def iterator_from_fasta(src,tgt,vocab_fields,mode,is_train,max_tokens,rank=0,world_size=1):
+def iterator_from_fasta(src,tgt,vocab_fields,mode,is_train,max_tokens,external_transforms=None,rank=0,world_size=1):
 
     # build the ParallelCorpus
     corpus_name = "train" if is_train else "valid"
     corpus = ParallelFastaCorpus("train",src,tgt,mode)
    
-    transforms = {"attach_class_label" : AttachClassLabel(opts=None),\
-                    'omit_peptide' : OmitPeptide(opts=None)}
-
+    transforms = {"attach_class_label" : xfm.AttachClassLabel(opts=None),'omit_peptide' : xfm.OmitPeptide(opts=None)}
+    
     if mode == "bioseq2seq":
-        corpora_info = {corpus_name: {"weight": 1 , "transforms" : ["attach_class_label"]}}
+        transform_names = ["attach_class_label"]
     else:
-        corpora_info = {corpus_name: {"weight": 1 , "transforms": ["attach_class_label", "omit_peptide"]}}
+        transform_names = ["attach_class_label","omit_peptide"] 
+   
+    # account for externally passed transforms
+    if external_transforms is not None:
+        transforms.update(external_transforms)
+    if external_transforms is not None:
+        transform_names += list(external_transforms.keys())
+    
+    corpora_info = {corpus_name: {"weight": 1 , "transforms": transform_names}}
 
     offset = rank if world_size > 1 else 0 
-    
+
     # build the training iterator
     iterator = DynamicDatasetIter(corpora={corpus_name: corpus},
                                     corpora_info=corpora_info,

@@ -229,7 +229,7 @@ class FourierEncoder(EncoderBase):
             out = emb.contiguous()
         else:
             out = emb.transpose(0,1).contiguous()
-
+        
         mask = ~sequence_mask(lengths).unsqueeze(-1)
         
         freq_data = []

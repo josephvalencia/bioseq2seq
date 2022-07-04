@@ -24,14 +24,17 @@ class CNNEncoder(EncoderBase):
                               cnn_kernel_width,dropout,dilation_factor=dilation_factor)
 
 
-    def forward(self, input, lengths=None, hidden=None):
+    def forward(self, input, lengths=None, hidden=None,grad_mode=False):
         """See :class:`bioseq2seq.modules.EncoderBase.forward()`"""
         self._check_args(input, lengths, hidden)
 
-        emb = self.embeddings(input)
         # s_len, batch, emb_dim = emb.size()
-
-        emb = emb.transpose(0, 1).contiguous()
+        emb = self.embeddings(input,grad_mode=grad_mode)
+        if grad_mode:
+            emb = emb.contiguous()
+        else:
+            emb = emb.transpose(0, 1).contiguous()
+        print('CNN',emb) 
         emb_reshape = emb.view(emb.size(0) * emb.size(1), -1)
         emb_remap = self.linear(emb_reshape)
         emb_remap = emb_remap.view(emb.size(0), emb.size(1), -1)

@@ -1,27 +1,19 @@
 import os
 import argparse
-import pandas as pd
 import torch
-import random
-import time
 import numpy as np
 from math import log, floor
-from itertools import count, zip_longest
 
-from bioseq2seq.inputters import TextDataReader,get_fields, DynamicDataset, str2reader,str2sortkey
-from bioseq2seq.inputters.text_dataset import TextMultiField
-from bioseq2seq.translate import Translator, GNMTGlobalScorer, TranslationBuilder
-from bioseq2seq.bin.models import make_transformer_seq2seq, make_hybrid_seq2seq, Generator
+from bioseq2seq.inputters import str2reader
+from bioseq2seq.translate import Translator, GNMTGlobalScorer
+from bioseq2seq.bin.models import restore_seq2seq_model
 from bioseq2seq.utils.logging import init_logger, logger
 from bioseq2seq.bin.data_utils import iterator_from_fasta
 from bioseq2seq.inputters.corpus import maybe_fastafile_open
-from torchtext.data import RawField
-from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset
-from bioseq2seq.bin.data_utils import AttachClassLabel
 from bioseq2seq.transforms.transform import Transform
 
 class NoOp(Transform):
-
+    '''Hack for using translate_dynamic with no transforms'''
     def apply(self, example, is_train=False, stats=None, **kwargs):
         return example
 
@@ -52,66 +44,6 @@ def parse_args():
     parser.add_argument("--attn_save_layer", type = int,default=0,help="If --save_attn flag is used, which layer of EDA to save")
     return parser.parse_args()
 
-def restore_transformer_model(checkpoint,machine,opts):
-    ''' Restore a Transformer model from .pt
-    Args:
-        checkpoint : path to .pt saved model
-        machine : torch device
-    Returns:
-        restored model'''
-    
-    print(opts)
-    vocab_fields = checkpoint['vocab'] 
-    
-    src_text_field = vocab_fields["src"].base_field
-    src_vocab = src_text_field.vocab
-    src_padding = src_vocab.stoi[src_text_field.pad_token]
-
-    tgt_text_field = vocab_fields['tgt'].base_field
-    tgt_vocab = tgt_text_field.vocab
-    tgt_padding = tgt_vocab.stoi[tgt_text_field.pad_token]
-    
-    n_input_classes = len(src_vocab.stoi)
-    n_output_classes = len(tgt_vocab.stoi)
-    print(f'n_enc = {opts.n_enc_layers} ,n_dec={opts.n_dec_layers}, n_output_classes= {n_output_classes} ,n_input_classes ={n_input_classes}')
-    n_output_classes = 28 
-    print('WINDOW',opts.window_size) 
-    #model = make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=opts.n_enc_layers,n_dec=opts.n_dec_layers,\
-    #                            model_dim=opts.model_dim,dim_filter=opts.filter_size,window_size=opts.window_size,dropout=opts.dropout)
-    
-    model = make_hybrid_seq2seq(n_input_classes,
-                                    n_output_classes,
-                                    n_enc=opts.n_enc_layers,
-                                    n_dec=opts.n_dec_layers,
-                                    fourier_type=opts.model_type,
-                                    model_dim=opts.model_dim,
-                                    max_rel_pos=opts.max_rel_pos,
-                                    dim_filter=opts.filter_size,
-                                    window_size=opts.window_size,
-                                    lambd_L1=opts.lambd_L1,
-                                    dropout=opts.dropout)
-    #model = make_transformer_seq2seq(n_input_classes,n_output_classes,n_enc=opts.n_enc_layers,n_dec=opts.n_dec_layers,\
-    #        model_dim=opts.model_dim,max_rel_pos=opts.max_rel_pos)
-
-    model.load_state_dict(checkpoint['model'],strict=False)
-    model.generator.load_state_dict(checkpoint['generator'])
-    model.to(device=machine)
-    return model
-
-def prune_model(model):
-
-    print(model.encoder.fnet.named_modules)
-    '''
-    parameters_to_prune = ((model.conv1, 'weight'),
-                            (model.conv2, 'weight'),
-                            (model.fc1, 'weight'),
-                            (model.fc2, 'weight'),
-                            (model.fc3, 'weight'),)
-
-    prune.global_unstructured(parameters_to_prune,
-                                pruning_method=prune.L1Unstructured,
-                                amount=0.2,)
-    '''
 
 def human_format(number):
     
@@ -155,7 +87,7 @@ def run_helper(rank,model,vocab,args):
                             max_length=args.max_decode_len)
     
     stride = args.num_gpus if args.num_gpus > 0 else 1
-    offset = rank if stride >1 else 0
+    offset = rank if stride > 1 else 0
 
     src = []
     tscripts = []
@@ -163,17 +95,18 @@ def run_helper(rank,model,vocab,args):
     with maybe_fastafile_open(args.input) as fa:
         for i,record in enumerate(fa):
             if (i % stride) == offset:
-                    seq = str(record.seq)
-                    seq_whitespace =  ' '.join([c for c in seq])
-                    src.append(seq_whitespace.encode('utf-8'))
-                    tscripts.append(record.id)
+                seq = str(record.seq)
+                seq_whitespace =  ' '.join([c for c in seq])
+                src.append(seq_whitespace.encode('utf-8'))
+                tscripts.append(record.id)
 
     translator.translate_dynamic(src=src,
                         src_feats=None,
                         ids=tscripts,
                         transform=NoOp(opts={}),
                         batch_size=args.max_tokens,
-                        batch_type="tokens")
+                        batch_type="tokens",
+                        attn_debug=True)
 
     outfile.close()
 
@@ -182,7 +115,7 @@ def file_cleanup(output_name):
     os.system(f'cat {output_name}.preds.rank* > {output_name}.preds')
     os.system(f'rm {output_name}.preds.rank* ')
 
-def translate_from_transformer_checkpt(args):
+def translate_from_checkpoint(args):
 
     device = 'cpu'
     checkpoint = torch.load(args.checkpoint,map_location = device)
@@ -194,9 +127,8 @@ def translate_from_transformer_checkpt(args):
         for k,v in vars(options).items():
             logger.info(k,v)
     
-    model = restore_transformer_model(checkpoint,device,options)
+    model = restore_seq2seq_model(checkpoint,device,options)
     
-    print('EMBEDDING MATRIX',model.encoder.embeddings.emb_luts[0].weight.shape)
     
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"# trainable parameters = {human_format(num_params)}")
@@ -219,4 +151,4 @@ def translate_from_transformer_checkpt(args):
 if __name__ == "__main__":
 
     args = parse_args()
-    translate_from_transformer_checkpt(args)
+    translate_from_checkpoint(args)

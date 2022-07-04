@@ -282,6 +282,10 @@ class TextMultiField(RawField):
                 lists of tokens/feature tags for the sentence. The output
                 is ordered like ``self.fields``.
         """
+        #print('FIELDS',self.fields)
+        for fn,f in self.fields:
+            #print(f'fn ={fn}, f={f}, x={x}')
+            pass 
         return [f.preprocess(x[fn]) for fn, f in self.fields]
 
     def __getitem__(self, item):

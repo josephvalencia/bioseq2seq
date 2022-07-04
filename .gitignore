@@ -27,20 +27,13 @@
 *.attr
 *.pt
 *.failures
-*.ig_norm*
 \#*#
 .DS_Store
 data/
-new_data/
-ray_tune/
-tune_bioseq2seq/
-old_logs/
-/output/
-/all_old/
-/results/
+/OLD/
 /checkpoints/
-/sge_dirs/
-/wandb/
+/valencia22/wandb/
+/valencia22/logs/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

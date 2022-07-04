@@ -173,3 +173,58 @@ def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_d
 
     return model
 
+
+def restore_seq2seq_model(checkpoint,machine,opts):
+    ''' Restore a seq2seq model from .pt
+    Args:
+        checkpoint : path to .pt saved model
+        machine : torch device
+    Returns:
+        restored model'''
+    
+    print(opts)
+    vocab_fields = checkpoint['vocab'] 
+    
+    src_text_field = vocab_fields["src"].base_field
+    src_vocab = src_text_field.vocab
+    src_padding = src_vocab.stoi[src_text_field.pad_token]
+
+    tgt_text_field = vocab_fields['tgt'].base_field
+    tgt_vocab = tgt_text_field.vocab
+    tgt_padding = tgt_vocab.stoi[tgt_text_field.pad_token]
+    print(tgt_vocab.stoi)    
+    n_input_classes = len(src_vocab.stoi)
+    n_output_classes = len(tgt_vocab.stoi)
+    print(f'n_enc = {opts.n_enc_layers} ,n_dec={opts.n_dec_layers}, n_output_classes= {n_output_classes} ,n_input_classes ={n_input_classes}')
+    n_output_classes = 28 
+    print('WINDOW',opts.window_size) 
+    
+    if opts.model_type == 'Transformer':
+        model = make_transformer_seq2seq(n_input_classes,
+                                        n_output_classes,
+                                        n_enc=opts.n_enc_layers,
+                                        n_dec=opts.n_dec_layers,
+                                        model_dim=opts.model_dim,
+                                        max_rel_pos=opts.max_rel_pos)
+    elif opts.model_type == 'CNN':
+        model = make_cnn_seq2seq(n_input_classes,
+                                n_output_classes,
+                                n_enc=opts.n_enc_layers,
+                                n_dec=opts.n_dec_layers,
+                                model_dim=opts.model_dim)
+    else:
+        model = make_hybrid_seq2seq(n_input_classes,
+                                        n_output_classes,
+                                        n_enc=opts.n_enc_layers,
+                                        n_dec=opts.n_dec_layers,
+                                        fourier_type=opts.model_type,
+                                        model_dim=opts.model_dim,
+                                        max_rel_pos=opts.max_rel_pos,
+                                        dim_filter=opts.filter_size,
+                                        window_size=opts.window_size,
+                                        lambd_L1=opts.lambd_L1,
+                                        dropout=opts.dropout)
+
+    model.load_state_dict(checkpoint['model'],strict = False)
+    model.generator.load_state_dict(checkpoint['generator'])
+    return model
