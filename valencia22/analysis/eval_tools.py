@@ -71,22 +71,16 @@ def safe_divide(num,denom):
 
 if __name__ == "__main__":
 
-    '''
     storage = []
-    for d in ['mammalian_1k','mammalian_1k-2k','zebrafish_1k']:
-        samba = f'test_rnasamba_{d}.tsv'
-        storage.append(eval_rnasamba(samba,d)) 
-        cpc = f'test_cpc2_{d}.txt'
-        storage.append(eval_cpc2(cpc,d)) 
-        cpat_a = f'test_cpat_{d}.ORF_prob.best.tsv'
-        cpat_b = f'test_cpat_{d}.no_ORF.txt'
-        storage.append(eval_cpat(cpat_a,cpat_b,d))
+    
+    samba = f'test_rnasamba_mammalian.tsv'
+    storage.append(eval_rnasamba(samba,'mammalian')) 
+    cpc = f'test_cpc2_mammalian.txt'
+    storage.append(eval_cpc2(cpc,'mammalian')) 
+    cpat_a = f'test_cpat_mammalian.ORF_prob.best.tsv'
+    cpat_b = f'test_cpat_mammalian.no_ORF.txt'
+    storage.append(eval_cpat(cpat_a,cpat_b,'mammalian'))
 
     df = pd.DataFrame(storage)
     df.to_csv('competitors_test_results.csv',sep='\t',index=False)
-    '''
 
-    rnasamba = eval_rnasamba('/nfs0/BB/Hendrix_Lab/valejose/bioseq2seq/mammalian_200-1200_rnasamba_val.tsv','rnasamba val')
-    print(rnasamba)
-    rnasamba = eval_rnasamba('/nfs0/BB/Hendrix_Lab/valejose/bioseq2seq/mammalian_200-1200_rnasamba_test.tsv','rnasamba test')
-    print(rnasamba)

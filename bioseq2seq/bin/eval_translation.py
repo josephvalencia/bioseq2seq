@@ -3,7 +3,7 @@ import sys,re
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from sklearn.metrics import classification_report, f1_score, matthews_corrcoef
+from sklearn.metrics import classification_report, f1_score, matthews_corrcoef, recall_score, precision_score
 from scipy.stats import chisquare, ks_2samp, mannwhitneyu
 from os import listdir
 from os.path import isfile, join
@@ -192,15 +192,10 @@ def parse_predictions(record):
         pred_peptide = pred_match.group(2)
     else:
         raise ValueError('Bad format')
-   
-    is_coding = lambda x : x.startswith('XM') or x.startswith('NM')
-    gold_class = '<PC>' if is_coding(transcript) else '<NC>' 
 
-    entry = {'transcript' : transcript,
+    entry = {'ID' : transcript,
             'pred_class' : pred_class, 
-            'pred_seq': pred_peptide,
-            'gold_class' : gold_class,
-            'gold_seq' : ''}
+            'pred_seq': pred_peptide}
     return entry
 
 def has_upstream_inframe_stop(start,stop_locs):
@@ -309,7 +304,7 @@ def analysis_pipeline(groupA_df,groupB_df,names,test='KS'):
         stat,p = mannwhitneyu(groupA_cds_cov,groupB_cds_cov)
     print(f'CDS coverage {names[0]} ({groupA_cds_cov_mean:.2f}+-{groupA_cds_cov_std:.2f}) vs {names[1]} ({groupB_cds_cov_mean:.2f}+-{groupB_cds_cov_std:.2f}) ({stat_name}) p={p:.2e}')
 
-def evaluate(pred_file):
+def evaluate(pred_file,ground_truth_df,error_analysis):
 
     storage = []
     with open(pred_file,"r") as inFile:
@@ -320,8 +315,9 @@ def evaluate(pred_file):
     df = pd.DataFrame(storage)
 
     preds = df['pred_class'].to_numpy() 
-    gt = df['gold_class'].to_numpy()
-    tscripts = df['transcript'].to_numpy()
+    df = df.merge(ground_truth_df,on='ID')
+    gt = df['Type'].to_numpy()
+    tscripts = df['ID'].to_numpy()
     pos_preds = preds == '<PC>'
     pos_gt = gt == '<PC>'
 
@@ -332,97 +328,97 @@ def evaluate(pred_file):
     FP = tscripts[pos_preds & ~pos_gt]
     TN  = tscripts[~pos_preds & ~pos_gt]
     FN  = tscripts[~pos_preds & pos_gt]
-    #print(f'{separator}\nPerformance Summary\n{separator}')
+    #print(f'{separator}\nPerformance Summary {pred_file} \n{separator}')
     #print(f'TP = {TP.shape[0]}  FP = {FP.shape[0]}\nTN = {TN.shape[0]} FN = {FN.shape[0]}')
-    #print(f'accuracy = {accuracy}')
+    
+    if error_analysis:
+        features_by_confusion_matrix(TP,FP,FN,TN,ground_truth_df)
+    
     preds = pos_preds.astype(int)
     gt = pos_gt.astype(int)
     mcc = matthews_corrcoef(gt,preds)
+    recall = recall_score(gt,preds)
+    precision = precision_score(gt,preds)
     f1 = f1_score(gt,preds)
-    #print(f'MCC = {mcc}, F1 = {f1}')
+    #print(f'accuracy = {accuracy}, MCC = {mcc}, F1 = {f1}')
     name = pred_file.split('.')[0]
-    return {'trial' : name , 'validation performance-accuracy' : accuracy, 'validation performance-F1' : f1 , 'validation performance-MCC' : mcc}
+    return {'trial' : name , 'accuracy' : accuracy, 'F1' : f1 ,'recall' : recall, 'precision' : precision, 'MCC' : mcc}
+
+def features_by_confusion_matrix(TP,FP,FN,TN,eval_df):
+
+    separator = '_____________________________________________________________________'
+
+    correct_df = eval_df.loc[TN.tolist()+TP.tolist()]
+    fn_df = eval_df.loc[FN]
+    fp_df = eval_df.loc[FP]
+    tp_df = eval_df.loc[TP]
+    tn_df = eval_df.loc[TN]
+
+    print(f'{separator}\n False Negatives vs True Positives\n{separator}')
+    analysis_pipeline(fn_df,tp_df,('FN','TP'),test='MW')
+    print(f'{separator}\n False Positives vs True Negatives \n{separator}')
+    analysis_pipeline(fp_df,tn_df,('FP','TN'),test='MW')
+    print(f'{separator}\n False Positives vs False Negatives \n{separator}')
+    analysis_pipeline(fp_df,fn_df,('FP','FN'),test='MW')
+    print(f'{separator}\n False Positives vs True Positives \n{separator}')
+    analysis_pipeline(fp_df,tp_df,('FP','TP'),test='MW')
+    print(f'{separator}\n False Negatives vs True Negatives \n{separator}')
+    analysis_pipeline(fn_df,tn_df,('FN','TN'),test='MW')
+
+def build_ground_truth(eval_file):
+    
+    eval_df = pd.read_csv(eval_file,sep='\t').set_index('ID')
+
+    # add columns of interest
+    eval_df['annotation_status'] = ['confirmed' if x.startswith('N') else 'putative' for x in eval_df.index.tolist()]
+    eval_df['RNA_len'] = [len(x) for x in eval_df['RNA'].tolist()]
+
+    ORF_lens = []
+    for c,r,p in zip(eval_df['Type'].tolist(),eval_df['RNA'].tolist(), eval_df['Protein'].tolist()):
+        if c == '<NC>':
+            s,e = getLongestORF(r)
+            length = e-s
+        else:
+            length = 3*(len(p)+1)
+        ORF_lens.append(length)
+
+    eval_df['CDS_len'] = ORF_lens
+    eval_df['CDS_coverage'] = eval_df['CDS_len'] / eval_df['RNA_len']
+    cds_loc = [get_CDS_loc(c,r) for c,r in zip(eval_df['CDS'].tolist(),eval_df['RNA'].tolist())]
+    eval_df['GC_content'] = [count_GC(x) for x in eval_df['RNA'].tolist()] 
+    eval_df['Fickett'] = [ficketTestcode(x) for x in eval_df['RNA'].tolist()] 
+    return eval_df
+
+if __name__ == "__main__":
+
+    all_model_performances = []
+
+    test_file = 'data/mammalian_200-1200_test_nonredundant_80.csv'
+    gt_df = build_ground_truth(test_file)
+    print(gt_df)
+    onlyfiles = [join('valencia22/',f) for f in listdir('valencia22/') if isfile(join('valencia22/', f))]
+    all_preds = [f for f in onlyfiles if f.endswith('preds')]
+    print(all_preds)
+
+    all_results = []
+    for f in all_preds:
+        results = evaluate(f,gt_df,error_analysis=True)
+        model = 'EDC' if results['trial'].startswith('EDC') else 'bioseq2seq'
+        results['model'] = model
+        all_results.append(results)
+
+    results_df = pd.DataFrame(all_results)
+    print(results_df)  
+    by_type_mean = results_df.groupby(results_df['trial'].str.extract('(\w*)_\d_test')[0]).mean()
+    by_type_std = results_df.groupby(results_df['trial'].str.extract('(\w*)_\d_test')[0]).std()
+    print(by_type_mean,by_type_std)
+    results_df['id'] = results_df.index
+    long_df = pd.wide_to_long(results_df,stubnames='validation performance',i='id',j='metric',suffix=r'\w+\d?',sep='-')
+    long_df = long_df.reset_index()
+    sns.set_theme(style='whitegrid')
+    ax = sns.boxplot(data=long_df,x='metric',y='validation performance',hue='model',width=0.6,palette='Set2')
+    plt.xlabel('')
+    plt.savefig('boxplot_comparison.svg')
+    plt.close()
 
 
-all_model_performances = []
-
-onlyfiles = [f for f in listdir('.') if isfile(join('.', f))]
-all_preds = [f for f in onlyfiles if f.endswith('preds')]
-print(all_preds)
-
-all_results = []
-for f in all_preds:
-    results = evaluate(f)
-    model = 'EDC' if results['trial'].startswith('EDC') else 'bioseq2seq'
-    results['model'] = model
-    all_results.append(results)
-
-results_df = pd.DataFrame(all_results)
-results_df['id'] = results_df.index
-long_df = pd.wide_to_long(results_df,stubnames='validation performance',i='id',j='metric',suffix=r'\w+\d?',sep='-')
-long_df = long_df.reset_index()
-print(long_df)
-sns.set_theme(style='whitegrid')
-ax = sns.boxplot(data=long_df,x='metric',y='validation performance',hue='model',width=0.6,palette='Set2')
-plt.xlabel('')
-plt.savefig('boxplot_comparison.svg')
-plt.close()
-'''
-val_file = 'new_data/mammalian_200-1200_val_nonredundant_80.csv'
-val_df = pd.read_csv(val_file,sep='\t').set_index('ID')
-
-# add columns of interest
-val_df['annotation_status'] = ['confirmed' if x.startswith('N') else 'putative' for x in val_df.index.tolist()]
-val_df['RNA_len'] = [len(x) for x in val_df['RNA'].tolist()]
-
-ORF_lens = []
-for c,r,p in zip(val_df['Type'].tolist(),val_df['RNA'].tolist(), val_df['Protein'].tolist()):
-    if c == '<NC>':
-        s,e = getLongestORF(r)
-        length = e-s
-    else:
-        length = 3*(len(p)+1)
-    ORF_lens.append(length)
-
-val_df['CDS_len'] = ORF_lens
-val_df['CDS_coverage'] = val_df['CDS_len'] / val_df['RNA_len']
-cds_loc = [get_CDS_loc(c,r) for c,r in zip(val_df['CDS'].tolist(),val_df['RNA'].tolist())]
-val_df['GC_content'] = [count_GC(x) for x in val_df['RNA'].tolist()] 
-val_df['Fickett'] = [ficketTestcode(x) for x in val_df['RNA'].tolist()] 
-#val_df['GC_content'] = [count_GC(x[s:e]) if e-s > 0 else 0.0 for x,(s,e) in zip(val_df['RNA'].tolist(),cds_loc)] 
-
-correct_df = val_df.loc[TN.tolist()+TP.tolist()]
-fn_df = val_df.loc[FN]
-fp_df = val_df.loc[FP]
-tp_df = val_df.loc[TP]
-tn_df = val_df.loc[TN]
-
-#print('FP')
-#print(fp_df[fp_df['annotation_status'] == 'confirmed'])
-
-
-#print('FN')
-#print(fn_df[fn_df['annotation_status'] == 'confirmed'])
-
-print(f'{separator}\n False Negatives vs True Positives\n{separator}')
-analysis_pipeline(fn_df,tp_df,('FN','TP'),test='MW')
-print(f'{separator}\n False Positives vs True Negatives \n{separator}')
-analysis_pipeline(fp_df,tn_df,('FP','TN'),test='MW')
-print(f'{separator}\n False Positives vs False Negatives \n{separator}')
-analysis_pipeline(fp_df,fn_df,('FP','FN'),test='MW')
-print(f'{separator}\n False Positives vs True Positives \n{separator}')
-analysis_pipeline(fp_df,tp_df,('FP','TP'),test='MW')
-print(f'{separator}\n False Negatives vs True Negatives \n{separator}')
-analysis_pipeline(fn_df,tn_df,('FN','TN'),test='MW')
-'''
-'''
-best_scores, best_n_scores = evaluator.calculate_stats(all_preds,all_golds,all_ids,log_all=True)
-for k,v in best_scores.items():
-    vals = np.asarray(v)
-    if  vals.size > 1:
-        mean = np.mean(vals)
-        std = np.std(vals)
-        print("{} -  mean : {} std : {}".format(k,mean,std))
-    else:
-        print("{} - {}".format(k,vals))
-'''

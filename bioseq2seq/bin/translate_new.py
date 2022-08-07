@@ -106,7 +106,7 @@ def run_helper(rank,model,vocab,args):
                         transform=NoOp(opts={}),
                         batch_size=args.max_tokens,
                         batch_type="tokens",
-                        attn_debug=True)
+                        attn_debug=False)
 
     outfile.close()
 

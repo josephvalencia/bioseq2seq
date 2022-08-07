@@ -97,7 +97,7 @@ def extract_baselines(batch,batch_index,num_copies,copies_per_step):
 
     upper = max(num_copies,1)
     for i in range(0,upper,copies_per_step):
-        print(f'chunk[{i}:{i+copies_per_step}]')
+        #print(f'chunk[{i}:{i+copies_per_step}]')
         chunk = baselines[i:i+copies_per_step]
         stacked = torch.stack(chunk,dim=0).to(device=batch.src[0].device) 
         yield stacked[:,:,batch_index,:]
@@ -367,11 +367,9 @@ class FeatureAttributor:
                 probs_with_labels = list(zip(self.tgt_vocab.stoi.keys(),probs_list))
                 good_share = probs_list[self.pc_token] + probs_list[self.nc_token]
                 bad_share = 1.0 - good_share
-                print(bad_share)
                 
                 batch_attributions = []
                 baseline_preds = []                     
-                print(tscript,curr_src.shape)
                 
                 if not(tscript.startswith('XM') or tscript.startswith('NM')):
                     minibatch_size = 16
@@ -379,6 +377,7 @@ class FeatureAttributor:
                     for y,baseline_batch in enumerate(extract_baselines(batch,j,self.sample_size,minibatch_size)):
                         # score baselines
                         baseline_embed = self.src_embed(baseline_batch)
+                        print('baseline_embed',baseline_embed.shape,curr_src_lens)
                         baseline_pred_classes = self.predictor(baseline_embed,curr_src_lens,decoder_input,minibatch_size)
                         base_pred = baseline_pred_classes.detach().cpu()[:,tgt_class]
                         baseline_preds.append(base_pred)
@@ -437,7 +436,7 @@ class FeatureAttributor:
                     # score codon-optimized sequence
                     pred_classes = self.predictor(opt_src_embed,curr_src_lens,self.decoder_input(1),1)
                     opt_score = pred_classes.data.cpu()[0,self.class_token]
-                    pct_error = my_mae.item() / diff.item()
+                    pct_error = my_mae.item() / diff.item() if diff.item() != 0.0 else 0.0 
                    
                     # compare with optimal randomly found
                     if opt_mode == 'min':
@@ -456,10 +455,8 @@ class FeatureAttributor:
                         best_baseline_score = best_baseline_score.item()
                         opt_score = opt_score.item()
 
-                    print(f'src_score={src_score},mean_baseline_score={mean_baseline_score},best_baseline_score = {best_baseline_score}, opt_score = {opt_score}')
-                    entry = {"ID" : tscript ,"pct_approx_error" : pct_error, "original" : src_score, "mean_sampled" : mean_baseline_score, "best_sampled" : best_baseline_score, "optimized" : opt_score}
-                    print(tscript,'old',cds)
-                    print(tscript,'optimized',optimized_cds)
+                    entry = {"ID" : tscript ,"pct_approx_error" : pct_error, "original" : src_score, "mean_sampled" \
+                            : mean_baseline_score, "best_sampled" : best_baseline_score, "optimized" : opt_score}
                     storage.append(entry)
     
         df = pd.DataFrame(storage)
@@ -672,6 +669,7 @@ def parse_args():
     parser.add_argument("--num_gpus","--g", type = int, default = 1, help = "Number of GPUs to use on node")
     parser.add_argument("--address",default =  "127.0.0.1",help = "IP address for master process in distributed training")
     parser.add_argument("--port",default = "6000",help = "Port for master process in distributed training")
+    parser.add_argument("--mutation_prob",type=float, default=1.0 ,help = "Prob of mutation")
     
     return parser.parse_args()
 
@@ -721,9 +719,9 @@ def run_helper(rank,args,model,vocab,use_splits=False):
   
     # set up synonymous shuffled copies
     n_samples = 32
-    shuffle_options = Namespace(num_copies=n_samples,mutation_prob=1.0)
+    shuffle_options = Namespace(num_copies=n_samples,mutation_prob=args.mutation_prob)
     xforms = {'add_synonymous_mutations' : xfm.SynonymousCopies(opts=shuffle_options)}
-    #add_synonymous_shuffled_to_vocab(n_samples,vocab_fields)
+    add_synonymous_shuffled_to_vocab(n_samples,vocab_fields)
 
     valid_iter = iterator_from_fasta(src=args.input,
                                     tgt=None,

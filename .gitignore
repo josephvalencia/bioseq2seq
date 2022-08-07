@@ -1,8 +1,10 @@
 # repo-specific stuff
 .*
+*.log
 *.preds
 *.png
 *.ig
+*.EG
 *.deeplift
 *.inputXgradient
 *.npz
@@ -34,6 +36,10 @@ data/
 /checkpoints/
 /valencia22/wandb/
 /valencia22/logs/
+/valencia22/archive/
+/valencia22/tools/
+/valencia22/tools_old/
+/valencia22/scripts/logs/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

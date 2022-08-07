@@ -3,24 +3,20 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 import pandas as pd
 import numpy as np
+import sys
 
-def sample_by_class():
+def sample_by_class(balanced_file):
 
-    df = pd.read_csv("data/mammalian_1k_train.csv",sep='\t')
+    prefix = balanced_file.split('_balanced.csv')[0]
+    df = pd.read_csv(balanced_file,sep='\t')
     df = df.set_index('ID')
     by_type = df.groupby('Type')['RNA'].count()
     print(by_type)
+    
     pc = df[df['Type'] == '<PC>']
     nc = df[df['Type'] == '<NC>']
-    pc_reduced = sample(pc,22000)
-    nc_reduced = sample(nc,22000)
-    combined = pd.concat([pc_reduced,nc_reduced])
-    combined = combined.sample(frac=1)
-
-    to_fasta(pc_reduced,'RNA','mammalian_rnasamba_train_PC')
-    to_fasta(nc_reduced,'RNA','mammalian_rnasamba_train_NC')
-    to_fasta(combined,'RNA','mammalian_rnasamba_train_ALL')
-
+    to_fasta(pc,'RNA',f'{prefix}_PC')
+    to_fasta(nc,'RNA',f'{prefix}_NC')
 
 def sample(df,n_samples):
     id_list = np.random.choice(df.index.values,size=n_samples,replace=False)
@@ -38,4 +34,4 @@ def make_record(id,rna):
 
 if __name__ == "__main__":
 
-    sample_by_class()
+    sample_by_class(sys.argv[1])

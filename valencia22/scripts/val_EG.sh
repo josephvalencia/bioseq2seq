@@ -3,6 +3,5 @@ export BIOHOME=/home/bb/valejose/home
 export PYTHONPATH=/home/bb/valejose/home/bioseq2seq
 source $BIOHOME/bioseq2seq/venv/bin/activate
 source commands.sh
-#parallel -j 4 --tmpdir .  < bioseq2seq_attr_replicates.txt 
-parallel -j 4 --tmpdir .  < reduced_attr.txt 
-#parallel -j 4 --tmpdir .  < sEDC_attr_replicates.txt 
+$EG_VAL_BIO --checkpoint ${CHKPT_DIR}bioseq2seq_1_Jun25_07-51-41/_step_8500.pt --name bioseq2seq_1_val --rank 0 --max_tokens 400 --mutation_prob 1.0
+

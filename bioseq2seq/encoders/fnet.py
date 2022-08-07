@@ -231,7 +231,6 @@ class FourierEncoder(EncoderBase):
             out = emb.transpose(0,1).contiguous()
         
         mask = ~sequence_mask(lengths).unsqueeze(-1)
-        
         freq_data = []
         space_data = []
         # Run the forward pass of every layer 

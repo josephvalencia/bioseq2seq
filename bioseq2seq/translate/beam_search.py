@@ -155,7 +155,6 @@ class BeamSearchBase(DecodeStrategy):
         # Penalize beams that finished.
         _B_old = self.topk_log_probs.shape[0]
         step = self.alive_seq.shape[-1]  # 1 greater than the step in advance
-        print('alive seq in update_finished',self.alive_seq.shape)
         self.topk_log_probs.masked_fill_(self.is_finished, -1e10)
         # on real data (newstest2017) with the pretrained transformer,
         # it's faster to not move this back to the original device
@@ -317,7 +316,6 @@ class BeamSearchBase(DecodeStrategy):
                     self._prev_penalty = self.global_scorer.cov_penalty(
                         self._coverage, beta=self.global_scorer.beta).view(
                             _B, self.beam_size)
-        print('alive_attn inside beam search',self.alive_attn.shape)
         if self._vanilla_cov_pen:
             # shape: (batch_size x beam_size, 1)
             cov_penalty = self.global_scorer.cov_penalty(
