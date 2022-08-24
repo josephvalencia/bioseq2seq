@@ -190,7 +190,7 @@ class TransformerDecoder(DecoderBase):
 
         # Decoder State
         self.state = {}
-
+        self.attn_save_layer = -1
         self.transformer_layers = nn.ModuleList(
             [TransformerDecoderLayer(d_model, heads, d_ff, dropout,
              attention_dropout, self_attn_type=self_attn_type,
@@ -229,7 +229,7 @@ class TransformerDecoder(DecoderBase):
     def detach_state(self):
         self.state["src"] = self.state["src"].detach()
 
-    def forward(self, tgt, memory_bank, step=None,grad_mode=False,attn_save_layer = -1, **kwargs):
+    def forward(self, tgt, memory_bank, step=None,grad_mode=False, **kwargs):
         """Decode, possibly stepwise."""
         if step == 0:
             self._init_cache(memory_bank)
@@ -270,8 +270,8 @@ class TransformerDecoder(DecoderBase):
         #attn = context_storage[-1].transpose(0,1).contiguous()
         #print('alt attn inside decoder',attn.shape) 
         #attn =  torch.stack(context_storage).transpose(1,2).transpose(2,3).contiguous()
-        attn = torch.unsqueeze(context_storage[attn_save_layer].permute(1,2,0,3),dim=0)
-        #print('attn inside decoder',attn.shape) 
+        attn = torch.unsqueeze(context_storage[self.attn_save_layer].permute(1,2,0,3),dim=0)
+        
         attns = {"std": attn}
         if self._copy:
             attns["copy"] = attn

@@ -34,12 +34,13 @@
 data/
 /OLD/
 /checkpoints/
-/valencia22/wandb/
-/valencia22/logs/
-/valencia22/archive/
-/valencia22/tools/
-/valencia22/tools_old/
-/valencia22/scripts/logs/
+/experiments/wandb/
+/experiments/logs/
+/experiments/archive/
+/experiments/tools/
+/experiments/tools_old/
+/experiments/scripts/logs/
+/experiments/output/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

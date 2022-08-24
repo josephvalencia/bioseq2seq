@@ -157,6 +157,7 @@ class Inference(object):
         copy_attn=False,
         global_scorer=None,
         out_file=None,
+        attn_file=None,
         report_align=False,
         report_score=True,
         logger=None,
@@ -220,6 +221,7 @@ class Inference(object):
                 "Coverage penalty requires an attentional decoder."
             )
         self.out_file = out_file
+        self.attn_file = attn_file
         self.report_align = report_align
         self.report_score = report_score
         self.logger = logger
@@ -500,7 +502,8 @@ class Inference(object):
             shuffle=False,
             repeat=False
         )
-        
+       
+        attn_kwargs = {}
         dataset_size = len(data_iter.dataset)
         desc = f"Progress GPU {self._gpu}"
         with tqdm(total=dataset_size,position=self._gpu,disable=False,desc=desc) as pbar:
@@ -567,19 +570,15 @@ class Inference(object):
                     if attn_debug:
                         preds = trans.pred_sents[0]
                         preds.append(DefaultTokens.EOS)
-                        print('attns before report_matrix',trans.attns[0].shape) 
                         attns = trans.attns[0][0,0,:,:].tolist()
+                        print(trans.attns[0].shape)
+                        attn_kwargs[transcript_name] =  trans.attns[0][0,:,0,:].detach().cpu().numpy()
                         if self.data_type == "text":
                             srcs = trans.src_raw
                         else:
                             srcs = [str(item) for item in range(len(attns[0]))]
                         output = report_matrix(srcs, preds, attns)
-                        if self.logger:
-                            self.logger.info(output)
-                            pass
-                        else:
-                            os.write(1, output.encode("utf-8"))
-
+                    
                     if align_debug:
                         tgts = trans.pred_sents[0]
                         align = trans.word_aligns[0].tolist()
@@ -593,7 +592,8 @@ class Inference(object):
                         else:
                             os.write(1, output.encode("utf-8"))
         end_time = time.time()
-
+        np.savez(self.attn_file,**attn_kwargs) 
+        
         if self.report_score:
             msg = self._report_score(
                 "PRED", pred_score_total, pred_words_total

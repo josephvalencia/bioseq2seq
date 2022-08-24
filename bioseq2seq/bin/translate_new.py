@@ -33,7 +33,6 @@ def parse_args():
     parser.add_argument("--checkpoint", "--c",help="Model checkpoint (.pt)")
     parser.add_argument("--max_tokens",type = int , default = 9000, help = "Max number of tokens in training batch")
     parser.add_argument("--mode",default = "bioseq2seq",help="bioseq2seq|EDC")
-    parser.add_argument("--decode_strategy",default = "beamsearch",help="beamsearch|greedy")
     parser.add_argument("--rank",type=int,default = 0)
     parser.add_argument("--num_gpus",type=int,default = 1)
 
@@ -41,7 +40,7 @@ def parse_args():
     parser.add_argument("--beam_size","--b",type = int, default = 8, help ="Beam size for decoding")
     parser.add_argument("--n_best", type = int, default = 4, help = "Number of beams to wait for")
     parser.add_argument("--max_decode_len", type = int, default = 400, help = "Maximum length of protein decoding")
-    parser.add_argument("--attn_save_layer", type = int,default=0,help="If --save_attn flag is used, which layer of EDA to save")
+    parser.add_argument("--attn_save_layer", type = int,default=-1,help="If --save_attn flag is used, which layer of EDA to save")
     return parser.parse_args()
 
 
@@ -69,7 +68,15 @@ def run_helper(rank,model,vocab,args):
     src_reader = str2reader["text"]
     tgt_reader = str2reader["text"]
 
-    outfile = open(f'{args.output_name}.preds.rank{rank}','w')
+    if not os.path.isdir(args.output_name):
+        os.mkdir(args.output_name)
+    
+    outfile = open(f'{args.output_name}preds.txt.rank{rank}','w')
+    attn_file = None
+
+    if args.save_EDA:
+        model.decoder.attn_save_layer = args.attn_save_layer
+        attnfile = open(f'{args.output_name}/enc_dec_attns_layer{args.attn_save_layer}.npz.rank{rank}','wb')
     
     tgt_text_field = vocab['tgt'].base_field
     tgt_vocab = tgt_text_field.vocab
@@ -78,6 +85,7 @@ def run_helper(rank,model,vocab,args):
     translator = Translator(model=model, 
                             fields=vocab,
                             out_file=outfile,
+                            attn_file=attnfile,
                             src_reader=src_reader, 
                             tgt_reader=tgt_reader, 
                             global_scorer=scorer,
@@ -106,14 +114,16 @@ def run_helper(rank,model,vocab,args):
                         transform=NoOp(opts={}),
                         batch_size=args.max_tokens,
                         batch_type="tokens",
-                        attn_debug=False)
+                        attn_debug=args.save_EDA)
 
     outfile.close()
+    if attn_file is not None:
+        attnfile.close()
 
 def file_cleanup(output_name):
 
-    os.system(f'cat {output_name}.preds.rank* > {output_name}.preds')
-    os.system(f'rm {output_name}.preds.rank* ')
+    os.system(f'cat {output_name}/preds.txt.rank* > {output_name}/preds.txt')
+    os.system(f'rm {output_name}/preds.txt.rank* ')
 
 def translate_from_checkpoint(args):
 

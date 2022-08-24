@@ -53,6 +53,7 @@ def plot_frequency_heatmap(tscript_name,attr,tgt_class,metric):
     plt.plot(attr.ravel(),linewidth=1.0)
     plt.ylabel('Attribution')
     plt.xticks(bins,bins)
+    
     '''
     plt.subplot(312)
     # set parameters for drawing gene
@@ -64,6 +65,7 @@ def plot_frequency_heatmap(tscript_name,attr,tgt_class,metric):
     plt.axhline(y, color='k', linewidth=1)
     plt.plot([exon_start, exon_stop],[y, y], color='k', linewidth=7.5, solid_capstyle='butt')
     ''' 
+    
     plt.tight_layout() 
     plt.savefig(f'ps_examples/{tscript_name}_{tgt_class}_{metric}_spectrogram.svg')
     plt.close()
@@ -125,7 +127,7 @@ class PredictionWrapper(torch.nn.Module):
 
         self.model.decoder.init_state(src,memory_bank,enc_states)
         memory_lengths = src_lens
-        #print(f'decoder_input = {decoder_input.shape} , memory_bank = {memory_bank.shape},memory_lengths={memory_lengths.shape}')
+        
         scores, attn = self.decode_and_generate(
             decoder_input,
             memory_bank,
@@ -133,7 +135,6 @@ class PredictionWrapper(torch.nn.Module):
             step=0)
 
         classes = scores
-        
         return classes
 
     def run_encoder(self,src,src_lengths,batch_size):
@@ -342,9 +343,8 @@ class FeatureAttributor:
             
             # can only do one batch at a time
             batch_size = batch.batch_size
-
+            
             for j in range(batch_size):
-               
                 # setup batch elements
                 tscript = transcript_names[ids[j]]
                 curr_src = torch.unsqueeze(src[j,:,:],0)
@@ -352,11 +352,12 @@ class FeatureAttributor:
                 curr_tgt = batch.tgt[target_pos,j,:]
                 curr_tgt = torch.unsqueeze(curr_tgt,0)
                 curr_tgt = torch.unsqueeze(curr_tgt,2)
-                curr_src_lens = torch.max(src_lens)
-                curr_src_lens = torch.unsqueeze(curr_src_lens,0)
-               
+                #curr_src_lens = torch.max(src_lens)
+                #curr_src_lens = torch.unsqueeze(curr_src_lens,0)
+                curr_src_lens = torch.unsqueeze(src_lens[j],0)
                 tgt_class = self.class_token
                 
+                #print(f'src_lens={src_lens}, curr_src_lens={curr_src_lens}')
                 # score original sequence
                 pred_classes = self.predictor(curr_src_embed,curr_src_lens,self.decoder_input(1),1)
                 src_score =  pred_classes.detach().cpu()[0,tgt_class]
@@ -371,13 +372,13 @@ class FeatureAttributor:
                 batch_attributions = []
                 baseline_preds = []                     
                 
-                if not(tscript.startswith('XM') or tscript.startswith('NM')):
+                #if not(tscript.startswith('XM') or tscript.startswith('NM')):
+                if tscript.startswith('XM') or tscript.startswith('NM'):
                     minibatch_size = 16
                     decoder_input = self.decoder_input(minibatch_size)
                     for y,baseline_batch in enumerate(extract_baselines(batch,j,self.sample_size,minibatch_size)):
                         # score baselines
                         baseline_embed = self.src_embed(baseline_batch)
-                        print('baseline_embed',baseline_embed.shape,curr_src_lens)
                         baseline_pred_classes = self.predictor(baseline_embed,curr_src_lens,decoder_input,minibatch_size)
                         base_pred = baseline_pred_classes.detach().cpu()[:,tgt_class]
                         baseline_preds.append(base_pred)
@@ -400,7 +401,6 @@ class FeatureAttributor:
                     mean_baseline_score = baseline_preds.mean()
                     diff = src_score - mean_baseline_score
                     my_mae = diff - np.sum(attributions)
-                    print(f'my_mae ={my_mae},diff ={diff.item()}, sum ={np.sum(attributions)}')
                     
                     saved_src = np.squeeze(np.squeeze(curr_src.detach().cpu().numpy(),axis=0),axis=1).tolist()
                     saved_src = "".join([self.src_vocab.itos[x] for x in saved_src])
@@ -716,7 +716,7 @@ def run_helper(rank,args,model,vocab,use_splits=False):
         for i,record in enumerate(fa):
             if (i % world_size) == offset:
                     tscripts.append(record.id)
-  
+    
     # set up synonymous shuffled copies
     n_samples = 32
     shuffle_options = Namespace(num_copies=n_samples,mutation_prob=args.mutation_prob)
@@ -737,8 +737,10 @@ def run_helper(rank,args,model,vocab,use_splits=False):
     apply_softmax = False
     model.eval()
     #tgt_class = args.attribution_mode
-    tgt_class = "<PC>"
-    attributor = FeatureAttributor(model,device,vocab,args.attribution_mode,tgt_class,softmax=apply_softmax,sample_size=n_samples)
+    #tgt_class = "<PC>"
+    tgt_class = "<NC>"
+    attributor = FeatureAttributor(model,device,vocab,args.attribution_mode,tgt_class,\
+                                        softmax=apply_softmax,sample_size=n_samples)
     attributor.run(savefile,valid_iter,target_pos,args.baseline,tscripts)
 
 def run_attribution(args,device):

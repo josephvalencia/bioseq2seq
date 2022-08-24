@@ -1,0 +1,12 @@
+scripts/replicates_predict.sh: line 2: commands.sh: No such file or directory
+scripts/replicates_predict.sh: line 4: bioseq2seq_pred_full_replicates.txt: No such file or directory
+scripts/replicates_predict.sh: line 5: EDC_small_pred_replicates.txt: No such file or directory
+ 	Full Command:                      scripts/replicates_predict.sh 
+	Memory (kb):                       1648 
+	# SWAP  (freq):                    0 
+	# Waits (freq):                    380 
+	CPU (percent):                     5% 
+	Time (seconds):                    0.25 
+	Time (hh:mm:ss.ms):                0:00.25 
+	System CPU Time (seconds):         0.01 
+	User   CPU Time (seconds):         0.00 
