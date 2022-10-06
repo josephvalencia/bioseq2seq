@@ -7,29 +7,22 @@ from itertools import combinations
 from os import listdir
 from os.path import isfile, join
 import re
+import glob
 
 def calc_correlations(file_a,file_b,mode='spearman',metric='normed_attr'):
 
     storage = []
-    fh_a = open(file_a)
-    fh_b = open(file_b)
+    
+    storage_a = np.load(file_a)
+    storage_b = np.load(file_b)
+        
     sig = 0
     nan = 0
     non_matching = 0
-    for la,lb in zip(fh_a.readlines(),fh_b.readlines()):
-        fields_a = orjson.loads(la)
-        fields_b = orjson.loads(lb)
-       
-        array_a = np.asarray([float(x) for x in fields_a[metric]]) 
-        array_b = np.asarray([float(x) for x in fields_b[metric]]) 
-
-        # ensure comparing the same sample
-        src_a = fields_a['src']
-        src_b = fields_b['src']
-        assert src_a == src_b
+    pval = 0.05
     
-        pval = 0.05
-        
+    for tscript,array_a in storage_a.items():
+        array_b = storage_b[tscript] 
         if mode == 'spearman':
             result = stats.spearmanr(array_a,array_b)
         elif mode == 'pearson':
@@ -47,13 +40,10 @@ def calc_correlations(file_a,file_b,mode='spearman',metric='normed_attr'):
 
 def compare(regex1,regex2,corr_mode,metric,parent='.'):
      
-    onlyfiles = [join(parent,f) for f in listdir(parent) if isfile(join(parent, f))]
-    group1 = [f for f in onlyfiles if re.search(regex1,f) if not None]
-    group2 = [f for f in onlyfiles if re.search(regex2,f) if not None]
-   
+    group1 = glob.glob(regex1,recursive=True)
+    group2 = glob.glob(regex2,recursive=True)
     group1_combs = list(combinations(group1,2))
     group2_combs = list(combinations(group2,2))
-
     group1_storage = []
     group2_storage = []
   
@@ -103,21 +93,6 @@ def print_corr(storage,mode):
 
 if __name__ == "__main__":
 
-    # global attr
-    regex1 = 'bioseq2seq_\d.PC.saliency.rank_\d'
-    regex2 = 'EDC_\d.PC.saliency.rank_\d'
-    
-    #compare(regex1,regex2,'spearman','normed_attr')
-    #compare(regex1,regex2,'pearson','normed_attr')
-    compare(regex1,regex2,'spearman','summed_attr_PC',parent=".")
-    #compare(regex1,regex2,'pearson','summed_attr_PC')
-
-    '''
-    # local attr
-    regex1 = 'bioseq2seq_\d.<PC>.saliency'
-    regex2 = 'EDC_\d.<PC>.saliency'
-    compare(regex1,regex2,'spearman','normed_attr')
-    compare(regex1,regex2,'pearson','normed_attr')
-    compare(regex1,regex2,'spearman','summed_attr')
-    compare(regex1,regex2,'pearson','summed_attr')
-    '''
+    regex1 = 'experiments/output/bioseq2seq_*_test/all.PC.inputXgrad.rank_*.npz' 
+    regex2 = 'experiments/output/EDC_*_test/all.PC.inputXgrad.rank_*.npz' 
+    compare(regex1,regex2,'spearman','summed_attr_PC',parent="experiments/output/")

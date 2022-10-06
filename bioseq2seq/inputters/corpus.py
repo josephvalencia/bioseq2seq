@@ -70,7 +70,7 @@ class DatasetAdapter(object):
         """Return valid fields in dict format."""
         return {
             f_k: f_v for f_k, f_v in fields.items()
-            if f_k in cls.valid_field_name or re.search(f'src_shuffled_\d*',f_k)
+            if f_k in cls.valid_field_name or re.search(f'src_.*',f_k)
         }
 
     @staticmethod
@@ -83,7 +83,6 @@ class DatasetAdapter(object):
             example, is_train=is_train, corpus_name=cid)
         if maybe_example is None:
             return None
-
         maybe_example['src'] = {"src": ' '.join(maybe_example['src'])}
 
         # Make features part of src as in TextMultiField
@@ -199,6 +198,7 @@ class ParallelFastaCorpus(ParallelCorpus):
                         'src_original': sline,
                         'tgt_original': tline
                     }
+                    
                     if align is not None:
                         example['align'] = align.decode('utf-8')
                     if features:

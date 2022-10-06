@@ -67,7 +67,6 @@ def iterator_from_fasta(src,tgt,vocab_fields,mode,is_train,max_tokens,external_t
         transform_names = ["attach_class_label"]
     else:
         transform_names = ["attach_class_label","omit_peptide"] 
-   
     # account for externally passed transforms
     if external_transforms is not None:
         transforms.update(external_transforms)
@@ -77,7 +76,6 @@ def iterator_from_fasta(src,tgt,vocab_fields,mode,is_train,max_tokens,external_t
     corpora_info = {corpus_name: {"weight": 1 , "transforms": transform_names}}
 
     offset = rank if world_size > 1 else 0 
-
     # build the training iterator
     iterator = DynamicDatasetIter(corpora={corpus_name: corpus},
                                     corpora_info=corpora_info,

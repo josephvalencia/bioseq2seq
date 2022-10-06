@@ -155,6 +155,31 @@ class ShuffleCopies(Transform):
             example[seq_name] = {seq_name : ' '.join(s)}
         return example
 
+class GenPointMutations(Transform):
+    '''Randomly swap synonymous codons inside the longest ORF'''
+   
+    def apply(self, example, is_train=False, stats=None, **kwargs):
+        
+        src = example['src']
+        src_shuffled = []
+        s = ''.join(src) 
+        start,end = getLongestORF(s)
+      
+        rel_start = -12
+        rel_end = 60
+        abs_start = start+rel_start
+        abs_end = start+rel_end
+        
+        if abs_start >=0 and abs_end <=end:
+            for base in ['A','C','G','T']:
+                for abs_loc,rel_loc in zip(range(abs_start,abs_end),range(-12,60)):
+                    c = src[abs_loc]
+                    if base != c:
+                        s_mutated = src[:abs_loc]+[base]+src[abs_loc:] 
+                        seq_name = f'src_{rel_loc}->{base}'
+                        example[seq_name] = {seq_name : ' '.join(s_mutated)}
+        return example
+
 class SynonymousCopies(Transform):
     '''Randomly swap synonymous codons inside the longest ORF'''
    

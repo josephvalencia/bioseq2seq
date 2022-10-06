@@ -33,6 +33,7 @@ def summarize_head(cds_storage,saved_file,grad=False,align_on="start",coding=Tru
     
     for tscript, attr in saved.items():
         is_pc = lambda x : x.startswith('NM_') or x.startswith('XM_')
+        attr = attr.T
         if grad:
             attr = attr.reshape(1,-1)
         if tscript in cds_storage:
@@ -67,7 +68,7 @@ def summarize_head(cds_storage,saved_file,grad=False,align_on="start",coding=Tru
         samples = [align_on_start(id,attn,start,max_before) for id,attn,start in zip(sample_ids,samples,before_lengths)]
     else:
         samples = [align_on_end(attn,end,max_after) for attn,end in zip(samples,before_lengths)]
-    
+   
     samples = np.stack(samples,axis=2)
     first = samples[0,:,:]
     support = np.count_nonzero(~np.isnan(first),axis=1)
@@ -104,13 +105,14 @@ def build_consensus_multi_IG(cds_storage,output_dir,prefix,grad_file,coding=True
     attr_type = attribution_dict['attr']
     labels = attribution_dict['bases']
     '''
-    consensus,domain  = summarize_head(cds_storage,grad_file,grad=True,align_on="start",coding=coding) 
+    consensus,domain  = summarize_head(cds_storage,grad_file,grad=False,align_on="start",coding=coding) 
     consensus = consensus.reshape(1,consensus.shape[0],consensus.shape[1]) 
-    suffix = "PC" if coding else "NC"
+    print(domain.min(),domain.max())
+    suffix = "group=PC" if coding else "group=NC"
     name = f'{prefix}_{suffix}'
     model = 'bioseq2seq'
     attr_type = 'grad'
-    compute_heatmap = False 
+    compute_heatmap = True 
     labels = [str(x) for x in range(8)]
     run_consensus_pipeline(consensus,domain,output_dir,labels,name,model,attr_type=attr_type,heatmap=compute_heatmap)
 
@@ -120,13 +122,15 @@ def plot_line(domain,consensus,output_dir,name,model,attr_type,plot_type='line',
 
     palette = sns.color_palette()
     print('in plot',consensus.shape,domain.shape) 
-
     n_layers,n_heads,n_positions = consensus.shape
+    
     if attr_type == 'EDA':
         for layer in range(n_layers):
             for i in range(n_heads): 
                 label = layer if i % 8 == 0 else None
-                plt.plot(domain,consensus[layer,i,:],color=palette[layer],label=label,alpha=0.8,linewidth=1)
+                color = layer % len(palette)
+                print(layer,i)
+                plt.plot(domain,consensus[layer,i,:],color=palette[color],label=label,alpha=0.8,linewidth=1)
     else: 
         for layer in range(n_layers):
             for i in range(n_heads):
@@ -150,7 +154,8 @@ def plot_line(domain,consensus,output_dir,name,model,attr_type,plot_type='line',
             for i in range(n_heads): 
                 label = layer if i % 8 == 0 else None
                 subslice = inset_range[layer,i,:]
-                axins.plot(inset_domain,subslice,color=palette[layer],label=label,alpha=0.4,linewidth=2.5)
+                color = layer % len(palette)
+                axins.plot(inset_domain,subslice,color=palette[color],label=label,alpha=0.4,linewidth=2.5)
     else:
         for layer in range(n_layers):
             for i in range(n_heads): 
@@ -200,12 +205,13 @@ def plot_heatmap(consensus,domain,output_dir,name,model):
     palette = sns.cubehelix_palette(start=.5, rot=-.5, as_cmap=True)
 
     b = 12 if cds_start > 12 else cds_start 
-    
-    consensus = consensus.T
-    consensus = consensus[:4,cds_start-b:cds_start+60]
+     
+    #consensus = consensus.T
+    consensus = consensus[0,2:6,cds_start-b:cds_start+60]
     min_val = np.min(consensus)
     max_val = np.max(consensus) 
 
+    print('CONSENSUS',consensus.shape) 
     domain = list(range(-b,60)) 
     consensus_df = pd.DataFrame(data=consensus,index=['A','C','G','T'],columns=domain).T
     
@@ -216,7 +222,7 @@ def plot_heatmap(consensus,domain,output_dir,name,model):
     #quit()
     #ax = sns.heatmap(consensus_df,cmap='bwr',vmin=-.15,vmax=0.1,center=0,square=True,robust=True,xticklabels=3)
     
-    crp_logo = logomaker.Logo(consensus_df,flip_below=False)
+    crp_logo = logomaker.Logo(consensus_df,flip_below=True)
     crp_logo.style_spines(visible=False)
     crp_logo.style_spines(spines=['left', 'bottom'], visible=True)
     
@@ -237,7 +243,7 @@ def plot_heatmap(consensus,domain,output_dir,name,model):
     cax = plt.gcf().axes[-1]
     cax.tick_params(labelsize=24)
     '''
-    plt_filename = f'{output_dir}/{name}_MDIG_logo.svg'
+    plt_filename = f'{output_dir}/{name}_grad_logo.svg'
     plt.savefig(plt_filename)
     plt.close()
 
@@ -257,7 +263,8 @@ def plot_power_spectrum(consensus,output_dir,name,model,attr_type,units='freq',l
         for l in range(n_layers):
             for i in range(n_heads):
                 label = l if i % 8 == 0 else None
-                ax1.plot(freq,ps[l,i,:],color=palette[l],label=label,alpha=0.6)
+                color = l % len(palette)
+                ax1.plot(freq,ps[l,i,:],color=palette[color],label=label,alpha=0.6)
     else:
         for l in range(n_layers):
             for i in range(n_heads):
@@ -304,10 +311,18 @@ def build_all(args):
     
     # load attribution files from config
     best_BIO_EDA = add_file_list(args.best_BIO_EDA,'layers')
-    #best_EDC_EDA = add_file_list(args.best_EDC_EDA,'layers')
-    best_BIO_grad = args.best_BIO_grad
-    best_EDC_grad = add_file_list(args.best_EDC_grad,'bases')
+    best_EDC_EDA = add_file_list(args.best_EDC_EDA,'layers')
     
+    best_BIO_grad_PC = args.best_BIO_grad_PC
+    best_EDC_grad_PC = args.best_EDC_grad_PC
+    best_BIO_grad_NC = args.best_BIO_grad_NC
+    best_EDC_grad_NC = args.best_EDC_grad_NC
+    
+    best_BIO_inputXgrad_PC = args.best_BIO_inputXgrad_PC
+    best_EDC_inputXgrad_PC = args.best_EDC_inputXgrad_PC
+    best_BIO_inputXgrad_NC = args.best_BIO_inputXgrad_NC
+    best_EDC_inputXgrad_NC = args.best_EDC_inputXgrad_NC
+
     # build output directory
     config = args.c
     config_prefix = config.split('.yaml')[0]
@@ -317,20 +332,32 @@ def build_all(args):
         os.mkdir(output_dir)
    
     # build EDA consensus, both coding and noncoding
-    build_consensus_EDA(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,coding=True)
-    build_consensus_EDA(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,coding=False)
+    #build_consensus_EDA(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,coding=True)
+    #build_consensus_EDA(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,coding=False)
     #build_consensus_EDA(test_cds,output_dir,'best_EDC_test',best_EDC_EDA,coding=True)
     #build_consensus_EDA(test_cds,output_dir,'best_EDC_test',best_EDC_EDA,coding=False)
-
-    # build IG consensus
-    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test',best_BIO_grad,coding=True)
-    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test',best_BIO_grad,coding=False)
-    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test',best_EDC_grad,coding=True)
-    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test',best_EDC_grad,coding=False)
     
+    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test_tgt=PC',best_BIO_grad_PC,coding=True)
     '''
-    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test',best_EDC_grad,'summed_attr',coding=True)
-    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test',best_EDC_grad,'summed_attr',coding=False)
+    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test_tgt=PC_',best_BIO_grad_PC,coding=False)
+    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test_PC_tgt=PC',best_EDC_grad_PC,coding=True)
+    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test_tgt=PC',best_EDC_grad_PC,coding=False)
+
+    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test_tgt=NC',best_BIO_grad_NC,coding=False)
+    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test_tgt=NC',best_BIO_grad_NC,coding=True)
+    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test_tgt=NC',best_EDC_grad_NC,coding=True)
+    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test_tgt=NC',best_EDC_grad_NC,coding=False)
+    
+    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test',best_BIO_inputXgrad_PC,coding=False)
+    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test',best_BIO_inputXgrad_PC,coding=True)
+    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test',best_BIO_inputXgrad_NC,coding=False)
+    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test',best_BIO_inputXgrad_NC,coding=True)
+    
+    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test',best_EDC_inputXgrad_PC,coding=True)
+    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test',best_EDC_inputXgrad_PC,coding=False)
+    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test',best_EDC_inputXgrad_NC,coding=True)
+    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test',best_EDC_inputXgrad_NC,coding=False)
+
     '''
 if __name__ == "__main__":
     

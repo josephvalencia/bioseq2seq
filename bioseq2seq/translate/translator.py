@@ -571,7 +571,6 @@ class Inference(object):
                         preds = trans.pred_sents[0]
                         preds.append(DefaultTokens.EOS)
                         attns = trans.attns[0][0,0,:,:].tolist()
-                        print(trans.attns[0].shape)
                         attn_kwargs[transcript_name] =  trans.attns[0][0,:,0,:].detach().cpu().numpy()
                         if self.data_type == "text":
                             srcs = trans.src_raw
@@ -949,7 +948,7 @@ class Translator(Inference):
         # (3) Begin decoding step by step:
         for step in range(decode_strategy.max_length):
             decoder_input = decode_strategy.current_predictions.view(1, -1, 1)
-
+            #print(f'step {step}, decoder_input={decoder_input}, {decoder_input.shape} alive_seq = {decode_strategy.alive_seq}')
             log_probs, attn = self._decode_and_generate(
                 decoder_input,
                 memory_bank,
@@ -969,7 +968,6 @@ class Translator(Inference):
                     break
 
             select_indices = decode_strategy.select_indices
-
             if any_finished:
                 # Reorder states.
                 if isinstance(memory_bank, tuple):

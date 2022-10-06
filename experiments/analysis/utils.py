@@ -18,8 +18,14 @@ def parse_config():
     p.add('--best_EDC_self_attn',help='best EDC self-attention (.self_attn)')
     p.add('--best_BIO_EDA',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
     p.add('--best_EDC_EDA',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
-    p.add('--best_BIO_grad',help = 'best bioseq2seq Integrated Gradients (.ig)',type=yaml.safe_load)
-    p.add('--best_EDC_grad',help = 'best EDC Integrated Gradients (.ig)',type=yaml.safe_load)
+    p.add('--best_BIO_grad_PC',help = 'best bioseq2seq Integrated Gradients (.ig)',type=yaml.safe_load)
+    p.add('--best_EDC_grad_PC',help = 'best EDC Integrated Gradients (.ig)',type=yaml.safe_load)
+    p.add('--best_BIO_grad_NC',help = 'best bioseq2seq Integrated Gradients (.ig)',type=yaml.safe_load)
+    p.add('--best_EDC_grad_NC',help = 'best EDC Integrated Gradients (.ig)',type=yaml.safe_load)
+    p.add('--best_BIO_inputXgrad_PC',help = 'best bioseq2seq Integrated Gradients (.ig)',type=yaml.safe_load)
+    p.add('--best_EDC_inputXgrad_PC',help = 'best EDC Integrated Gradients (.ig)',type=yaml.safe_load)
+    p.add('--best_BIO_inputXgrad_NC',help = 'best bioseq2seq Integrated Gradients (.ig)',type=yaml.safe_load)
+    p.add('--best_EDC_inputXgrad_NC',help = 'best EDC Integrated Gradients (.ig)',type=yaml.safe_load)
 
     return p.parse_known_args()
 

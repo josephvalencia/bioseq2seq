@@ -33,6 +33,7 @@
 .DS_Store
 data/
 /OLD/
+/results_config/
 /checkpoints/
 /experiments/wandb/
 /experiments/logs/

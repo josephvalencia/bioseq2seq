@@ -9,20 +9,21 @@ class PredictionWrapper(torch.nn.Module):
         self.model = model
         self.softmax = softmax 
 
-    def forward(self,src,src_lens,decoder_input,batch_size):
-
+    def forward(self,src,src_lens,decoder_inputs,batch_size):
+        
         src = src.transpose(0,1)
         src, enc_states, memory_bank, src_lengths, enc_cache = self.run_encoder(src,src_lens,batch_size)
 
         self.model.decoder.init_state(src,memory_bank,enc_states)
         memory_lengths = src_lens
-        
-        scores, attn = self.decode_and_generate(
-            decoder_input,
-            memory_bank,
-            memory_lengths=memory_lengths,
-            step=0)
-
+       
+        for i,dec_input in enumerate(decoder_inputs):
+            scores, attn = self.decode_and_generate(
+                dec_input,
+                memory_bank,
+                memory_lengths=memory_lengths,
+                step=i)
+            #print(i,torch.argmax(torch.nn.functional.softmax(scores)))
         return scores
 
     def run_encoder(self,src,src_lengths,batch_size):
@@ -66,9 +67,22 @@ class Attribution:
         self.src_vocab = vocab["src"].base_field.vocab
         self.predictor = PredictionWrapper(self.model,self.softmax)
 
-    def decoder_input(self,batch_size):
-        return self.sos_token * torch.ones(size=(batch_size,1,1),dtype=torch.long).to(self.device)
-   
+    def decoder_input(self,batch_size,prefix=None):
+        
+        ones =  torch.ones(size=(batch_size,1,1),dtype=torch.long).to(self.device)
+        if prefix is None:
+            return (self.sos_token*ones,)
+        else:
+            chunked = [x.repeat(batch_size,1,1) for x in torch.tensor_split(prefix,prefix.shape[0],dim=0)]
+            return tuple(chunked)
+            
+    def get_raw_src(self,src):
+        saved_src = src.detach().cpu().numpy().ravel()
+        return ''.join([self.src_vocab.itos[c] for c in saved_src])
+
+    def get_src_token(self,char):
+        return self.src_vocab.stoi[char]
+    
     def run(self,savefile,val_iterator,target_pos,baseline,transcript_names):
         self.run_fn(savefile,val_iterator,target_pos,baseline,transcript_names)
     

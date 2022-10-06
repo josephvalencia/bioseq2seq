@@ -126,6 +126,7 @@ class OrderedIterator(torchtext.data.Iterator):
                 if self.yield_raw_example:
                     yield minibatch[0]
                 else:
+                    
                     yield torchtext.data.Batch(
                         minibatch,
                         self.dataset,

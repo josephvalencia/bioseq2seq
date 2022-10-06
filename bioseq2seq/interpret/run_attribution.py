@@ -11,6 +11,8 @@ from scipy import stats , signal
 
 from embedding import SynonymousShuffleExpectedGradients, GradientAttribution
 from onehot import OneHotGradientAttribution
+from onehot import OneHotSalience, OneHotIntegratedGradients, OneHotSmoothGrad
+from ism import InSilicoMutagenesis
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from bioseq2seq.bin.models import restore_seq2seq_model
@@ -88,6 +90,15 @@ def add_synonymous_shuffled_to_vocab(num_copies,vocab_fields):
         shuffled_field.fields = [(seq_name,shuffled_field.base_field)] 
         vocab_fields[seq_name] = shuffled_field 
 
+def add_point_mutations_to_vocab(vocab_fields):
+
+    for base in ['A','G','C','T']: 
+        for loc in range(-12,60):
+            seq_name = f'src_{loc}->{base}'
+            shuffled_field = copy.deepcopy(vocab_fields['src'])
+            shuffled_field.fields = [(seq_name,shuffled_field.base_field)] 
+            vocab_fields[seq_name] = shuffled_field 
+
 def parse_args():
 
     """ Parse required and optional configuration arguments"""
@@ -99,6 +110,7 @@ def parse_args():
 
     # translate required args
     parser.add_argument("--input",help="File for translation")
+    parser.add_argument("--tgt_input",default=None,help="File for translation")
     parser.add_argument("--checkpoint", "--c",help ="ONMT checkpoint (.pt)")
     parser.add_argument("--inference_mode",default ="combined")
     parser.add_argument("--attribution_mode",default="ig")
@@ -124,7 +136,11 @@ def run_helper(rank,args,model,vocab,use_splits=False):
     
     target_pos = 1
     vocab_fields = build_standard_vocab()
-
+    tgt_text_field = vocab_fields['tgt'].base_field
+    tgt_vocab = tgt_text_field.vocab
+    src_text_field = vocab_fields['src'].base_field
+    src_vocab = src_text_field.vocab
+    print(tgt_vocab.stoi) 
     device = "cpu"
     # GPU training
     if args.num_gpus > 0:
@@ -164,13 +180,16 @@ def run_helper(rank,args,model,vocab,use_splits=False):
     # set up synonymous shuffled copies
     n_samples = 32
     batch_size = 16
-
+    
     shuffle_options = Namespace(num_copies=n_samples,mutation_prob=args.mutation_prob)
     xforms = {'add_synonymous_mutations' : xfm.SynonymousCopies(opts=shuffle_options)}
     add_synonymous_shuffled_to_vocab(n_samples,vocab_fields)
-
+    
+    #jxforms = {'add_point_mutations' : xfm.GenPointMutations(opts={})}
+    #add_point_mutations_to_vocab(vocab_fields)
+    print(f'INFERENCE MODE {args.inference_mode}')
     valid_iter = iterator_from_fasta(src=args.input,
-                                    tgt=None,
+                                    tgt=args.tgt_input,
                                     vocab_fields=vocab_fields,
                                     mode=args.inference_mode,
                                     is_train=False,
@@ -182,15 +201,41 @@ def run_helper(rank,args,model,vocab,use_splits=False):
    
     apply_softmax = False
     model.eval()
-   
+    sep = '___________________________________' 
     if args.attribution_mode == 'EG':
         attributor = SynonymousShuffleExpectedGradients(model,device,tgt_class,\
                                             softmax=apply_softmax,sample_size=n_samples)
     else: 
+        print(sep) 
+        print(f'Running ISM')
+        print(sep) 
+        attributor = InSilicoMutagenesis(model,device,vocab,tgt_class, \
+                                            softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size,
+                                            times_input=False,smoothgrad=False)
+        '''
+        print(sep) 
+        print(f'Running Saliency wrt. {tgt_class}')
+        print(sep) 
+        attributor = OneHotSalience(model,device,vocab,tgt_class, \
+                                            softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size,
+                                            times_input=False,smoothgrad=False)
+        print(sep) 
+        print(f'Running IG wrt. {tgt_class}')
+        print(sep) 
+        attributor = OneHotIntegratedGradients(model,device,vocab,tgt_class, \
+                                            softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size,
+                                            times_input=False,smoothgrad=False)
+        print(sep) 
+        print(f'Running SmoothGrad wrt. {tgt_class}')
+        print(sep) 
+        attributor = OneHotSmoothGrad(model,device,vocab,tgt_class, \
+                                            softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size,
+                                            times_input=False,smoothgrad=False)
+        print(sep) 
         attributor = OneHotGradientAttribution(model,device,vocab,tgt_class, \
                                             softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size,
                                             times_input=False,smoothgrad=False)
-    
+        ''' 
     attributor.run(savefile,valid_iter,target_pos,args.baseline,tscripts)
   
 def run_attribution(args,device):

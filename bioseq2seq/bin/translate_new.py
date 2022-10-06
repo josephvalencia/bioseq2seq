@@ -72,12 +72,15 @@ def run_helper(rank,model,vocab,args):
         os.mkdir(args.output_name)
     
     outfile = open(f'{args.output_name}preds.txt.rank{rank}','w')
-    attn_file = None
+    attnfile = None
 
     if args.save_EDA:
         model.decoder.attn_save_layer = args.attn_save_layer
         attnfile = open(f'{args.output_name}/enc_dec_attns_layer{args.attn_save_layer}.npz.rank{rank}','wb')
     
+    src_text_field = vocab['src'].base_field
+    src_vocab = src_text_field.vocab
+    print(src_vocab.stoi)
     tgt_text_field = vocab['tgt'].base_field
     tgt_vocab = tgt_text_field.vocab
     tgt_padding = tgt_vocab.stoi[tgt_text_field.pad_token]
@@ -117,7 +120,7 @@ def run_helper(rank,model,vocab,args):
                         attn_debug=args.save_EDA)
 
     outfile.close()
-    if attn_file is not None:
+    if attnfile is not None:
         attnfile.close()
 
 def file_cleanup(output_name):
@@ -138,7 +141,6 @@ def translate_from_checkpoint(args):
             logger.info(k,v)
     
     model = restore_seq2seq_model(checkpoint,device,options)
-    
     
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"# trainable parameters = {human_format(num_params)}")

@@ -30,4 +30,4 @@ export EG_TEST_BIO="python $PYTHONPATH/bioseq2seq/interpret/run_attribution.py -
 export GRAD_VAL_EDC="python $PYTHONPATH/bioseq2seq/interpret/run_attribution.py --input $val_set --inference_mode EDC --num_gpus 1 --attribution_mode grad  --max_tokens 300" 
 export GRAD_TEST_EDC="python $PYTHONPATH/bioseq2seq/interpret/run_attribution.py --input $test_set --inference_mode EDC --num_gpus 1 --attribution_mode grad --max_tokens 300" 
 export GRAD_VAL_BIO="python $PYTHONPATH/bioseq2seq/interpret/run_attribution.py --input $val_set --inference_mode bioseq2seq --num_gpus 1 --attribution_mode grad --max_tokens 1200" 
-export GRAD_TEST_BIO="python $PYTHONPATH/bioseq2seq/interpret/run_attribution.py --input $test_set --inference_mode bioseq2seq --num_gpus 1 --attribution_mode grad --max_tokens 300" 
+export GRAD_TEST_BIO="python $PYTHONPATH/bioseq2seq/interpret/run_attribution.py --input $test_set --tgt_input $BIOHOME/bioseq2seq/data/mammalian_200-1200_test_PROTEIN_nonredundant_80.fa --inference_mode bioseq2seq --num_gpus 1 --attribution_mode grad --max_tokens 300" 
