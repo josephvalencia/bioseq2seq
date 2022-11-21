@@ -61,11 +61,17 @@ class CodonTable(object):
                                 'GGT':'G', 'GGC':'G', 'GGA':'G', 'GGG':'G',}
     
     def codon_to_aa(self,codon):
-       return self.codon_to_aa_dict[codon] 
-    
+        if codon in self.codon_to_aa_dict:
+            return self.codon_to_aa_dict[codon] 
+        else:
+            return None
+
     def aa_to_codon(self,aa):
-        return self.aa_to_codon_dict[aa] 
-    
+        if aa in self.aa_to_codon_dict:
+            return self.aa_to_codon_dict[aa] 
+        else:
+            return None
+
     def random_synonymous_codon(self,codon):
         if 'N' in codon or 'R' in codon:
             return codon
@@ -73,7 +79,27 @@ class CodonTable(object):
             aa = self.codon_to_aa(codon)
             codon_list = self.aa_to_codon(aa)
             return random.choice(codon_list)
-
+    
+    def synonymous_codon_list(self,codon):
+        if 'N' in codon or 'R' in codon:
+            return codon
+        else:
+            aa = self.codon_to_aa(codon)
+            codon_list = self.aa_to_codon(aa)
+            return codon_list
+    
+    def enforce_synonymous(self,new_codon,old_codon):
+        if 'N' in codon or 'R' in codon:
+            return (False,3)
+        else:
+            aa1 = self.codon_to_aa(codon1)
+            aa2 = self.codon_to_aa(codon2)
+            for c1,c2 in zip(aa1,aa2):
+                if c1 != c2:
+                    mismatches+=1
+            synonymous = True if aa1 == aa2 else False
+            return (synonymous,mismatches) 
+            
     def synonymous_codon_by_max_score(self,codon,scores):
         
         if 'N' in codon or 'R' in codon:
@@ -163,7 +189,7 @@ class GenPointMutations(Transform):
         src = example['src']
         src_shuffled = []
         s = ''.join(src) 
-        start,end = getLongestORF(s)
+        start,end = getLongestORF(''.join(s))
       
         rel_start = -12
         rel_end = 60

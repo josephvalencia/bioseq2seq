@@ -138,7 +138,7 @@ class TransformerDecoderLayer(nn.Module):
                                        mask=src_pad_mask,
                                        layer_cache=layer_cache,
                                        attn_type="context")
-        
+       
         output = self.feed_forward(self.drop(mid) + query)
 
         return output, dec_attns, context_attns

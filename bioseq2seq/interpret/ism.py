@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import logomaker
 import torch.nn.functional as F
 
-def plot(consensus_df,name,axis=None):
+def plot(consensus_df,name,target_pos,class_token,axis=None):
     
     domain = list(range(-12,60))
     crp_logo = logomaker.Logo(consensus_df,shade_below=.5,fade_below=.5,flip_below=True,ax=axis)
@@ -14,12 +14,18 @@ def plot(consensus_df,name,axis=None):
     crp_logo.style_spines(spines=['left', 'bottom'], visible=True)
     threes = [x for x in domain if x % 3 == 0]
     
-    crp_logo.ax.axvspan(0, 3, color='red', alpha=0.3)
+    crp_logo.ax.axvspan(-0.5, 2.5, color='green', alpha=0.3)
+    if target_pos > 2:
+        window_start = (target_pos-2)*3 
+        crp_logo.ax.axvspan(window_start-0.5, window_start+2.5, color='red', alpha=0.3)
     crp_logo.ax.set_xticks(threes)
     crp_logo.ax.set_xticklabels(threes)
     crp_logo.ax.set_title(name)
-    
-    plt_filename = f'{name}_logo.svg'
+   
+    if class_token == '</s>':
+        class_token = 'STOP'
+
+    plt_filename = f'{name}_ISM_{class_token}_{target_pos}_logo.svg'
     plt.tight_layout()
     plt.savefig(plt_filename)
     print(f'saved {plt_filename}')
@@ -54,7 +60,7 @@ class InSilicoMutagenesis(Attribution):
 
         baselines = []
         
-        start,end = getLongestORF(raw_src)
+        start,end = getLongestORF(''.join(raw_src))
         rel_start = -12
         rel_end = 60
         abs_start = start+rel_start
@@ -94,23 +100,28 @@ class InSilicoMutagenesis(Attribution):
             src, src_lens = batch.src
             
             tscript = transcript_names[ids[0]]
-            if tscript.startswith('XR') or tscript.startswith('NR'):
-                continue
-            
             src = src.transpose(0,1)
             raw_src = self.get_raw_src(src) 
+             
+            tgt_prefix_len = target_pos 
             
-            class_token = 3 
+            start,end = getLongestORF(''.join(raw_src))
+            codon_pos = start+3*(tgt_prefix_len-2)
+            #print(raw_src[codon_pos:codon_pos+3])
+            ground_truth = batch.tgt[tgt_prefix_len,0,0].item()
+            print('GT',ground_truth,'self.class_token',self.class_token)
+            class_token = ground_truth if self.class_token == 'GT' else self.class_token
+            tgt_prefix = batch.tgt[:tgt_prefix_len,:,:]
             batch_size = batch.batch_size
-            pred_classes = self.predictor(src,src_lens,self.decoder_input(batch_size,batch.tgt[:10,:,:]),batch_size)
-            #pred_classes = self.predictor(src,src_lens,self.decoder_input(batch_size),batch_size)
-            probs = F.softmax(pred_classes)
-            print(f'GT({tscript}) : {torch.argmax(probs)}, W: {probs[:,class_token]}')
+            
+            pred_classes = self.predictor(src,src_lens,self.decoder_input(batch_size,tgt_prefix),batch_size)
+            probs = F.softmax(pred_classes,dim=-1)
+            print(f'GT({tscript}) : {ground_truth}, argmax : {torch.argmax(probs)}, class_token: {class_token}')
             
             counterfactual = [x for x in range(pred_classes.shape[1]) if x != class_token]
             counter_idx = torch.tensor(counterfactual,device=pred_classes.device)
             counterfactuals = pred_classes.index_select(1,counter_idx)
-            class_score = pred_classes[:,class_token] - counterfactuals.sum() 
+            class_score = pred_classes[:,:,class_token] - counterfactuals.sum() 
             
             ism = []
             storage = []
@@ -120,19 +131,17 @@ class InSilicoMutagenesis(Attribution):
                 if variant is not None:
                     mutant,info = variant
                     B = mutant.shape[0]
-                    pred_classes = self.predictor(mutant,src_lens,self.decoder_input(B,batch.tgt[:10,:,:]),B)
+                    pred_classes = self.predictor(mutant,src_lens,self.decoder_input(B,tgt_prefix),B)
                     counterfactuals = pred_classes.index_select(1,counter_idx)
-                    mutant_scores = pred_classes[:,class_token] - counterfactuals.sum(dim=-1)
-                    #mutant_scores = 2*pred_classes[:,class_token] - torch.sum(pred_classes,dim=1)
+                    mutant_scores = pred_classes[:,:,class_token] - counterfactuals.sum(dim=-1)
                     diff = mutant_scores - class_score
                     diff = diff.detach().cpu().numpy()
                     for j in range(B):
-                        entry = {'base' : info[j][1], 'loc' : info[j][0] , 'score' : diff[j]}
+                        entry = {'base' : info[j][1], 'loc' : info[j][0] , 'score' : diff[0][j]}
                         storage.append(entry)
             
             if len(storage) == 216:
                 df = pd.DataFrame(storage)
                 df = df.pivot(index='loc',columns='base',values='score').fillna(0.0)
-                plot(df,tscript) 
-                print(tscript,df.iloc[12:18])
+                plot(df,tscript,target_pos,self.tgt_vocab.itos[class_token]) 
 

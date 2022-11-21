@@ -55,9 +55,9 @@ def run_helper(rank,model,vocab,args):
 
     init_logger()
     
-    scorer = GNMTGlobalScorer(alpha=0.0, 
+    scorer = GNMTGlobalScorer(alpha=0.6, 
                                 beta=0.0, 
-                                length_penalty="avg", 
+                                length_penalty="none", 
                                 coverage_penalty="none")
     
     gpu = rank if args.num_gpus > 0 else -1
