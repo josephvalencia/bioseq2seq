@@ -9,8 +9,8 @@ import warnings
 import copy
 from scipy import stats , signal
 
-from embedding import SynonymousShuffleExpectedGradients, GradientAttribution, EmbeddingMDIG
-from onehot import OneHotSalience, OneHotIntegratedGradients, OneHotSmoothGrad, OneHotMDIG, OneHotExpectedGradients
+from embedding import SynonymousShuffleExpectedGradients, GradientAttribution, EmbeddingMDIG, EmbeddingIG
+from onehot import OneHotSalience, OneHotIntegratedGradients, OneHotMDIG, OneHotExpectedGradients
 from sampler import DiscreteLangevinSampler
 from ism import InSilicoMutagenesis
 
@@ -193,8 +193,8 @@ def run_helper(rank,args,model,vocab,use_splits=False):
                     tscripts.append(record.id)
     
     # set up synonymous shuffled copies
-    n_samples = 256
-    batch_size = 16
+    n_samples = 512
+    minibatch_size = 16
     
     xforms = {}
     if args.attribution_mode == 'EG-embed' or args.attribution_mode == 'EG':
@@ -222,55 +222,48 @@ def run_helper(rank,args,model,vocab,use_splits=False):
     sep = '___________________________________' 
     
     print(sep) 
-    if args.attribution_mode == 'EG-embed':
-        attributor = SynonymousShuffleExpectedGradients(model,device,vocab,tgt_class,\
-                                            softmax=apply_softmax,sample_size=n_samples)
+    if args.attribution_mode == 'grad':
+        print(f'Running Saliency wrt. {tgt_class}')
+        attributor = OneHotSalience(model,device,vocab,tgt_class, \
+                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size,
+                                            times_input=False,smoothgrad=False)
     elif args.attribution_mode == 'MDIG': 
         print(f'Running MDIG wrt. {tgt_class}')
-        '''
         attributor = OneHotMDIG(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size,
+                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size,
                                             times_input=False,smoothgrad=False)
-        '''
-        attributor = EmbeddingMDIG(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size)
-
     elif args.attribution_mode == 'IG': 
         print(f'Running IG wrt. {tgt_class}')
         attributor = OneHotIntegratedGradients(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size,
-                                            times_input=False,smoothgrad=False)
-        '''
-        print(f'Running IG wrt. {tgt_class}')
-        attributor = GradientAttribution(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size,
-                                            times_input=False,smoothgrad=False)
-        '''
-    elif args.attribution_mode == 'langevin':
-        print(f'Running Discrete Langevin wrt. {tgt_class}')
-        attributor = DiscreteLangevinSampler(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size,
-                                            times_input=False,smoothgrad=False)
-    elif args.attribution_mode == 'grad':
-        print(f'Running Saliency wrt. {tgt_class}')
-        attributor = OneHotSalience(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size,
+                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size,
                                             times_input=False,smoothgrad=False)
     elif args.attribution_mode == 'EG': 
-        print(f'Running Expected grads wrt. {tgt_class}')
+        print(f'Running Expected grads (onehot) wrt. {tgt_class}')
         attributor = OneHotExpectedGradients(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size,
+                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size,
                                             times_input=False,smoothgrad=False)
     elif args.attribution_mode == 'ISM': 
         print(f'Running ISM wrt. {tgt_class}')
         attributor = InSilicoMutagenesis(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size,
+                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size,
                                             times_input=False,smoothgrad=False)
-    elif args.attribution_mode == 'SG':
-        print(f'Running SmoothGrad wrt. {tgt_class}')
-        attributor = OneHotSmoothGrad(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,batch_size=batch_size,
+    elif args.attribution_mode == 'langevin':
+        print(f'Running Discrete Langevin wrt. {tgt_class}')
+        attributor = DiscreteLangevinSampler(model,device,vocab,tgt_class, \
+                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size,
                                             times_input=False,smoothgrad=False)
+    elif args.attribution_mode == 'MDIG-embed':
+        print(f'Running MDIG (embed) wrt. {tgt_class}')
+        attributor = EmbeddingMDIG(model,device,vocab,tgt_class, \
+                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size)
+    elif args.attribution_mode == 'IG-embed':
+        print(f'Running IG (embed) wrt. {tgt_class}')
+        attributor = EmbeddingIG(model,device,vocab,tgt_class, \
+                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size)
+    elif args.attribution_mode == 'EG-embed':
+        print(f'Running Expected grads (embed) wrt. {tgt_class}')
+        attributor = SynonymousShuffleExpectedGradients(model,device,vocab,tgt_class,\
+                                            softmax=apply_softmax,sample_size=n_samples)
     else:
         raise ValueError(f"{args.attribution_mode} is not a valid value for --attribution_mode")
 

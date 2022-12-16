@@ -8,6 +8,7 @@ from base import Attribution, OneHotGradientAttribution
 from bioseq2seq.bin.transforms import CodonTable, getLongestORF
 import torch.nn.functional as F
 import time
+import numpy as np
 
 class DiscreteLangevinSampler(OneHotGradientAttribution):
  
@@ -160,38 +161,45 @@ class DiscreteLangevinSampler(OneHotGradientAttribution):
             src, src_lens = batch.src
             src = src.transpose(0,1)
             batch_size = batch.batch_size
-            original = src
-            original_score = None
-            original_probs = None
-
             tscript = transcript_names[ids[0]]
             
+            # score true
+            original = src
+            original_onehot = self.onehot_embed_layer(original)
+            pred_classes = self.predictor(original_onehot,src_lens,self.decoder_input(batch_size),batch_size)
+            original_score = self.class_likelihood_ratio(pred_classes,self.class_token)
+            original_probs = F.softmax(pred_classes,dim=-1)
+            original_raw_src = self.get_raw_src(original)
+
             MAX_STEPS = 1000
-            self.set_stepsize(0.40)
+            self.set_stepsize(0.20)
             self.beta = 0.90
             self.preconditioner = torch.zeros(size=(*src.shape,8),device=src.device,dtype=torch.float)
-            
             max_score_diff = -1000
             best_seq = None
             best_step = 0
+            batch_EG = []
+            batch_preds = []
+            batch_probs = []
 
             for s in range(MAX_STEPS): 
                 onehot_src = self.onehot_embed_layer(src) 
                 
                 # calc q(x'|x)
+                s1 = time.time() 
                 pred_classes = self.predictor(onehot_src,src_lens,self.decoder_input(batch_size),batch_size)
-                true_pred = pred_classes[:,:,self.class_token]
+                e1 = time.time()
+
+                curr_pred = pred_classes[:,:,self.class_token]
                 likelihood = self.class_likelihood_ratio(pred_classes,self.class_token)
-                
-                if original_score == None:
-                    original_score = likelihood
-                    original_probs = F.softmax(pred_classes,dim=-1)
-                
-                true_grads = self.input_grads(likelihood,onehot_src)
-                self.update_preconditioner(true_grads,s)
-                proposal_dist = self.langevin_proposal_dist(true_grads,src,onehot_src)
+                curr_grads = self.input_grads(likelihood,onehot_src)
+                #curr_grads = curr_grads - curr_grads.sum(dim=-1,keepdims=True) 
+
+                self.update_preconditioner(curr_grads,s)
+                proposal_dist = self.langevin_proposal_dist(curr_grads,src,onehot_src)
                 resampled = proposal_dist.sample().unsqueeze(2)
                 resampled = self.reject_missense(original,resampled) 
+                
                 diff = torch.count_nonzero(src != resampled)
                 forward_prob = proposal_dist.log_prob(resampled.squeeze(2)) 
                 
@@ -201,17 +209,29 @@ class DiscreteLangevinSampler(OneHotGradientAttribution):
                 pred_classes = self.predictor(resampled_onehot,src_lens,self.decoder_input(batch_size),batch_size)
                 resampled_pred = pred_classes[:,:,self.class_token]
                 resampled_likelihood = self.class_likelihood_ratio(pred_classes,self.class_token)
-                
                 resampled_grads = self.input_grads(resampled_likelihood,resampled_onehot)
+                #resampled_grads = resampled_grads - resampled_grads.sum(dim=-1,keepdims=True)
+
                 resampled_proposal_dist = self.langevin_proposal_dist(resampled_grads,resampled,resampled_onehot)
                 reverse_prob = resampled_proposal_dist.log_prob(src.squeeze(2))
 
-                #score_diff = resampled_pred - true_pred
                 score_diff = resampled_likelihood - likelihood
                 accept_log_probs = self.metropolis_hastings(score_diff,forward_prob,reverse_prob) 
                 random_draw = torch.log(torch.rand(src.shape[0],device=src.device))
                 acceptances = accept_log_probs > random_draw
+                acceptances = acceptances.new_ones(*acceptances.shape)
                 src = torch.where(acceptances,resampled,src)
+                
+                # accumulate EG calculation
+                direction = original_onehot - resampled_onehot
+                interpolated_onehot = resampled_onehot + torch.rand(1,device=direction.device) * direction
+                pred_classes = self.predictor(interpolated_onehot,src_lens,self.decoder_input(batch_size),batch_size)
+                interpolated_pred = F.softmax(pred_classes,dim=-1)[:,:,self.class_token]
+                interpolated_likelihood = self.class_likelihood_ratio(pred_classes,self.class_token)
+                interpolated_grads = self.input_grads(interpolated_likelihood,interpolated_onehot)
+                batch_preds.append(resampled_likelihood.detach().cpu())
+                batch_probs.append(interpolated_pred.detach().cpu())
+                batch_EG.append(direction * interpolated_grads)
                 
                 # cache best sequence
                 if resampled_likelihood - original_score > max_score_diff:
@@ -243,14 +263,47 @@ class DiscreteLangevinSampler(OneHotGradientAttribution):
                     end = time.time()
                     print(f'Time elapsed = {end-start} s')
                     start = time.time() 
+            
+            # take expectation
+            batch_EG = torch.cat(batch_EG,dim=0)
+            attributions = batch_EG.mean(dim=0).detach().cpu()
+            # check convergence
+            baseline_preds = torch.cat(batch_preds,dim=0)
+            baseline_probs = torch.cat(batch_probs,dim=0)
+            mean_baseline_score = baseline_preds.mean()
+            mean_prob = baseline_probs.mean()
+            diff = original_score - mean_baseline_score
+            my_mae = diff - attributions.sum()
+            print(f'SCORE DIFF= {diff.item()}, sum(attr) = {attributions.sum()}, MAE = {my_mae.item()}, mea_prob = {mean_prob}')
+            
             sep = '________________________________________'
             print(sep)
             print(f"The sequence has converged, found at step {best_step}")
             diff_original = torch.count_nonzero(best_seq != original)
+            differences = (best_seq != original).reshape(-1).detach().cpu().numpy().tolist()
             print(f'# diff from original = {diff_original}/{best_seq.shape[0]*best_seq.shape[1]}')
             raw_src = self.get_raw_src(best_seq)
             print(''.join(raw_src))
+            print('ORIGINAL',''.join(original_raw_src))
             best_onehot = self.onehot_embed_layer(best_seq)
+            substitutions = original_onehot - best_onehot
+            #substitutions = original_onehot.new_zeros(*original_onehot.shape)
+            cos = torch.nn.CosineSimilarity(dim=1)
+            sim = cos(attributions.squeeze(),substitutions.detach().cpu().squeeze())
+            #print(sim)
+            sim = sim.numpy().tolist()
+            sim = [(i,s,original_raw_src[i],raw_src[i],attributions.squeeze()[i,2:6],substitutions.squeeze()[i,2:6]) for i,(s,eq) in enumerate(zip(sim,differences)) if eq]
+           
+            tot = 0.0
+            for i,cos,nuc1,nuc2,attr,subs in sim:
+                print(f'idx={i}, {nuc2} -> {nuc1} , cos({attr.detach().cpu().numpy()} , {subs.detach().cpu().numpy()}) = {cos}')
+                tot+=attr.sum().item()
+            print('ALT SUM',tot) 
+            sim_vals = [x[1] for x in sim]
+            hist, bin_edges = np.histogram(sim_vals)
+            print(f'bins = {bin_edges}')
+            print(f'counts = {hist}')
+            
             pred_classes = self.predictor(best_onehot,src_lens,self.decoder_input(batch_size),batch_size)
             probs = F.softmax(pred_classes,dim=-1)
             print(f'P(<NC>) = {probs[:,:,5].item():.3f}, P(<PC>) = {probs[:,:,4].item():.3f}')
@@ -258,6 +311,7 @@ class DiscreteLangevinSampler(OneHotGradientAttribution):
             description = f'step_found : {best_step}, diff:{diff_original}/{best_seq.shape[0]*best_seq.shape[1]}, P(<NC>):{original_probs[:,:,5].item():.3f}->{probs[:,:,5].item():.3f}'
             rec = SeqRecord(Seq(''.join(raw_src)),id=f'{tscript}-MUTANT',description=description)
             mutant_records.append(rec)
+            quit()
 
         with open(savefile,'w') as out_file:
             SeqIO.write(mutant_records,out_file,'fasta')

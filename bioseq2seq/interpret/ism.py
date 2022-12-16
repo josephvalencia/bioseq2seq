@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import logomaker
 import torch.nn.functional as F
+import numpy as np
 
 def plot(consensus_df,name,target_pos,class_token,axis=None):
     
@@ -25,7 +26,8 @@ def plot(consensus_df,name,target_pos,class_token,axis=None):
     if class_token == '</s>':
         class_token = 'STOP'
 
-    plt_filename = f'{name}_ISM_{class_token}_{target_pos}_logo.svg'
+    #plt_filename = f'{name}_ISM_{class_token}_{target_pos}_logo.svg'
+    plt_filename = f'{name}_ISM_logo.svg'
     plt.tight_layout()
     plt.savefig(plt_filename)
     print(f'saved {plt_filename}')
@@ -52,9 +54,9 @@ def plot_examples(df):
 
 class InSilicoMutagenesis(Attribution):
 
-    def __init__(self,model,device,vocab,tgt_class,softmax=True,sample_size=None,batch_size=None,times_input=False,smoothgrad=False):
+    def __init__(self,model,device,vocab,tgt_class,softmax=True,sample_size=None,minibatch_size=None,times_input=False,smoothgrad=False):
         self.predictor = PredictionWrapper(model,softmax)
-        super().__init__(model,device,vocab,tgt_class,softmax=softmax,sample_size=sample_size,batch_size=batch_size)
+        super().__init__(model,device,vocab,tgt_class,softmax=softmax,sample_size=sample_size,minibatch_size=minibatch_size)
     
     def gen_point_mutations(self,raw_src,src,copies_per_step):
 
@@ -92,8 +94,7 @@ class InSilicoMutagenesis(Attribution):
         
     def run(self,savefile,val_iterator,target_pos,baseline,transcript_names):
         
-        all_grad = {}
-        all_inputxgrad = {}
+        all_ism = {}
         
         for i,batch in enumerate(val_iterator):
             ids = batch.indices.tolist()
@@ -107,34 +108,43 @@ class InSilicoMutagenesis(Attribution):
             
             start,end = getLongestORF(''.join(raw_src))
             codon_pos = start+3*(tgt_prefix_len-2)
-            #print(raw_src[codon_pos:codon_pos+3])
             ground_truth = batch.tgt[tgt_prefix_len,0,0].item()
-            print('GT',ground_truth,'self.class_token',self.class_token)
             class_token = ground_truth if self.class_token == 'GT' else self.class_token
             tgt_prefix = batch.tgt[:tgt_prefix_len,:,:]
             batch_size = batch.batch_size
             
             pred_classes = self.predictor(src,src_lens,self.decoder_input(batch_size,tgt_prefix),batch_size)
-            probs = F.softmax(pred_classes,dim=-1)
-            print(f'GT({tscript}) : {ground_truth}, argmax : {torch.argmax(probs)}, class_token: {class_token}')
+            class_logit, probs = self.predict_logits(src,src_lens,
+                                                        self.decoder_input(batch_size,tgt_prefix),
+                                                        batch_size,self.class_token,ratio=True)
             
+            '''
+            #print(f'GT({tscript}) : {ground_truth}, argmax : {torch.argmax(probs)}, class_token: {class_token}')
+            
+            probs = F.softmax(pred_classes,dim=-1)
             counterfactual = [x for x in range(pred_classes.shape[1]) if x != class_token]
             counter_idx = torch.tensor(counterfactual,device=pred_classes.device)
             counterfactuals = pred_classes.index_select(1,counter_idx)
             class_score = pred_classes[:,:,class_token] - counterfactuals.sum() 
-            
+            '''
+
             ism = []
             storage = []
 
-            copies_per_step = 16
+            copies_per_step = 8
             for variant in self.gen_point_mutations(raw_src,src,copies_per_step):
                 if variant is not None:
                     mutant,info = variant
                     B = mutant.shape[0]
+                    '''
                     pred_classes = self.predictor(mutant,src_lens,self.decoder_input(B,tgt_prefix),B)
                     counterfactuals = pred_classes.index_select(1,counter_idx)
                     mutant_scores = pred_classes[:,:,class_token] - counterfactuals.sum(dim=-1)
-                    diff = mutant_scores - class_score
+                    '''
+                    mutant_logit, probs = self.predict_logits(mutant,src_lens,
+                                                                self.decoder_input(B,tgt_prefix),
+                                                                B,self.class_token,ratio=True)
+                    diff = mutant_logit - class_logit
                     diff = diff.detach().cpu().numpy()
                     for j in range(B):
                         entry = {'base' : info[j][1], 'loc' : info[j][0] , 'score' : diff[0][j]}
@@ -144,4 +154,7 @@ class InSilicoMutagenesis(Attribution):
                 df = pd.DataFrame(storage)
                 df = df.pivot(index='loc',columns='base',values='score').fillna(0.0)
                 plot(df,tscript,target_pos,self.tgt_vocab.itos[class_token]) 
-
+                all_ism[tscript] = df.to_numpy()
+        
+        print(f'saving {savefile}')
+        np.savez_compressed(savefile,**all_ism) 

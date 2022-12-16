@@ -15,79 +15,135 @@ from base import EmbeddingAttribution
 import torch.nn.functional as F
 from functools import partial
 
-class EmbeddingMDIG(EmbeddingAttribution):
+class EmbeddingIG(EmbeddingAttribution):
     
     def run(self,savefile,val_iterator,target_pos,baseline,transcript_names):
-
-        sl = Saliency(self.predictor)
-
+        
         all_grad = {}
-        for batch in tqdm.tqdm(val_iterator):
-            
+        all_inputxgrad = {}
+        
+        for i,batch in enumerate(val_iterator):
             ids = batch.indices.tolist()
             src, src_lens = batch.src
             src = src.transpose(0,1)
-            
-            # can only do one batch at a time
-            for j in range(batch.batch_size):
-                # setup batch elements
-                tscript = transcript_names[ids[j]]
-                curr_src = src[j,:,:].unsqueeze(0)
-                curr_src_embed = self.src_embed(curr_src)
-                curr_tgt = batch.tgt[target_pos,j,:].reshape(1,-1,1)
-                curr_src_lens = torch.max(src_lens)
-                curr_src_lens = curr_src_lens.unsqueeze(0)
-               
-                tgt_class = self.class_token
-                
-                # score original sequence
-                pred_classes = self.predictor(curr_src_embed,curr_src_lens,self.decoder_input(1),1)
-                src_score = pred_classes.detach().cpu()[:,tgt_class]
+            curr_src_embed = self.src_embed(src)
+            batch_size = batch.batch_size
+            tscript = transcript_names[ids[0]]
 
-                batch_preds = []                     
-                
-                n_steps = 16 
-                minibatch_size = 16 
-                decoder_input = self.decoder_input(minibatch_size)
-                mdig_storage = [] 
-                for baseline in ['A','C','G','T']:
-                    batch_attributions = []
-                    baseline_embed = self.nucleotide_embed(src,baseline)
-                    # score baselines
-                    baseline_pred_classes = self.predictor(baseline_embed,curr_src_lens,self.decoder_input(1),1)
-                    base_pred = baseline_pred_classes.detach().cpu()[:,tgt_class]
-                    alpha = torch.randn(baseline_embed.shape[0],1,1).to(device=self.device)
-                    gridspace = torch.linspace(0,1,n_steps,dtype=torch.float,device=self.device)
-                    batch_preds.append(base_pred)
-                    direction = curr_src_embed - baseline_embed
-                    for i in range(0,n_steps,minibatch_size):
-                        # sample along paths
-                        alpha = gridspace[i:i+minibatch_size].reshape(minibatch_size,1,1)
-                        interpolated = baseline_embed + alpha*direction.repeat(minibatch_size,1,1)
-                        # calculate gradients  
-                        grads = sl.attribute(inputs=interpolated,target=tgt_class,abs=False,
-                                            additional_forward_args = (src_lens,decoder_input,minibatch_size))
-                        grads = direction * grads
-                        grads = grads.detach().cpu()
-                        batch_attributions.append(grads)
-                       
-                    # take riemannian sum
-                    batch_attributions = torch.cat(batch_attributions,dim=0)
-                    attributions = batch_attributions.mean(dim=0).detach().cpu().numpy()
-                    # check convergence
-                    baseline_preds = torch.cat(batch_preds,dim=0)
-                    mean_baseline_score = baseline_preds.mean()
-                    diff = src_score - mean_baseline_score
-                    my_mae = diff - np.sum(attributions)
-                    print(f'base = {baseline} ,diff = {diff}, sum of scores = {np.sum(attributions)}')
-                    mdig_storage.append(attributions)
+            # score true
+            tgt_prefix = batch.tgt[:target_pos,:,:]
+            true_logit, true_probs = self.predict_logits(curr_src_embed,src_lens,
+                                                    self.decoder_input(batch_size,tgt_prefix),
+                                                    batch_size,self.class_token,ratio=True)
+            n_samples = 128
+            minibatch_size = 16
 
-                mdig = np.stack(mdig_storage,axis=0)
-                all_grad[tscript] = mdig.sum(axis=-1) 
+            # score all single-nuc baselines one by one
+            #baseline_embed = self.nucleotide_embed(src,'A')
+            baseline_embed = self.rand_embed(src)
+            base_class_logit, base_probs = self.predict_logits(baseline_embed,src_lens,
+                                                            self.decoder_input(batch_size,tgt_prefix),
+                                                            batch_size,self.class_token,ratio=True)
+            base_probs = base_probs.squeeze()
+            grads = []
+            scores = []
+            grid = torch.linspace(0,1,n_samples,device=baseline_embed.device) 
+            direction = curr_src_embed - baseline_embed
+            for n in range(0,n_samples,minibatch_size):
+                alpha = grid[n:n+minibatch_size].reshape(minibatch_size,1,1,1) 
+                interpolated_src = baseline_embed + alpha*direction 
+                logit, probs = self.predict_logits(interpolated_src.squeeze(),src_lens,
+                                                    self.decoder_input(minibatch_size,tgt_prefix),
+                                                    minibatch_size,self.class_token,ratio=True)
+                input_grad = self.input_grads(logit,interpolated_src)
+                grads.append(input_grad.detach().cpu())
+
+            # take riemannian sum
+            diff = true_logit - base_class_logit
+            all_grads = torch.cat(grads,dim=0)
+            #print(f'direction = {direction.shape}, all_grads.mean() = {all_grads.mean(dim=0).shape}')
+            average_grad = direction.detach().cpu() * all_grads.mean(dim=0)
+            #print(f'direction = {direction}')
+            #print(f'all_grads.mean = {all_grads.mean(dim=0)}')
+            #print(f'average_grad = {average_grad}')
+            # assess IG completeness property
+            summed = average_grad.sum()
+            print(f'diff = {diff}, sum of scores = {summed}')
+            print('average_grad',average_grad.shape)  
+            attr = average_grad.sum(dim=2)
+            tscript = transcript_names[ids[0]]
+            true_len = src_lens[0].item()
+            saliency = attr[:,:true_len]
+            all_grad[tscript] = saliency.detach().cpu().numpy() 
         
-        print(f'saving to {savefile}')
-        np.savez(savefile,**all_grad) 
+        np.savez_compressed(savefile,**all_grad) 
+
+class EmbeddingMDIG(EmbeddingAttribution):
     
+    def run(self,savefile,val_iterator,target_pos,baseline,transcript_names):
+        
+        all_grad = {}
+        all_inputxgrad = {}
+        
+        for i,batch in enumerate(val_iterator):
+            ids = batch.indices.tolist()
+            src, src_lens = batch.src
+            src = src.transpose(0,1)
+            curr_src_embed = self.src_embed(src)
+            batch_size = batch.batch_size
+            tscript = transcript_names[ids[0]]
+
+            # score true
+            tgt_prefix = batch.tgt[:target_pos,:,:]
+            true_logit, true_probs = self.predict_logits(curr_src_embed,src_lens,
+                                                    self.decoder_input(batch_size,tgt_prefix),
+                                                    batch_size,self.class_token,ratio=True)
+            n_samples = 128
+            minibatch_size = 16
+            mdig = []
+
+            # score all single-nuc baselines one by one
+            for c,base in zip(range(2,6),'ACGT'): 
+                baseline_embed = self.nucleotide_embed(src,base)
+                base_class_logit, base_probs = self.predict_logits(baseline_embed,src_lens,
+                                                                self.decoder_input(batch_size,tgt_prefix),
+                                                                batch_size,self.class_token,ratio=True)
+                base_probs = base_probs.squeeze()
+                grads = []
+                scores = []
+                grid = torch.linspace(0,1,n_samples,device=baseline_embed.device) 
+                direction = curr_src_embed - baseline_embed
+
+                for n in range(0,n_samples,minibatch_size):
+                    alpha = grid[n:n+minibatch_size].reshape(minibatch_size,1,1,1) 
+                    interpolated_src = baseline_embed + alpha*direction 
+                    logit, probs = self.predict_logits(interpolated_src.squeeze(),src_lens,
+                                                        self.decoder_input(minibatch_size,tgt_prefix),
+                                                        minibatch_size,self.class_token,ratio=True)
+                    
+                    #probs = probs.squeeze()
+                    #print(f'alpha = {alpha.squeeze()}, P(class) = {probs[:,self.class_token]}')
+                    input_grad = self.input_grads(logit,interpolated_src)
+                    grads.append(input_grad.detach().cpu())
+
+                # take riemannian sum
+                diff = true_logit - base_class_logit
+                all_grads = torch.cat(grads,dim=0)
+                average_grad = direction.detach().cpu() * all_grads.mean(dim=0)
+                # assess IG completeness property
+                summed = average_grad.sum()
+                print(f'base = {base}, diff = {diff}, sum of scores = {summed}')
+                ig_summed = average_grad.sum(dim=2)
+                mdig.append(ig_summed)
+
+            attr = torch.cat(mdig,dim=0)
+            tscript = transcript_names[ids[0]]
+            true_len = src_lens[0].item()
+            saliency = attr[:,:true_len]
+            all_grad[tscript] = saliency.detach().cpu().numpy() 
+        
+        np.savez_compressed(savefile,**all_grad) 
+
 class SynonymousShuffleExpectedGradients(EmbeddingAttribution):
     
     def run(self,savefile,val_iterator,target_pos,baseline,transcript_names):
@@ -116,15 +172,7 @@ class SynonymousShuffleExpectedGradients(EmbeddingAttribution):
                 # score original sequence
                 pred_classes = self.predictor(curr_src_embed,curr_src_lens,self.decoder_input(1),1)
                 print(f'pred_classes = {pred_classes.shape}')
-                src_score =  pred_classes.detach().cpu()[:,tgt_class]
-                
-                # check scores for non-classification token 
-                probs = torch.exp(F.log_softmax(pred_classes.detach()))
-                probs_list = probs.reshape(-1).tolist()
-                probs_with_labels = list(zip(self.tgt_vocab.stoi.keys(),probs_list))
-                good_share = probs_list[self.pc_token] + probs_list[self.nc_token]
-                bad_share = 1.0 - good_share
-                print(f'bad_share={bad_share}')
+                src_score = pred_classes.detach().cpu()[:,:,tgt_class]
 
                 batch_attributions = []
                 batch_preds = []                     
@@ -136,7 +184,7 @@ class SynonymousShuffleExpectedGradients(EmbeddingAttribution):
                     baseline_embed = self.src_embed(baseline_batch)
                     baseline_pred_classes = self.predictor(baseline_embed,curr_src_lens,decoder_input,minibatch_size)
                     print('baseline_pred_classes',baseline_pred_classes.shape)
-                    base_pred = baseline_pred_classes.detach().cpu()[:,tgt_class]
+                    base_pred = baseline_pred_classes.detach().cpu()[:,:,tgt_class]
                     batch_preds.append(base_pred)
                     # sample along paths 
                     alpha = torch.rand(baseline_embed.shape[0],1,1).to(device=self.device)
@@ -157,7 +205,9 @@ class SynonymousShuffleExpectedGradients(EmbeddingAttribution):
                 mean_baseline_score = baseline_preds.mean()
                 diff = src_score - mean_baseline_score
                 my_mae = diff - np.sum(attributions)
-                    
+                print(f'SCORE DIFF= {diff.item()}, sum(attr) = {attributions.sum()}, MAE = {my_mae.item()}')
+                
+                '''
                 saved_src = np.squeeze(np.squeeze(curr_src.detach().cpu().numpy(),axis=0),axis=1).tolist()
                 saved_src = "".join([self.src_vocab.itos[x] for x in saved_src])
                 saved_src = saved_src.split('<blank>')[0]
@@ -216,6 +266,7 @@ class SynonymousShuffleExpectedGradients(EmbeddingAttribution):
     
         df = pd.DataFrame(storage)
         df.to_csv(savefile,sep='\t')
+    '''
 
     def extract_baselines(self,batch,batch_index,num_copies,copies_per_step):
 

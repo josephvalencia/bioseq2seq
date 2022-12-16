@@ -3,6 +3,7 @@ from functools import partial,reduce
 from typing import Union
 from captum.attr import configure_interpretable_embedding_layer, remove_interpretable_embedding_layer
 from approxISM.embedding import TensorToOneHot, OneHotToEmbedding 
+import torch.nn.functional as F
 
 class PredictionWrapper(torch.nn.Module):
     
@@ -32,7 +33,7 @@ class PredictionWrapper(torch.nn.Module):
     def run_encoder(self,src,src_lengths,batch_size):
 
         enc_states, memory_bank, src_lengths, enc_cache = self.model.encoder(src,src_lengths,grad_mode=False)
-        #print(f'enc_states = {enc_states.shape}, memory_bank = {memory_bank.shape}, src_lengths = {src_lengths.shape}')
+        
         if src_lengths is None:
             src_lengths = torch.Tensor(batch_size).type_as(memory_bank).long().fill_(memory_bank.size(0))
 
@@ -50,18 +51,18 @@ class PredictionWrapper(torch.nn.Module):
         else:
             attn = None
         #print(f'dec_out before squeeze = {dec_out.shape}')    
-        scores = self.model.generator(dec_out.squeeze(0),softmax=self.softmax)
-        #scores = self.model.generator(dec_out,softmax=self.softmax)
+        #scores = self.model.generator(dec_out.squeeze(0),softmax=self.softmax)
+        scores = self.model.generator(dec_out,softmax=self.softmax)
         return scores, attn
 
 class Attribution:
     '''Base class for attribution experiments '''
-    def __init__(self,model,device,vocab,tgt_class,softmax=True,sample_size=None,batch_size=None):
+    def __init__(self,model,device,vocab,tgt_class,softmax=True,sample_size=None,minibatch_size=None):
         
         self.device = device
         self.model = model
         self.sample_size = sample_size
-        self.batch_size = batch_size
+        self.minibatch_size = minibatch_size
         self.softmax = softmax
         self.tgt_vocab = vocab['tgt'].base_field.vocab
         self.class_token = self.tgt_vocab[tgt_class] if tgt_class != 'GT' else 'GT'
@@ -89,34 +90,58 @@ class Attribution:
         return self.src_vocab.stoi[char]
     
     def input_grads(self,outputs,inputs):
+        ''' per-sample gradient of outputs wrt. inputs '''
+        
         total_pred = outputs.sum()
         total_pred.backward(torch.ones_like(total_pred),inputs=inputs)
         grads = inputs.grad
-        #grads -= grads.mean(dim=-1,keepdims=True)
         return grads
             
-    def class_likelihood_ratio(self,pred_classes,class_token):
-        counterfactual = [x for x in range(pred_classes.shape[1]) if x != class_token]
+    def class_logit_ratio(self,pred_classes,class_token):
+        ''' logit of class_token minus all the rest'''
+        
+        counterfactual = [x for x in range(pred_classes.shape[2]) if x != class_token]
         counter_idx = torch.tensor(counterfactual,device=pred_classes.device)
         counterfactual_score = pred_classes.index_select(2,counter_idx)
-        return pred_classes[:,:,class_token] - counterfactual_score.sum()
-    
+        #return pred_classes[:,:,class_token] - counterfactual_score.sum(dim=2)
+        return pred_classes[:,:,self.pc_token] - pred_classes[:,:,self.nc_token]
+   
+    def predict_logits(self,src,src_lens,decoder_input,batch_size,class_token,ratio=True):
+
+        pred_classes = self.predictor(src,src_lens,decoder_input,batch_size)
+        probs = F.softmax(pred_classes,dim=-1)
+        
+        if ratio:
+            outputs = self.class_logit_ratio(pred_classes,class_token)
+        else:
+            outputs = pred_classes[:,:,class_token]
+       
+        return outputs, probs
+
     def run(self,savefile,val_iterator,target_pos,baseline,transcript_names):
         self.run_fn(savefile,val_iterator,target_pos,baseline,transcript_names)
     
 class EmbeddingAttribution(Attribution):
     '''Base class for attribution experiments using the dense embedding representation'''
 
-    def __init__(self,model,device,vocab,tgt_class,softmax=True,sample_size=None,batch_size=None):
+    def __init__(self,model,device,vocab,tgt_class,softmax=True,sample_size=None,minibatch_size=None):
         
         self.interpretable_emb = configure_interpretable_embedding_layer(model,'encoder.embeddings')
-        super().__init__(model,device,vocab,tgt_class,softmax=softmax,sample_size=sample_size,batch_size=batch_size)
+        super().__init__(model,device,vocab,tgt_class,softmax=softmax,sample_size=sample_size,minibatch_size=minibatch_size)
 
     def src_embed(self,src):
         src_emb = self.interpretable_emb.indices_to_embeddings(src.permute(1,0,2))
         src_emb = src_emb.permute(1,0,2)
         return src_emb 
 
+    def rand_embed(self,src):
+        src_emb = self.interpretable_emb.indices_to_embeddings(src.permute(1,0,2))
+        src_emb = src_emb.permute(1,0,2)
+        mean = src_emb.mean(dim=1,keepdim=True)
+        std = src_emb.std(dim=1,keepdim=True)
+        randomized = mean + std*torch.randn_like(src_emb,requires_grad=True) 
+        return randomized     
+    
     def nucleotide_embed(self,src,nucleotide):
 
         src_size = list(src.size())
@@ -125,6 +150,7 @@ class EmbeddingAttribution(Attribution):
         # copy across length
         test =  n*torch.ones_like(src).to(self.device)
         baseline_emb = self.interpretable_emb.indices_to_embeddings(test.permute(1,0,2))
+        #print(f'baseline_emb before permute = {baseline_emb.shape}')
         baseline_emb = baseline_emb.permute(1,0,2)
         return baseline_emb
 
@@ -135,7 +161,7 @@ def get_module_by_name(parent: Union[torch.Tensor, torch.nn.Module],
 
 class OneHotGradientAttribution(Attribution):
 
-    def __init__(self,model,device,vocab,tgt_class,softmax=True,sample_size=None,batch_size=None,times_input=False,smoothgrad=False):
+    def __init__(self,model,device,vocab,tgt_class,softmax=True,sample_size=None,minibatch_size=None,times_input=False,smoothgrad=False):
         
         self.smoothgrad = smoothgrad
         # augment Embedding with one hot utilities
@@ -146,7 +172,7 @@ class OneHotGradientAttribution(Attribution):
         embedding_modulelist[0] = dense_embed_layer
         self.predictor = PredictionWrapper(model,softmax)
         
-        super().__init__(model,device,vocab,tgt_class,softmax=softmax,sample_size=sample_size,batch_size=batch_size)
+        super().__init__(model,device,vocab,tgt_class,softmax=softmax,sample_size=sample_size,minibatch_size=minibatch_size)
     
     def run(self,savefile,val_iterator,target_pos,baseline,transcript_names):
         raise NotImplementedError

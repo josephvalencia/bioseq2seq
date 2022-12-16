@@ -18,7 +18,7 @@ def parse(fname,outname):
     coding = [x for x in rna_dict.keys() if is_mrna(x)]
     noncoding = [x for x in rna_dict.keys() if not is_mrna(x)]
     
-    coding = sample(coding,2)
+    coding = sample(coding,10)
     noncoding = sample(noncoding,0)
 
     rna = [rna_dict[c] for c in coding+noncoding]

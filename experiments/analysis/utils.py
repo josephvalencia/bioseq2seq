@@ -29,6 +29,11 @@ def parse_config():
 
     return p.parse_known_args()
 
+def grad_simplex_correction(input_grad):
+    # Macdandzic et .al 2022 https://doi.org/10.1101/2022.04.29.490102
+    input_grad -= input_grad.mean(dim=-1,keepdims=True)
+    return input_grad
+
 def add_file_list(info_dict,label_field):
    
     print(info_dict)

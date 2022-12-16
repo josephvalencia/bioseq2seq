@@ -6,13 +6,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import sys
 
-def plot(consensus_df,name,target_pos,axis=None):
+def plot(consensus_df,name,target_pos,attr,axis=None):
     
-    #domain = list(range(-12,60))
+    domain = list(range(-12,60))
     crp_logo = logomaker.Logo(consensus_df,shade_below=.5,fade_below=.5,flip_below=True,ax=axis)
     crp_logo.style_spines(visible=False)
     crp_logo.style_spines(spines=['left', 'bottom'], visible=True)
-    #threes = [x for x in domain if x % 3 == 0]
+    threes = [x for x in domain if x % 3 == 0]
   
     target_pos = int(target_pos)
 
@@ -21,43 +21,20 @@ def plot(consensus_df,name,target_pos,axis=None):
         left = 3*(target_pos-2)-0.5
         right = left+2.5
         crp_logo.ax.axvspan(left,right, color='red', alpha=0.3)
-    #crp_logo.ax.set_xticks(threes)
-    #crp_logo.ax.set_xticklabels(threes)
+    crp_logo.ax.set_xticks(threes)
+    crp_logo.ax.set_xticklabels(threes)
     crp_logo.ax.set_title(name)
     
-    plt_filename = f'{name}_logo.svg'
+    plt_filename = f'{name}_{attr}_logo.svg'
+    plt.tight_layout()
     plt.savefig(plt_filename)
     print(f'saved {plt_filename}')
     plt.close()
-    ''' 
-    labels = ['<blank>','<unk>','A','C','G','T','N','R']
-    for i in range(consensus_df.shape[1]):
-        c = 'b' if labels[i] in ['A','G','C','T'] else 'k'
-        plt.plot(domain,consensus_df[:,i],label=labels[i],alpha=0.8,linewidth=1)
-    plt.legend()
-    '''  
-    '''
-    ax = sns.heatmap(consensus_df,cmap='bwr',center=0,square=True,vmin=-0.15,vmax=0.1,robust=True,xticklabels=3)
-    #ax = sns.heatmap(consensus_df,cmap='bwr',center=0,square=True,robust=True,xticklabels=3)
-    ax.set_yticklabels(ax.get_yticklabels(), rotation = 0, fontsize = 18)
-    ax.tick_params(axis='x',labelsize=28)
-    ax.axhline(y=0, color='k',linewidth=2.5)
-    ax.axhline(y=consensus.shape[0], color='k',linewidth=2.5)
-    ax.axvline(x=0, color='k',linewidth=2.5)
-    ax.axvline(x=consensus.shape[1], color='k',linewidth=2.5)
-    ax.add_patch(Rectangle((b,0),3, 4, fill=False, edgecolor='yellow', lw=2.5))
-    cax = plt.gcf().axes[-1]
-    cax.tick_params(labelsize=24)
-    plt_filename = f'{name}_logo.svg'
-    plt.savefig(plt_filename)
-    print(f'saved {plt_filename}')
-    plt.close()
-    '''
 
 def plot_line(domain,grads,tscript,parent,class_type,target_pos,attr):
    
     plt.figure(figsize=(6.4,3.2))
-    normed_grads = np.linalg.norm(grads,ord=2,axis=0)
+    normed_grads = np.linalg.norm(grads,ord=2,axis=1)
     plt.plot(domain,normed_grads,linewidth=1)
     plt_filename = "/home/bb/valejose/home/bioseq2seq/{}_{}.{}.{}_{}.svg".format(parent,class_type,target_pos,attr,tscript)
     plt.tight_layout()
@@ -83,21 +60,18 @@ def plot_examples(parent,attr,class_type,target_pos):
     for tscript,grad in saved.items():
         cds_loc = [int(x) for x in test_cds[tscript].split(':')] 
         s,e = tuple(cds_loc) 
-        #grad = grad[:,2:6].T
+        print(grad.shape)
+        grad = grad[:,2:6].T
         labels = ['A','C','G','T']
-        print(grad.shape) 
         if s>=12 and s+60 < grad.shape[1]:
-            cds_grad = grad[:,s-12:s+60]
+            cds_grad = -grad[:,s-12:s+60]
             domain = list(range(-12,60))
             grad_df = pd.DataFrame(data=cds_grad,index=labels,columns=domain).T
-            plot(grad_df,tscript,target_pos)
-        
+            plot(grad_df,tscript,target_pos,attr)
         row = i 
-        domain = list(range(-s,grad.shape[1]-s))
-        plot_line(domain,grad,tscript,parent,class_type,target_pos,attr)
-        i+=1
-        if i >= 4:
-            break
+        domain = list(range(-s,grad.shape[0]-s))
+        #plot_line(domain,grad,tscript,parent,class_type,target_pos,attr)
+        
         ''' 
         if i < ncols*nrows and s >= 12 and e > s+60: 
             grad = grad[s-12:s+60,2:6].T
