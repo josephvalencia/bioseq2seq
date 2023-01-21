@@ -74,11 +74,11 @@ if __name__ == "__main__":
 
     storage = []
     parent_dir = sys.argv[1]    
-    '''
+    
     for i in range(1,6):
         samba = f'{parent_dir}/test_rnasamba_mammalian_{i}.tsv'
         storage.append(eval_rnasamba(samba,i)) 
-    ''' 
+    
     cpc = f'test_cpc2_mammalian.txt'
     storage.append(eval_cpc2(cpc,'mammalian')) 
     cpat_a = f'test_cpat_mammalian.ORF_prob.best.tsv'

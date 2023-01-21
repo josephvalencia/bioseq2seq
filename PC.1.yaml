@@ -1,0 +1,14 @@
+[Datasets]
+train_csv : data/mammalian_200-1200_train_balanced.csv
+val_csv : data/mammalian_200-1200_val_nonredundant_80.csv
+test_csv : data/mammalian_200-1200_test_nonredundant_80.csv
+[Results]
+competitors_results : competitors_results.txt
+bioseq2seq_results : translation_scores.txt
+EDC_results : tmp.txt
+[Best Models]
+best_BIO_DIR : experiments/output/bioseq2seq_4_Jun25_07-51-41_step_10500/ 
+best_EDC_DIR : experiments/output/EDC_1_Jun27_08-35-05_step_6000/ 
+[Encoder-Decoder Attention]
+best_BIO_EDA : {'model':'bioseq2seq','attr' : 'EDA','n_layers' : 2}
+best_EDC_EDA : {'model':'EDC','attr' : 'EDA','n_layers' : 16}

@@ -14,10 +14,10 @@ def parse_config():
     p.add('--competitors_results',help='competitors results (.csv)')
     p.add('--bioseq2seq_results',help='bioseq2seq results (.csv)')
     p.add('--EDC_results',help='EDC results (.csv)')
-    p.add('--best_seq_self_attn',help='best bioseq2seq self-attention (.self_attn)')
-    p.add('--best_EDC_self_attn',help='best EDC self-attention (.self_attn)')
     p.add('--best_BIO_EDA',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
     p.add('--best_EDC_EDA',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
+    p.add('--best_BIO_DIR',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
+    p.add('--best_EDC_DIR',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
     p.add('--best_BIO_grad_PC',help = 'best bioseq2seq Integrated Gradients (.ig)',type=yaml.safe_load)
     p.add('--best_EDC_grad_PC',help = 'best EDC Integrated Gradients (.ig)',type=yaml.safe_load)
     p.add('--best_BIO_grad_NC',help = 'best bioseq2seq Integrated Gradients (.ig)',type=yaml.safe_load)
@@ -26,23 +26,18 @@ def parse_config():
     p.add('--best_EDC_inputXgrad_PC',help = 'best EDC Integrated Gradients (.ig)',type=yaml.safe_load)
     p.add('--best_BIO_inputXgrad_NC',help = 'best bioseq2seq Integrated Gradients (.ig)',type=yaml.safe_load)
     p.add('--best_EDC_inputXgrad_NC',help = 'best EDC Integrated Gradients (.ig)',type=yaml.safe_load)
-
     return p.parse_known_args()
 
 def grad_simplex_correction(input_grad):
     # Macdandzic et .al 2022 https://doi.org/10.1101/2022.04.29.490102
-    input_grad -= input_grad.mean(dim=-1,keepdims=True)
+    input_grad -= input_grad.mean(axis=-1,keepdims=True)
     return input_grad
 
-def add_file_list(info_dict,label_field):
-   
-    print(info_dict)
-    p = info_dict['prefix']
-    s = info_dict['suffix']
-    labels = info_dict[label_field]
-    file_list =  [f'{p}{v}{s}' for v in labels]
-    info_dict['path_list'] = file_list
-    return info_dict
+def build_EDA_file_list(args,parent):
+    
+    file_list = [f'{parent}EDA_layer{l}.npz' for l in range(args['n_layers'])] 
+    args['path_list'] = file_list
+    return args
 
 def get_CDS_start(cds,rna):
     

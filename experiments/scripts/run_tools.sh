@@ -1,5 +1,5 @@
 # test pre-trained rnasamba
-source commands.sh
+source templates.sh
 source $BIOHOME/bioseq2seq/venv/bin/activate
 full_train_set="$BIOHOME/bioseq2seq/data/mammalian_200-1200_train_RNA_balanced.fa"
 pc_train_set="$BIOHOME/bioseq2seq/data/mammalian_200-1200_train_PC_RNA.fa"
