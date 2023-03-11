@@ -82,12 +82,22 @@ class Attribution:
             return tuple(chunked)
             
     def get_raw_src(self,src):
-        saved_src = src.detach().cpu().numpy().ravel()
-        #return ''.join([self.src_vocab.itos[c] for c in saved_src])
-        return [self.src_vocab.itos[c] for c in saved_src]
+        saved_src = src.detach().cpu().numpy()
+        if saved_src.shape[0] > 1:
+            storage = []
+            for b in range(saved_src.shape[0]):
+                raw = [self.src_vocab.itos[c] for c in saved_src[b,:].ravel()]
+                storage.append(raw)
+            return storage
+        else:
+            saved_src = saved_src.ravel()
+            return [self.src_vocab.itos[c] for c in saved_src]
 
     def get_src_token(self,char):
         return self.src_vocab.stoi[char]
+    
+    def get_tgt_string(self,char):
+        return self.tgt_vocab.itos[char]
     
     def input_grads(self,outputs,inputs):
         ''' per-sample gradient of outputs wrt. inputs '''
@@ -99,12 +109,19 @@ class Attribution:
             
     def class_logit_ratio(self,pred_classes,class_token):
         ''' logit of class_token minus all the rest'''
-        
+       
         counterfactual = [x for x in range(pred_classes.shape[2]) if x != class_token]
         counter_idx = torch.tensor(counterfactual,device=pred_classes.device)
         counterfactual_score = pred_classes.index_select(2,counter_idx)
-        #return pred_classes[:,:,class_token] - counterfactual_score.sum(dim=2)
-        return pred_classes[:,:,self.pc_token] - pred_classes[:,:,self.nc_token]
+        class_score = pred_classes[:,:,class_token] 
+        
+        # for PC and NC, contrast with only the counterfactual class, the others grads are noisy
+        if class_token == self.nc_token:
+            return pred_classes[:,:,self.nc_token] - pred_classes[:,:,self.pc_token]
+        elif class_token == self.pc_token:
+            return pred_classes[:,:,self.pc_token] - pred_classes[:,:,self.nc_token]
+        else:
+            return pred_classes[:,:,class_token] - counterfactual_score.sum(dim=2)
    
     def predict_logits(self,src,src_lens,decoder_input,batch_size,class_token,ratio=True):
 
@@ -124,7 +141,7 @@ class Attribution:
 class EmbeddingAttribution(Attribution):
     '''Base class for attribution experiments using the dense embedding representation'''
 
-    def __init__(self,model,device,vocab,tgt_class,softmax=True,sample_size=None,minibatch_size=None):
+    def __init__(self,model,device,vocab,tgt_class,softmax=False,sample_size=None,minibatch_size=None):
         
         self.interpretable_emb = configure_interpretable_embedding_layer(model,'encoder.embeddings')
         super().__init__(model,device,vocab,tgt_class,softmax=softmax,sample_size=sample_size,minibatch_size=minibatch_size)
@@ -150,7 +167,6 @@ class EmbeddingAttribution(Attribution):
         # copy across length
         test =  n*torch.ones_like(src).to(self.device)
         baseline_emb = self.interpretable_emb.indices_to_embeddings(test.permute(1,0,2))
-        #print(f'baseline_emb before permute = {baseline_emb.shape}')
         baseline_emb = baseline_emb.permute(1,0,2)
         return baseline_emb
 
@@ -161,7 +177,7 @@ def get_module_by_name(parent: Union[torch.Tensor, torch.nn.Module],
 
 class OneHotGradientAttribution(Attribution):
 
-    def __init__(self,model,device,vocab,tgt_class,softmax=True,sample_size=None,minibatch_size=None,times_input=False,smoothgrad=False):
+    def __init__(self,model,device,vocab,tgt_class,softmax=False,sample_size=None,minibatch_size=None,times_input=False,smoothgrad=False):
         
         self.smoothgrad = smoothgrad
         # augment Embedding with one hot utilities

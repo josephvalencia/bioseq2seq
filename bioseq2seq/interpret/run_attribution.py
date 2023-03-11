@@ -12,7 +12,7 @@ from scipy import stats , signal
 from embedding import SynonymousShuffleExpectedGradients, GradientAttribution, EmbeddingMDIG, EmbeddingIG
 from onehot import OneHotSalience, OneHotIntegratedGradients, OneHotMDIG, OneHotExpectedGradients
 from sampler import DiscreteLangevinSampler
-from ism import InSilicoMutagenesis
+from ism import InSilicoMutagenesis, LogitsOnly
 
 from torch.nn.parallel import DistributedDataParallel as DDP
 
@@ -82,7 +82,6 @@ def print_pairwise_corrs(batch_attributions,steps):
     print('pairwise Pearson corr by n_steps')
     print(df.round(3))
 
-
 def add_synonymous_shuffled_to_vocab(num_copies,vocab_fields):
 
     for i in range(num_copies):
@@ -118,13 +117,16 @@ def parse_args():
     parser.add_argument("--baseline",default="zero", help="zero|avg|A|C|G|T")
     parser.add_argument("--tgt_class",default="<PC>", help="<PC>|<NC>")
     parser.add_argument("--tgt_pos",type=int,default=1, help="token position in target")
-    parser.add_argument("--max_tokens",type=int,default = 4500, help = "Max number of tokens in training batch")
+    parser.add_argument("--max_tokens",type=int,default = 1200, help = "Max number of tokens in training batch")
+    parser.add_argument("--sample_size",type=int,default = 32, help = "Max number of tokens in training batch")
+    parser.add_argument("--minibatch_size",type=int,default = 16, help = "Max number of tokens in training batch")
     parser.add_argument("--name",default = "temp")
     parser.add_argument("--rank",type=int,default=0)
     parser.add_argument("--num_gpus","--g", type = int, default = 1, help = "Number of GPUs to use on node")
     parser.add_argument("--address",default =  "127.0.0.1",help = "IP address for master process in distributed training")
     parser.add_argument("--port",default = "6000",help = "Port for master process in distributed training")
     parser.add_argument("--mutation_prob",type=float, default=0.25 ,help = "Prob of mutation")
+    parser.add_argument("--max_alpha",type=float, default=0.5 ,help = "Max integration bounds for MDIG")
     
     return parser.parse_args()
 
@@ -175,6 +177,7 @@ def run_helper(rank,args,model,vocab,use_splits=False):
     if tgt_class == "STOP":
         tgt_class = "</s>"
     
+    print(args.name)
     pathname = os.path.split(args.name)
     
     if pathname[0] == '':
@@ -183,24 +186,24 @@ def run_helper(rank,args,model,vocab,use_splits=False):
         pathname = pathname[0]
     if not os.path.isdir(pathname):
         os.mkdir(pathname)
-    savefile = "{}/{}.{}.{}".format(args.name,class_name,target_pos,args.attribution_mode)
-    print(savefile)
+    path = args.checkpoint.split('/')
+    input_name = os.path.split(args.input)[-1].replace('.fa','')
     
+    savefile = "{}/{}.{}.{}.{}".format(args.name,input_name,class_name,target_pos,args.attribution_mode)
+    if world_size > 1 :
+        savefile += f'.rank-{gpu}'
     tscripts = []
     with maybe_fastafile_open(args.input) as fa:
         for i,record in enumerate(fa):
-            if (i % world_size) == offset:
-                    tscripts.append(record.id)
+            #if (i % world_size) == offset:
+            tscripts.append(record.id)
     
     # set up synonymous shuffled copies
-    n_samples = 512
-    minibatch_size = 16
-    
     xforms = {}
     if args.attribution_mode == 'EG-embed' or args.attribution_mode == 'EG':
-        shuffle_options = Namespace(num_copies=n_samples,mutation_prob=args.mutation_prob)
+        shuffle_options = Namespace(num_copies=args.sample_size,mutation_prob=args.mutation_prob)
         xforms = {'add_synonymous_mutations' : xfm.SynonymousCopies(opts=shuffle_options)}
-        add_synonymous_shuffled_to_vocab(n_samples,vocab_fields)
+        add_synonymous_shuffled_to_vocab(args.sample_size,vocab_fields)
     if args.attribution_mode == 'ISM':
         #xforms = {'add_point_mutations' : xfm.GenPointMutations(opts={})}
         #add_point_mutations_to_vocab(vocab_fields)
@@ -220,55 +223,62 @@ def run_helper(rank,args,model,vocab,use_splits=False):
     apply_softmax = False
     model.eval()
     sep = '___________________________________' 
-    
+   
+    kwargs = dict()
     print(sep) 
     if args.attribution_mode == 'grad':
         print(f'Running Saliency wrt. {tgt_class}')
         attributor = OneHotSalience(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size,
+                                            softmax=apply_softmax,sample_size=args.sample_size,minibatch_size=args.minibatch_size,
                                             times_input=False,smoothgrad=False)
     elif args.attribution_mode == 'MDIG': 
         print(f'Running MDIG wrt. {tgt_class}')
+        kwargs['max_alpha'] = args.max_alpha
         attributor = OneHotMDIG(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size,
+                                            softmax=apply_softmax,sample_size=args.sample_size,minibatch_size=args.minibatch_size,
                                             times_input=False,smoothgrad=False)
     elif args.attribution_mode == 'IG': 
         print(f'Running IG wrt. {tgt_class}')
         attributor = OneHotIntegratedGradients(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size,
+                                            softmax=apply_softmax,sample_size=args.sample_size,minibatch_size=args.minibatch_size,
                                             times_input=False,smoothgrad=False)
     elif args.attribution_mode == 'EG': 
         print(f'Running Expected grads (onehot) wrt. {tgt_class}')
         attributor = OneHotExpectedGradients(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size,
+                                            softmax=apply_softmax,sample_size=args.sample_size,minibatch_size=args.minibatch_size,
                                             times_input=False,smoothgrad=False)
     elif args.attribution_mode == 'ISM': 
         print(f'Running ISM wrt. {tgt_class}')
         attributor = InSilicoMutagenesis(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size,
+                                            softmax=apply_softmax,sample_size=args.sample_size,minibatch_size=args.minibatch_size,
+                                            times_input=False,smoothgrad=False)
+    elif args.attribution_mode == 'logit': 
+        print(f'Running LogitsOnly wrt. {tgt_class}')
+        attributor = LogitsOnly(model,device,vocab,tgt_class, \
+                                            softmax=apply_softmax,sample_size=args.sample_size,minibatch_size=args.minibatch_size,
                                             times_input=False,smoothgrad=False)
     elif args.attribution_mode == 'langevin':
         print(f'Running Discrete Langevin wrt. {tgt_class}')
         attributor = DiscreteLangevinSampler(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size,
+                                            softmax=apply_softmax,sample_size=args.sample_size,minibatch_size=args.minibatch_size,
                                             times_input=False,smoothgrad=False)
     elif args.attribution_mode == 'MDIG-embed':
         print(f'Running MDIG (embed) wrt. {tgt_class}')
         attributor = EmbeddingMDIG(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size)
+                                            softmax=apply_softmax,sample_size=args.sample_size,minibatch_size=args.minibatch_size)
     elif args.attribution_mode == 'IG-embed':
         print(f'Running IG (embed) wrt. {tgt_class}')
         attributor = EmbeddingIG(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=n_samples,minibatch_size=minibatch_size)
+                                            softmax=apply_softmax,sample_size=args.sample_size,minibatch_size=args.minibatch_size)
     elif args.attribution_mode == 'EG-embed':
         print(f'Running Expected grads (embed) wrt. {tgt_class}')
         attributor = SynonymousShuffleExpectedGradients(model,device,vocab,tgt_class,\
-                                            softmax=apply_softmax,sample_size=n_samples)
+                                            softmax=apply_softmax,sample_size=args.sample_size)
     else:
         raise ValueError(f"{args.attribution_mode} is not a valid value for --attribution_mode")
 
     print(sep) 
-    attributor.run(savefile,valid_iter,target_pos,args.baseline,tscripts)
+    attributor.run(savefile,valid_iter,target_pos,args.baseline,tscripts,**kwargs)
   
 def run_attribution(args,device):
     

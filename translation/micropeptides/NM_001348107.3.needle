@@ -1,0 +1,97 @@
+########################################
+# Program: needle
+# Rundate: Mon  6 Mar 2023 21:36:09
+# Commandline: needle
+#    -asequence translation/micropeptides/NM_001348107.3_true_PROTEIN.fa
+#    -bsequence translation/micropeptides/NM_001348107.3.micropeptides.fa
+#    -outfile translation/micropeptides/NM_001348107.3.needle
+#    -gapopen 10
+#    -gapextend 0.5
+#    -brief
+# Align_format: srspair
+# Report_file: translation/micropeptides/NM_001348107.3.needle
+########################################
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001348107.3
+# 2: NM_001348107.3.peptide.2
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 90
+# Identity:      75/90 (83.3%)
+# Similarity:    75/90 (83.3%)
+# Gaps:          15/90 (16.7%)
+# Score: 396.0
+# 
+#
+#=======================================
+
+NM_001348107.      1 MGAKAPRGPKVAQWAMETAVIGVVVVLFVVTVAITCVLCCFSCDSRAQDP     50
+                                    |||||||||||||||||||||||||||||||||||
+NM_001348107.      1 ---------------METAVIGVVVVLFVVTVAITCVLCCFSCDSRAQDP     35
+
+NM_001348107.     51 QGGPGRSFTVATFRQEASLFTGPVRHAQPVPSAQDFWTFM     90
+                     ||||||||||||||||||||||||||||||||||||||||
+NM_001348107.     36 QGGPGRSFTVATFRQEASLFTGPVRHAQPVPSAQDFWTFM     75
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001348107.3
+# 2: NM_001348107.3.peptide.3
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 90
+# Identity:      85/90 (94.4%)
+# Similarity:    85/90 (94.4%)
+# Gaps:           2/90 ( 2.2%)
+# Score: 442.0
+# 
+#
+#=======================================
+
+NM_001348107.      1 MGAKAPRGPKVAQWAMETAVIGVVVVLFVVTVAITCVLCCFSCDSRAQDP     50
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+NM_001348107.      1 MGAKAPRGPKVAQWAMETAVIGVVVVLFVVTVAITCVLCCFSCDSRAQDP     50
+
+NM_001348107.     51 QGGPGRSFTVATFRQEASLFTGPVRHAQPVPSAQDFWTFM     90
+                     |||||||||||||||||||||||||||||||||||...  
+NM_001348107.     51 QGGPGRSFTVATFRQEASLFTGPVRHAQPVPSAQDLLC--     88
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001348107.3
+# 2: NM_001348107.3.peptide.4
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 90
+# Identity:      79/90 (87.8%)
+# Similarity:    79/90 (87.8%)
+# Gaps:           7/90 ( 7.8%)
+# Score: 408.0
+# 
+#
+#=======================================
+
+NM_001348107.      1 MGAKAPRGPKVAQWAMETAVIGVVVVLFVVTVAITCVLCCFSCDSRAQDP     50
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+NM_001348107.      1 MGAKAPRGPKVAQWAMETAVIGVVVVLFVVTVAITCVLCCFSCDSRAQDP     50
+
+NM_001348107.     51 QGGPGRSFTVATFRQEASLFTGPVRHAQPVPSAQDFWTFM     90
+                     |||||||||||||||||||||||||||||....       
+NM_001348107.     51 QGGPGRSFTVATFRQEASLFTGPVRHAQPELLC-------     83
+
+
+#---------------------------------------
+#---------------------------------------

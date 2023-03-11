@@ -1,0 +1,105 @@
+########################################
+# Program: needle
+# Rundate: Tue  7 Mar 2023 01:38:38
+# Commandline: needle
+#    -asequence translation/micropeptides/NR_015417.1_true_PROTEIN.fa
+#    -bsequence translation/micropeptides/NR_015417.1.micropeptides.fa
+#    -outfile translation/micropeptides/NR_015417.1.needle
+#    -gapopen 10
+#    -gapextend 0.5
+#    -brief
+# Align_format: srspair
+# Report_file: translation/micropeptides/NR_015417.1.needle
+########################################
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NR_015417.1
+# 2: NR_015417.1.peptide.2
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 186
+# Identity:       5/186 ( 2.7%)
+# Similarity:     6/186 ( 3.2%)
+# Gaps:         174/186 (93.5%)
+# Score: 14.0
+# 
+#
+#=======================================
+
+NR_015417.1        1 MTTKMRRLRPSAPSGLGQEQEAEVVEGCFPAVTETPFAPAYIKKRGGRIW     50
+                                                                  ..|.|
+NR_015417.1.p      1 ---------------------------------------------MDRAW      5
+
+NR_015417.1       51 SSDPRSDGEH----------------------------------------     60
+                     |..|   .:|                                        
+NR_015417.1.p      6 SCFP---WKHCWETKPSPAGLPPAAAHARISLLLPLQPRRCTGFIGLKSS     52
+
+NR_015417.1       60 --------------------------------------------------     60
+                                                                       
+NR_015417.1.p     53 CSSLASAPQHRLLPLRGRPAVVLLTTSHDRGPEVTFPLAMNNPIVTPHGC    102
+
+NR_015417.1       60 ------------------------------------     60
+                                                         
+NR_015417.1.p    103 AHRKLLMGRRGTVQAGFSSPYHSAGCVGQESHYVCK    138
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NR_015417.1
+# 2: NR_015417.1.peptide.3
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 60
+# Identity:      60/60 (100.0%)
+# Similarity:    60/60 (100.0%)
+# Gaps:           0/60 ( 0.0%)
+# Score: 320.0
+# 
+#
+#=======================================
+
+NR_015417.1        1 MTTKMRRLRPSAPSGLGQEQEAEVVEGCFPAVTETPFAPAYIKKRGGRIW     50
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+NR_015417.1.p      1 MTTKMRRLRPSAPSGLGQEQEAEVVEGCFPAVTETPFAPAYIKKRGGRIW     50
+
+NR_015417.1       51 SSDPRSDGEH     60
+                     ||||||||||
+NR_015417.1.p     51 SSDPRSDGEH     60
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NR_015417.1
+# 2: NR_015417.1.peptide.4
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 81
+# Identity:       7/81 ( 8.6%)
+# Similarity:    10/81 (12.3%)
+# Gaps:          54/81 (66.7%)
+# Score: 4.5
+# 
+#
+#=======================================
+
+NR_015417.1        1 ---------------------MTTKMRRLRPSAPSGLGQEQEAEVVEGCF     29
+                                          .|.:.....|...:|....||:..|  |.
+NR_015417.1.p      1 MNNPIVTPHGCAHRKLLMGRRGTVQAGFSSPYHSAGCVGGQESHYV--CK     48
+
+NR_015417.1       30 PAVTETPFAPAYIKKRGGRIWSSDPRSDGEH     60
+                                                    
+NR_015417.1.p     48 -------------------------------     48
+
+
+#---------------------------------------
+#---------------------------------------

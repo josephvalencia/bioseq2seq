@@ -1,0 +1,2360 @@
+LOCUS       AW112010                 536 bp    mRNA    linear   EST 31-JAN-2000
+DEFINITION  MC1782 mouse liver, vehicle control Mus musculus cDNA clone MC1782
+            3', mRNA sequence.
+ACCESSION   AW112010
+VERSION     AW112010.1
+DBLINK      BioSample: SAMN00157045
+KEYWORDS    EST.
+SOURCE      Mus musculus (house mouse)
+  ORGANISM  Mus musculus
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Glires; Rodentia; Myomorpha;
+            Muroidea; Muridae; Murinae; Mus; Mus.
+REFERENCE   1  (bases 1 to 536)
+  AUTHORS   Thomas,R.S., Rank,D.R., Penn,S.G., Zastrow,G.M., Jovanovich,S. and
+            Bradfield,C.A.
+  TITLE     McArdle Laboratory/Molecular Dynamics Dioxin EST Project
+  JOURNAL   Unpublished
+COMMENT     Contact: Bradfield CA
+            McArdle Laboratory for Cancer Research
+            University of Wisconsin
+            1400 University Ave., Madison, WI 53706, USA
+            Tel: 608 262 2024
+            Fax: 608 262 2824
+            Email: bradfield@oncology.wisc.edu
+            This clone was sequenced as part of a project to develop a database
+            on gene expression changes following exposure to various
+            environmental toxicants. The database can be accessed at
+            http://mcardle.oncology.wisc.edu/bradfield/. Treatment- dioxane
+            vehicle (400 ul/kg). Animals sacrified- 48 hrs post-injection.
+            Seq primer: SP6.
+FEATURES             Location/Qualifiers
+     source          1..536
+                     /organism="Mus musculus"
+                     /mol_type="mRNA"
+                     /strain="C57BL/6J"
+                     /db_xref="taxon:10090"
+                     /clone="MC1782"
+                     /sex="male"
+                     /clone_lib="SAMN00157045 mouse liver, vehicle control"
+                     /lab_host="JM109"
+                     /note="Organ: liver; Vector: pGEM11Zf (Promega); Site_1:
+                     NotI; Site_2: EcoRI; First strand cDNA was primed with a
+                     NotI-polyT primer
+                     [5'-AACTGGAAGAATTCGCGGCCGCAGGAATTTTTTTTTTTTTTTTTT-3'].
+                     Double-stranded cDNA was ligated with EcoRI adapters
+                     (Pharmacia), digested with NotI, and ligated into the
+                     EcoRI/NotI sites of the pGEM11Zf vector. The library was
+                     NOT normalized."
+ORIGIN      
+        1 cgaattctcc tgtttagcaa atagtgcccc aaagcaattc aaagggaaag tgaaactgac
+       61 attctcaaac tttatataaa aaaccaaaga gaagatcagc aggagtctag cagacaacct
+      121 gagctgcaag atgtctccca tccctctgat atttatcttt ggtggtgtgc tcatcatctg
+      181 cctgatgcaa caatacctgg cgtataagtc ttctaagaac gtcgttaaag tcttctgcca
+      241 tcaagccaat gatgtacata tataccagac ccaggtcgtc atgacaaaca cactggaaac
+      301 ctcaagtgga aaaagccacc cactgggtcg ttcaggagag atccagtctt taaagaagca
+      361 aaactagaga ccaaaataag tcctcttcct tctagatgtg catcatctgc ttcttccttc
+      421 cctagaagac tgagggagct atctttcaca gaggggtatt cagtggtata cgtggagctc
+      481 agaagtaaga cacttgcctt gcctctatta ggacttgatt gaacccaaat accaca
+//
+
+LOCUS       BC030870                1216 bp    mRNA    linear   HTC 18-MAY-2004
+DEFINITION  Mus musculus cDNA sequence BC030870, mRNA (cDNA clone
+            IMAGE:4219106), with apparent retained intron.
+ACCESSION   BC030870
+VERSION     BC030870.1
+KEYWORDS    HTC.
+SOURCE      Mus musculus (house mouse)
+  ORGANISM  Mus musculus
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Glires; Rodentia; Myomorpha;
+            Muroidea; Muridae; Murinae; Mus; Mus.
+REFERENCE   1  (bases 1 to 1216)
+  AUTHORS   Strausberg,R.L., Feingold,E.A., Grouse,L.H., Derge,J.G.,
+            Klausner,R.D., Collins,F.S., Wagner,L., Shenmen,C.M., Schuler,G.D.,
+            Altschul,S.F., Zeeberg,B., Buetow,K.H., Schaefer,C.F., Bhat,N.K.,
+            Hopkins,R.F., Jordan,H., Moore,T., Max,S.I., Wang,J., Hsieh,F.,
+            Diatchenko,L., Marusina,K., Farmer,A.A., Rubin,G.M., Hong,L.,
+            Stapleton,M., Soares,M.B., Bonaldo,M.F., Casavant,T.L.,
+            Scheetz,T.E., Brownstein,M.J., Usdin,T.B., Toshiyuki,S.,
+            Carninci,P., Prange,C., Raha,S.S., Loquellano,N.A., Peters,G.J.,
+            Abramson,R.D., Mullahy,S.J., Bosak,S.A., McEwan,P.J.,
+            McKernan,K.J., Malek,J.A., Gunaratne,P.H., Richards,S.,
+            Worley,K.C., Hale,S., Garcia,A.M., Gay,L.J., Hulyk,S.W.,
+            Villalon,D.K., Muzny,D.M., Sodergren,E.J., Lu,X., Gibbs,R.A.,
+            Fahey,J., Helton,E., Ketteman,M., Madan,A., Rodrigues,S.,
+            Sanchez,A., Whiting,M., Madan,A., Young,A.C., Shevchenko,Y.,
+            Bouffard,G.G., Blakesley,R.W., Touchman,J.W., Green,E.D.,
+            Dickson,M.C., Rodriguez,A.C., Grimwood,J., Schmutz,J., Myers,R.M.,
+            Butterfield,Y.S., Krzywinski,M.I., Skalska,U., Smailus,D.E.,
+            Schnerch,A., Schein,J.E., Jones,S.J. and Marra,M.A.
+  TITLE     Generation and initial analysis of more than 15,000 full-length
+            human and mouse cDNA sequences
+  JOURNAL   Proc. Natl. Acad. Sci. U.S.A. 99 (26), 16899-16903 (2002)
+   PUBMED   12477932
+REFERENCE   2  (bases 1 to 1216)
+  AUTHORS   Strausberg,R.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (03-JUN-2002) National Institutes of Health, Mammalian
+            Gene Collection (MGC), Cancer Genomics Office, National Cancer
+            Institute, 31 Center Drive, Room 11A03, Bethesda, MD 20892-2590,
+            USA
+  REMARK    NIH-MGC Project URL: http://mgc.nci.nih.gov
+COMMENT     Contact: MGC help desk
+            Email: cgapbs-r@mail.nih.gov
+            Tissue Procurement: Jeffrey E. Green, M.D.
+            cDNA Library Preparation: Life Technologies, Inc.
+            cDNA Library Arrayed by: The I.M.A.G.E. Consortium (LLNL)
+            DNA Sequencing by: Sequencing Group at the Stanford Human Genome
+            Center, Stanford University School of Medicine, Stanford, CA  94305
+            Web site:       http://www-shgc.stanford.edu
+            Contact:  (Dickson, Mark) mcd@paxil.stanford.edu
+            Dickson, M., Schmutz, J., Grimwood, J., Rodriquez, A., and Myers,
+            R. M.
+            
+            Clone distribution: MGC clone distribution information can be found
+            through the I.M.A.G.E. Consortium/LLNL at: http://image.llnl.gov
+            Series: IRAK Plate: 43 Row: k Column: 2
+            This clone was selected for full length sequencing because it
+            passed the following selection criteria: Hexamer frequency ORF
+            analysis
+            This clone has the following problem: retained intron.
+FEATURES             Location/Qualifiers
+     source          1..1216
+                     /organism="Mus musculus"
+                     /mol_type="mRNA"
+                     /strain="FVB/N"
+                     /db_xref="taxon:10090"
+                     /clone="IMAGE:4219106"
+                     /tissue_type="Colon, normal. 5 month old male mouse."
+                     /clone_lib="NCI_CGAP_Co24"
+                     /lab_host="DH10B"
+                     /note="Vector: pCMV-SPORT6"
+ORIGIN      
+        1 ggagaggaat gtttctggtg aaaacaccgt tagtcttcca tggagctacc attcaccaac
+       61 ttggaggtgg cgttcatttt actggctttc ttcatctttt ccttgtttac tctggcttcc
+      121 atctacacca gccctaatga gaggaatgaa gacgatgact tccacctaaa ggaaaagaga
+      181 aggaaaagaa aagagtttaa agggaagaaa aattgctcag atgaagaaca caaaattgaa
+      241 acaatgcaac catgacctca gccacctgtg agtgcacagt cgctccccta agaatgcctg
+      301 ctgggattgc tcgcaagacc aaggacatta aaacagcctt cagatcataa tcgctaggac
+      361 tcaacacagg gaatggggct tcatactctt tttttgacat ccttgtttat aagaccaatt
+      421 atgagcacta gctgtaataa aaaggaatac agtcaaagta agatctttca agaaagagaa
+      481 aatacataag tattataatc tagttaaaga aaacagcagt ctctgggact gtggctcagt
+      541 ggtagagtgc ttgcctaaca tgcttaaggc tctgtgtttg attgctagct ctgacaaaaa
+      601 aaagggaggt agataaataa ataaataaat aaataaataa ggtgctggtg agatggctca
+      661 gtggttaaga gcacctactg ttcctccaga ggtcctgagt tcaattccta acaaccacac
+      721 ggtggctcac aaccatctat aaagggatct gatgccctct tctggcatac agctgtacac
+      781 acagagcact tattcattta aaattaatga ataaatgagt gaatgaatga atgaatgaat
+      841 gtacaatgac attttaaaat cacatacata tgtatgtatc catacgtaaa tatgttcaca
+      901 tgagtgcaga tgcccacaaa ggccagagga gggcaccaga ccctcagagc cacagagggc
+      961 tgagtcacca ggattttgac aactgaactc aggtcctctg caacagcaaa cgcccttaac
+     1021 tactgagcca ctgctccagc tccaagaaca atgcattttt actgtttttc tttcacttgg
+     1081 ttatgcaaag tgtgacttag aagctacaat tcttctgttg taaaactaca actaaccatg
+     1141 tctctgctgc ttctataata aggacttaat aaggacttct gaaataaata ctaaagacaa
+     1201 aaaaaaaaaa aaaaaa
+//
+
+LOCUS       NR_001458               1500 bp    RNA     linear   PRI 26-JAN-2023
+DEFINITION  Homo sapiens MIR155 host gene (MIR155HG), long non-coding RNA.
+ACCESSION   NR_001458
+VERSION     NR_001458.3
+KEYWORDS    RefSeq.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 1500)
+  AUTHORS   Montagne K, Furukawa KS, Taninaka Y, Ngao B and Ushida T.
+  TITLE     Modulation of the long non-coding RNA Mir155hg by high, but not
+            moderate, hydrostatic pressure in cartilage precursor cells
+  JOURNAL   PLoS One 17 (12), e0275682 (2022)
+   PUBMED   36538560
+  REMARK    GeneRIF: Modulation of the long non-coding RNA Mir155hg by high,
+            but not moderate, hydrostatic pressure in cartilage precursor
+            cells.
+            Publication Status: Online-Only
+REFERENCE   2  (bases 1 to 1500)
+  AUTHORS   Peng L, Pan B, Zhang X, Wang Z, Qiu J, Wang X and Tang N.
+  TITLE     Lipopolysaccharide facilitates immune escape of hepatocellular
+            carcinoma cells via m6A modification of lncRNA MIR155HG to
+            upregulate PD-L1 expression
+  JOURNAL   Cell Biol Toxicol 38 (6), 1159-1173 (2022)
+   PUBMED   35438468
+  REMARK    GeneRIF: Lipopolysaccharide facilitates immune escape of
+            hepatocellular carcinoma cells via m6A modification of lncRNA
+            MIR155HG to upregulate PD-L1 expression.
+REFERENCE   3  (bases 1 to 1500)
+  AUTHORS   Li F, Wan DW, Hu J and Qin R.
+  TITLE     Effect of artificial skin membrane on the expression of miR-155 and
+            miR-506-3p in patients with second-degree burns
+  JOURNAL   J Clin Lab Anal 36 (9), e24564 (2022)
+   PUBMED   35949047
+  REMARK    GeneRIF: Effect of artificial skin membrane on the expression of
+            miR-155 and miR-506-3p in patients with second-degree burns.
+REFERENCE   4  (bases 1 to 1500)
+  AUTHORS   Liu R, Sun X, Hu Z, Peng C and Wu T.
+  TITLE     Knockdown of long non-coding RNA MIR155HG suppresses melanoma cell
+            proliferation, and deregulated MIR155HG in melanoma is associated
+            with M1/M2 balance and macrophage infiltration
+  JOURNAL   Cells Dev 170, 203768 (2022)
+   PUBMED   35182814
+  REMARK    GeneRIF: Knockdown of long non-coding RNA MIR155HG suppresses
+            melanoma cell proliferation, and deregulated MIR155HG in melanoma
+            is associated with M1/M2 balance and macrophage infiltration.
+REFERENCE   5  (bases 1 to 1500)
+  AUTHORS   Yang W, Huang XD, Zhang T, Zhou YB, Zou YC and Zhang J.
+  TITLE     LncRNA MIR155HG functions as a ceRNA of miR-223-3p to promote cell
+            pyroptosis in human degenerative NP cells
+  JOURNAL   Clin Exp Immunol 207 (2), 241-252 (2022)
+   PUBMED   35020847
+  REMARK    GeneRIF: LncRNA MIR155HG functions as a ceRNA of miR-223-3p to
+            promote cell pyroptosis in human degenerative NP cells.
+REFERENCE   6  (bases 1 to 1500)
+  AUTHORS   Eis PS, Tam W, Sun L, Chadburn A, Li Z, Gomez MF, Lund E and
+            Dahlberg JE.
+  TITLE     Accumulation of miR-155 and BIC RNA in human B cell lymphomas
+  JOURNAL   Proc Natl Acad Sci U S A 102 (10), 3627-3632 (2005)
+   PUBMED   15738415
+REFERENCE   7  (bases 1 to 1500)
+  AUTHORS   Metzler,M., Wilda,M., Busch,K., Viehmann,S. and Borkhardt,A.
+  TITLE     High expression of precursor microRNA-155/BIC RNA in children with
+            Burkitt lymphoma
+  JOURNAL   Genes Chromosomes Cancer 39 (2), 167-169 (2004)
+   PUBMED   14695998
+  REMARK    GeneRIF: BIC may play a role in the selection of B-cells.
+REFERENCE   8  (bases 1 to 1500)
+  AUTHORS   van den Berg A, Kroesen BJ, Kooistra K, de Jong D, Briggs J,
+            Blokzijl T, Jacobs S, Kluiver J, Diepstra A, Maggio E and Poppema
+            S.
+  TITLE     High expression of B-cell receptor inducible gene BIC in all
+            subtypes of Hodgkin lymphoma
+  JOURNAL   Genes Chromosomes Cancer 37 (1), 20-28 (2003)
+   PUBMED   12661002
+REFERENCE   9  (bases 1 to 1500)
+  AUTHORS   Haasch D, Chen YW, Reilly RM, Chiou XG, Koterski S, Smith ML,
+            Kroeger P, McWeeny K, Halbert DN, Mollison KW, Djuric SW and
+            Trevillyan JM.
+  TITLE     T cell activation induces a noncoding RNA transcript sensitive to
+            inhibition by immunosuppressant drugs and encoded by the
+            proto-oncogene, BIC
+  JOURNAL   Cell Immunol 217 (1-2), 78-86 (2002)
+   PUBMED   12426003
+  REMARK    GeneRIF: T cell activation induces a noncoding RNA transcript
+            sensitive to inhibition by immunosuppressant drugs and encoded by
+            the proto-oncogene, BIC.
+REFERENCE   10 (bases 1 to 1500)
+  AUTHORS   Tam W.
+  TITLE     Identification and characterization of human BIC, a gene on
+            chromosome 21 that encodes a noncoding RNA
+  JOURNAL   Gene 274 (1-2), 157-167 (2001)
+   PUBMED   11675008
+COMMENT     REVIEWED REFSEQ: This record has been curated by NCBI staff. The
+            reference sequence was derived from CT000653.1, AF402776.1,
+            BG231961.1 and AA810953.1.
+            
+            On Oct 21, 2008 this sequence version replaced NR_001458.2.
+            
+            Summary: This gene represents a microRNA host gene. The long RNA
+            transcribed from this gene is expressed at high levels in lymphoma
+            and may function as an oncogene. [provided by RefSeq, Dec 2017].
+            
+            Publication Note:  This RefSeq record includes a subset of the
+            publications that are available for this gene. Please see the Gene
+            record to access additional publications.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: SRR1163655.313400.1,
+                                           SRR1163655.223303.1 [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMEA1965299, SAMEA1966682
+                                           [ECO:0000348]
+            ##Evidence-Data-END##
+            COMPLETENESS: complete on the 3' end.
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-48                CT000653.1         1-48
+            49-1014             AF402776.1         1-966
+            1015-1468           BG231961.1         1-454               c
+            1469-1500           AA810953.1         1-32                c
+FEATURES             Location/Qualifiers
+     source          1..1500
+                     /organism="Homo sapiens"
+                     /mol_type="transcribed RNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="21"
+                     /map="21q21.3"
+     gene            1..1500
+                     /gene="MIR155HG"
+                     /gene_synonym="BIC; BIC-155; miPEP155; MIRHG2; NCRNA00172"
+                     /note="MIR155 host gene"
+                     /db_xref="GeneID:114614"
+                     /db_xref="HGNC:HGNC:35460"
+     ncRNA           1..1500
+                     /ncRNA_class="lncRNA"
+                     /gene="MIR155HG"
+                     /gene_synonym="BIC; BIC-155; miPEP155; MIRHG2; NCRNA00172"
+                     /product="MIR155 host gene"
+                     /db_xref="GeneID:114614"
+                     /db_xref="HGNC:HGNC:35460"
+     exon            1..113
+                     /gene="MIR155HG"
+                     /gene_synonym="BIC; BIC-155; miPEP155; MIRHG2; NCRNA00172"
+                     /inference="alignment:Splign:2.1.0"
+     exon            114..198
+                     /gene="MIR155HG"
+                     /gene_synonym="BIC; BIC-155; miPEP155; MIRHG2; NCRNA00172"
+                     /inference="alignment:Splign:2.1.0"
+     exon            199..1474
+                     /gene="MIR155HG"
+                     /gene_synonym="BIC; BIC-155; miPEP155; MIRHG2; NCRNA00172"
+                     /inference="alignment:Splign:2.1.0"
+     regulatory      616..621
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="MIR155HG"
+                     /gene_synonym="BIC; BIC-155; miPEP155; MIRHG2; NCRNA00172"
+ORIGIN      
+        1 gccgagcccg ggcccagcgc cgcctgcagc ctcgggaagg gagcggatag cggagccccg
+       61 agccgcccgc agagcaagcg cggggaacca aggagacgct cctggcactg cagataactt
+      121 gtctgcattt caagaacaac ctaccagaga ccttacctgt caccttggct ctcccaccca
+      181 atggagatgg ctctaatggt ggcacaaacc aggaagggga aatctgtggt ttaaattctt
+      241 tatgcctcat cctctgagtg ctgaaggctt gctgtaggct gtatgctgtt aatgctaatc
+      301 gtgatagggg tttttgcctc caactgactc ctacatatta gcattaacag tgtatgatgc
+      361 ctgttactag cattcacatg gaacaaattg ctgccgtggg aggatgacaa agaagcatga
+      421 gtcaccctgc tggataaact tagacttcag gctttatcat ttttcaatct gttaatcata
+      481 atctggtcac tgggatgttc aaccttaaac taagttttga aagtaaggtt atttaaaaga
+      541 tttatcagta gtatcctaaa tgcaaacatt ttcatttaaa tgtcaagccc atgtttgttt
+      601 ttatcattaa cagaaaatat attcatgtca ttcttaattg caggttttgg cttgttcatt
+      661 ataatgttca taaacacctt tgattcaact gttagaaatg tgggctaaac acaaatttct
+      721 ataatatttt tgtagttaaa aattagaagg actactaacc tccagttata tcatggattg
+      781 tctggcaacg ttttttaaaa gatttagaaa ctggtacttt cccccaggta acgattttct
+      841 gttcaggcaa cttcagttta aaattaatac ttttatttga ctcttaaagg gaaactgaaa
+      901 ggctatgaag ctgaattttt ttaatgaaat atttttaaca gttagcaggg taaataacat
+      961 ctgacagcta atgagatatt ttttccatac aagataaaaa gatttaatca aaaaatttca
+     1021 tatttgaaat gaagtcccaa atctaggttc aagttcaata gcttagccac ataatacggt
+     1081 tgtgcgagca gagaatctac ctttccactt ctaagcctgt ttcttcctcc atatggggat
+     1141 aatactttac aaggttgttg tgaggcttag atgagataga gaattattcc ataagataat
+     1201 caagtgctac attaatgtta tagttagatt aatccaagaa ctagtcaccc tactttatta
+     1261 gagaagagaa aagctaatga tttgatttgc agaatattta aggtttggat ttctatgcag
+     1321 tttttctaaa taaccatcac ttacaaatat gtaaccaaac gtaattgtta gtatatttaa
+     1381 tgtaaacttg ttttaacaac tcttctcaac attttgtcca ggttattcac tgtaaccaaa
+     1441 taaatctcat gagtctttag ttgatttaaa ataaaaaaaa aaaaaaaaaa aaaaaaaaaa
+//
+
+LOCUS       NR_015417               2273 bp    RNA     linear   PRI 21-OCT-2020
+DEFINITION  Homo sapiens long intergenic non-protein coding RNA 908
+            (LINC00908), long non-coding RNA.
+ACCESSION   NR_015417 XR_041397 XR_041398 XR_041399
+VERSION     NR_015417.1
+KEYWORDS    RefSeq.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 2273)
+  AUTHORS   Wang Y, Wu S, Zhu X, Zhang L, Deng J, Li F, Guo B, Zhang S, Wu R,
+            Zhang Z, Wang K, Lu J and Zhou Y.
+  TITLE     LncRNA-encoded polypeptide ASRPS inhibits triple-negative breast
+            cancer angiogenesis
+  JOURNAL   J Exp Med 217 (3) (2020)
+   PUBMED   31816634
+REFERENCE   2  (bases 1 to 2273)
+  AUTHORS   Fan L, Li H and Zhang Y.
+  TITLE     LINC00908 negatively regulates microRNA-483-5p to increase TSPYL5
+            expression and inhibit the development of prostate cancer
+  JOURNAL   Cancer Cell Int 20, 10 (2020)
+   PUBMED   31938018
+  REMARK    Publication Status: Online-Only
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            AK093936.1, BC035336.1 and BC121150.1.
+            
+            On or before Nov 1, 2008 this sequence version replaced
+            XR_041398.1, XR_041397.1, XR_041399.1.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: AK093936.1, SRR1803613.127339.1
+                                           [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMEA1968968, SAMEA2142853
+                                           [ECO:0000348]
+            ##Evidence-Data-END##
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-80                AK093936.1         1-80
+            81-999              BC035336.1         1-919
+            1000-1019           BC121150.1         457-476
+            1020-1077           BC035336.1         940-997
+            1078-2124           BC121150.1         535-1581
+            2125-2273           BC035336.1         2045-2193
+FEATURES             Location/Qualifiers
+     source          1..2273
+                     /organism="Homo sapiens"
+                     /mol_type="transcribed RNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="18"
+                     /map="18q23"
+     gene            1..2273
+                     /gene="LINC00908"
+                     /gene_synonym="ASRPS"
+                     /note="long intergenic non-protein coding RNA 908"
+                     /db_xref="GeneID:284276"
+                     /db_xref="HGNC:HGNC:27599"
+     ncRNA           1..2273
+                     /ncRNA_class="lncRNA"
+                     /gene="LINC00908"
+                     /gene_synonym="ASRPS"
+                     /product="long intergenic non-protein coding RNA 908"
+                     /db_xref="GeneID:284276"
+                     /db_xref="HGNC:HGNC:27599"
+     exon            1..309
+                     /gene="LINC00908"
+                     /gene_synonym="ASRPS"
+                     /inference="alignment:Splign:2.1.0"
+     exon            310..390
+                     /gene="LINC00908"
+                     /gene_synonym="ASRPS"
+                     /inference="alignment:Splign:2.1.0"
+     exon            391..2243
+                     /gene="LINC00908"
+                     /gene_synonym="ASRPS"
+                     /inference="alignment:Splign:2.1.0"
+ORIGIN      
+        1 agtgtggaaa cgcccactga ggggcacaca gtgaggcggc cactggctct gtgtccttgg
+       61 ggaagcccct tctgcggtcc cctccattgt ctgcgtgaca aagtggacgt agaactcccc
+      121 catttcctgc ccagggcggg tgaggaccct gcacacacac ggtgtgtttg tgagctgtgc
+      181 agagtggggt ctccctggca atggccacag cctccagggg cgctgacacc tcccgtctaa
+      241 ctggtagaca gtttctgcct cttcttgttt ggggattgga gagggaagtg cgtctggatg
+      301 actactaaga tgaggaggct gaggcctagt gctcctagcg ggcttggtca agagcaggag
+      361 gcggaggtgg tggaaggctg tttccctgcg gtgacagaaa ctccatttgc accagcttac
+      421 attaaaaaaa gaggagggag aatatggtcg agtgacccca ggagtgatgg ggagcactga
+      481 cggagtttct ccctgctctg gatagcagat ccgctggctc ccagcttatg atccatgaag
+      541 agaacgtctt ccccttgggc ttcaatttga agaatcctga agacgaccct gatggccttt
+      601 cgcggtccac gtgccccttc ttgcactacc gtgatggtcc tatccacgga cgccttctct
+      661 tgggttctgt ggttggatgc ggaggaatca tcgatcctct gtagtggaag ggaagggagg
+      721 acacaccaag accatgtggc cccaagagcc gtgagaggag cagaagcctg actggtgcct
+      781 cttacatgtc actgcagcct cggggggggc caccaggaaa acacctgaca tcctgttctc
+      841 tagtaatggt gtggctggaa tcattcctgt accaaataat tcacccattt aaagtgtgca
+      901 atccaacaat gattggtata ctcagagttc tgcaactctc accacaatca attttggaac
+      961 atttctatca tccctagcaa taaatactat atcttttttt tgtgtgtgtg agacagagtg
+     1021 tcactttgtc acccaggctg gagtgcaatg gcgtgatctc tgctccctgc aacctccacc
+     1081 tcccgggttc aagcaattct cctgcctcag cctcccaagt agctagctgg gactacaggc
+     1141 acgcaccacc acacctggct aatttttgta tttttagtag agacagggtt tcatcatgtt
+     1201 ggccaggatg gttttgatct cctgacttca tgatccactc gcctcagcct cccaaagtgc
+     1261 tgggactaca ggcgtgagcc accacgcccg gccagcaaat accgtatctg actagcactt
+     1321 tccatttccc tccaaccccc taatggtttc ttttcccaca ataatctaaa tgtttaagga
+     1381 actggtttgc taactcattt cttaatgaca agaattaagc cagcacagcc tctggtttct
+     1441 gacattcttt ccctacaaag tcattcatca tttatccttt tttaagggac ttccttcatc
+     1501 tctgtgcctt aggctcactt cctgactgtg gggatcagct cctctcacca atggtgagta
+     1561 gggagtacct gccgttaaac ctctgtcacc acaggagaga gatgccatgg atggatgatt
+     1621 ttctctctga ttcttggcat tagttcattg ggcaaaaatt cagcttccag ttaagcaccg
+     1681 gcccatggac cgggcttggt cctgtttccc ctggaagcac tgctgggaaa ccaagcccag
+     1741 ccctgcaggg cttcctcctg ctgccgccca cgccaggatc agcctcctct tgccgctgca
+     1801 gccccgtcgc tgcaccggtt tcatcggtct gaagtccagc tgctcctcct tggcctctgc
+     1861 acctcagcac aggctactgc ctctgagggg ccgcccagcc gtcgtcctcc tcacaacctc
+     1921 ccatgatcgt ggccctgagg tcacctttcc attggcgatg aacaatccca ttgtcactcc
+     1981 ccatgggtgt gcccaccgga agctgctcat gggcaggagg ggaactgttc aagctggttt
+     2041 ttccagcccc taccacagcg ctgggtgtgt aggtggacaa gaaagtcatt acgtatgtaa
+     2101 atgaggaagc gcatgaacac ctgagcgtgt gagaattcgg tggggtgaat gccactccaa
+     2161 atgtgtgtca aatatgatgg gactgaatgc aaatgaaagt gggtcaagga gatattcaga
+     2221 ataaaatgag caacttttcc tcaaaaaaaa aaaaaaaaaa aaaaaaaaaa aaa
+//
+
+LOCUS       NR_033874                810 bp    RNA     linear   PRI 04-SEP-2020
+DEFINITION  Homo sapiens uncharacterized LOC90024 (FLJ20021), long non-coding
+            RNA.
+ACCESSION   NR_033874 XM_001717455 XM_028217 XM_944210
+VERSION     NR_033874.1
+KEYWORDS    RefSeq.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            AP001816.2 and AK000028.1.
+            
+            On or before Jul 1, 2010 this sequence version replaced
+            XM_944210.3, XM_001717455.2, XM_028217.6.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: AK000028.1, BQ931232.1 [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMEA1965299, SAMEA1966682
+                                           [ECO:0000348]
+            ##Evidence-Data-END##
+            COMPLETENESS: complete on the 3' end.
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-7                 AP001816.2         110136-110142
+            8-581               AK000028.1         5-578
+            582-586             AP001816.2         111031-111035
+            587-810             AK000028.1         583-806
+FEATURES             Location/Qualifiers
+     source          1..810
+                     /organism="Homo sapiens"
+                     /mol_type="transcribed RNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="4"
+                     /map="4q24"
+     gene            1..810
+                     /gene="FLJ20021"
+                     /note="uncharacterized LOC90024"
+                     /db_xref="GeneID:90024"
+     ncRNA           1..810
+                     /ncRNA_class="lncRNA"
+                     /gene="FLJ20021"
+                     /product="uncharacterized LOC90024"
+                     /db_xref="GeneID:90024"
+     exon            1..233
+                     /gene="FLJ20021"
+                     /inference="alignment:Splign:2.1.0"
+     exon            234..793
+                     /gene="FLJ20021"
+                     /inference="alignment:Splign:2.1.0"
+ORIGIN      
+        1 ttttcttcca gctgccggac cagcgggcct gccgcctcta cggaccagtc cctgctcagg
+       61 tgtcactttt gctggcaggc cgagattagg gcaggagagt gggcaaggcg tcgcggccag
+      121 gaggagaagg gctctaccac gccaccctcc tttggcctcc gaacgcggac cccgcacaca
+      181 cacacccgcg cctctttggc aagcgtgcct tgtcggctgg gttaagccgc agtgcgtgca
+      241 caccgagcgg cggggcgctg tggaacgcgg gagcggacta gcggaggagg atgcggacca
+      301 agccccagcg acccagggca actcggagct acctcgggca gccctgcggg tctccgagga
+      361 gaaccgagga gacgggagaa acatgggaga gggtggcctt ttccctgttc acacacacat
+      421 gcacgcagcc actggccggg acagttgaca cccatcttcc ttccctgctc cttccagtca
+      481 ttctacaccc gcttggtgct gccagtgcgg gcagggcctt ggagcccaaa gcggatcccc
+      541 acacttgtcc ctacggtcgg aaggaaagta gaggagagaa agtcaggcgc ggcagggcta
+      601 agagcaatag tggcccaaat gttcctggcc cgcctgctgc gccacagagt ctgaaaagcg
+      661 ggtctccgtc taccagaagg tgacctccac acagcccctc tccccgacca actgcagcac
+      721 ccaaggactg gcaacgtggt tggagctttt ggggggaatt atgaagaaat ctgaataaat
+      781 ttctcaccct tcaaaaaaaa aaaaaaaaaa
+//
+
+LOCUS       NR_040415                723 bp    RNA     linear   PRI 12-JUN-2022
+DEFINITION  Homo sapiens septin 14 pseudogene 20 (SEPTIN14P20), non-coding RNA.
+ACCESSION   NR_040415 XR_110618
+VERSION     NR_040415.1
+KEYWORDS    RefSeq.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 723)
+  AUTHORS   Zheng S, Wan L, Ge D, Jiang F, Qian Z, Tang J, Yang J, Yao Y, Yan
+            J, Zhao L, Li H and Yang L.
+  TITLE     LINC00266-1/miR-548c-3p/SMAD2 feedback loop stimulates the
+            development of osteosarcoma
+  JOURNAL   Cell Death Dis 11 (7), 576 (2020)
+   PUBMED   32709857
+  REMARK    GeneRIF: LINC00266-1/miR-548c-3p/SMAD2 feedback loop stimulates the
+            development of osteosarcoma.
+            Publication Status: Online-Only
+REFERENCE   2  (bases 1 to 723)
+  AUTHORS   Zhu S, Wang JZ, Chen, He YT, Meng N, Chen M, Lu RX, Chen XH, Zhang
+            XL and Yan GR.
+  TITLE     An oncopeptide regulates m(6)A recognition by the m(6)A reader
+            IGF2BP1 and tumorigenesis
+  JOURNAL   Nat Commun 11 (1), 1685 (2020)
+   PUBMED   32245947
+  REMARK    GeneRIF: LncRNA LINC00266-1 encodes a 71-amino acid peptide that
+            mainly interacts with the RNA-binding proteins and is thus named
+            'RNA-binding regulatory peptide' (RBRP). RBRP binds to IGF2BP1 and
+            strengthens m6A recognition by IGF2BP1 on RNAs, such as c-Myc mRNA,
+            to increase the mRNA stability and expression of c-Myc, thereby
+            promoting tumorigenesis. Cancer patients with RBRPhigh have a poor
+            prognosis.
+            Publication Status: Online-Only
+COMMENT     PREDICTED REFSEQ: This record has not been reviewed and the
+            function is unknown. The reference sequence was derived from
+            BC118988.1.
+            
+            On Aug 3, 2011 this sequence version replaced XR_110618.1.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: BC122537.1 [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMEA1968968, SAMEA2142853
+                                           [ECO:0000348]
+            ##Evidence-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..723
+                     /organism="Homo sapiens"
+                     /mol_type="transcribed RNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="20"
+                     /map="20q13.33"
+     gene            1..723
+                     /gene="SEPTIN14P20"
+                     /gene_synonym="bA476I15.3; C20orf69; LINC00266-1;
+                     NCRNA00266; NCRNA00266-1; RBRP; SEPT14P20"
+                     /note="septin 14 pseudogene 20"
+                     /pseudo
+                     /db_xref="GeneID:107126285"
+                     /db_xref="HGNC:HGNC:51706"
+     misc_RNA        1..723
+                     /gene="SEPTIN14P20"
+                     /gene_synonym="bA476I15.3; C20orf69; LINC00266-1;
+                     NCRNA00266; NCRNA00266-1; RBRP; SEPT14P20"
+                     /product="septin 14 pseudogene 20"
+                     /pseudo
+                     /db_xref="GeneID:107126285"
+                     /db_xref="HGNC:HGNC:51706"
+     exon            1..350
+                     /gene="SEPTIN14P20"
+                     /gene_synonym="bA476I15.3; C20orf69; LINC00266-1;
+                     NCRNA00266; NCRNA00266-1; RBRP; SEPT14P20"
+                     /inference="alignment:Splign:2.1.0"
+                     /pseudo
+     exon            351..519
+                     /gene="SEPTIN14P20"
+                     /gene_synonym="bA476I15.3; C20orf69; LINC00266-1;
+                     NCRNA00266; NCRNA00266-1; RBRP; SEPT14P20"
+                     /inference="alignment:Splign:2.1.0"
+                     /pseudo
+     exon            520..723
+                     /gene="SEPTIN14P20"
+                     /gene_synonym="bA476I15.3; C20orf69; LINC00266-1;
+                     NCRNA00266; NCRNA00266-1; RBRP; SEPT14P20"
+                     /inference="alignment:Splign:2.1.0"
+                     /pseudo
+ORIGIN      
+        1 tgcacacatc ttcttctcca aggtttgtgt gcagaacatc ctgcccatgc tgacccagga
+       61 gcttcagttg gcacctgccc cagtccagcc tctgggaacc atgcagcagc tcccagcggc
+      121 cctgcaccca ccaccagcat ccgtttcacc tgcagttgaa gatccgtgag gtgcccagaa
+      181 gatcatgcag tcatcagtcc cacggagcag cccgcgaggc tgaggctcct cccactggac
+      241 cgccccccaa ctggcaccac tgctgcccct gcccctactc tcagcctcac gtgactctcg
+      301 ggcagaggca gtggtggggc agccagggca gcgtcaagag tctgagccag ctgcaggaca
+      361 aattcgagca tcttaaaatg attcaacagg aggagataag gaagctcgag gaagagaaaa
+      421 aacaactgga aggagaaatc atagattttt ataaaatgaa agctgcctct gaagcactgc
+      481 agactcagct gagcactgat acaaagaaag acaaacatcc tgatccatat gaattcctct
+      541 tattaagaaa aataaagcat ccaggattca atgaagaact atcaccttgt taatcattca
+      601 gaaacatatt gcagacttaa gccatttttg atacagatac tgaaacaatt actttctaag
+      661 agcaaacttg aaggtatgga taaggccctg agtcatcttc ctgagctgaa tgatagttaa
+      721 gct
+//
+
+LOCUS       NR_033201                611 bp    RNA     linear   PRI 23-MAY-2022
+DEFINITION  Homo sapiens HOXB cluster antisense RNA 3 (HOXB-AS3), transcript
+            variant 1, long non-coding RNA.
+ACCESSION   NR_033201 XR_042278 XR_042279 XR_042280
+VERSION     NR_033201.2
+KEYWORDS    RefSeq.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 611)
+  AUTHORS   Leng F, Miu YY, Zhang Y, Luo H, Lu XL, Cheng H and Zheng ZG.
+  TITLE     A micro-peptide encoded by HOXB-AS3 promotes the proliferation and
+            viability of oral squamous cell carcinoma cell lines by directly
+            binding with IGF2BP2 to stabilize c-Myc
+  JOURNAL   Oncol Lett 22 (4), 697 (2021)
+   PUBMED   34457052
+REFERENCE   2  (bases 1 to 611)
+  AUTHORS   Degani N, Lubelsky Y, Perry RB, Ainbinder E and Ulitsky I.
+  TITLE     Highly conserved and cis-acting lncRNAs produced from paralogous
+            regions in the center of HOXA and HOXB clusters in the endoderm
+            lineage
+  JOURNAL   PLoS Genet 17 (7), e1009681 (2021)
+   PUBMED   34280202
+  REMARK    GeneRIF: Highly conserved and cis-acting lncRNAs produced from
+            paralogous regions in the center of HOXA and HOXB clusters in the
+            endoderm lineage.
+            Publication Status: Online-Only
+REFERENCE   3  (bases 1 to 611)
+  AUTHORS   Xing Y, Sun X, Li F, Jiang X, Jiang A, Li X, Lv R and Shao L.
+  TITLE     Long non-coding RNA (lncRNA) HOXB-AS3 promotes cell proliferation
+            and inhibits apoptosis by regulating ADAM9 expression through
+            targeting miR-498-5p in endometrial carcinoma
+  JOURNAL   J Int Med Res 49 (6), 3000605211013548 (2021)
+   PUBMED   34187214
+  REMARK    GeneRIF: Long non-coding RNA (lncRNA) HOXB-AS3 promotes cell
+            proliferation and inhibits apoptosis by regulating ADAM9 expression
+            through targeting miR-498-5p in endometrial carcinoma.
+REFERENCE   4  (bases 1 to 611)
+  AUTHORS   Xu S, Jia G, Zhang H, Wang L, Cong Y, Lv M, Xu J, Ruan H, Jia X, Xu
+            P and Wang Y.
+  TITLE     LncRNA HOXB-AS3 promotes growth, invasion and migration of
+            epithelial ovarian cancer by altering glycolysis
+  JOURNAL   Life Sci 264, 118636 (2021)
+   PUBMED   33148416
+  REMARK    GeneRIF: LncRNA HOXB-AS3 promotes growth, invasion and migration of
+            epithelial ovarian cancer by altering glycolysis.
+REFERENCE   5  (bases 1 to 611)
+  AUTHORS   Jiang W, Kai J, Li D, Wei Z, Wang Y and Wang W.
+  TITLE     lncRNA HOXB-AS3 exacerbates proliferation, migration, and invasion
+            of lung cancer via activating the PI3K-AKT pathway
+  JOURNAL   J Cell Physiol 235 (10), 7194-7203 (2020)
+   PUBMED   32039488
+  REMARK    GeneRIF: lncRNA HOXB-AS3 exacerbates proliferation, migration, and
+            invasion of lung cancer via activating the PI3K-AKT pathway.
+REFERENCE   6  (bases 1 to 611)
+  AUTHORS   Papaioannou D, Petri A, Dovey OM, Terreri S, Wang E, Collins FA,
+            Woodward LA, Walker AE, Nicolet D, Pepe F, Kumchala P, Bill M,
+            Walker CJ, Karunasiri M, Mrozek K, Gardner ML, Camilotto V, Zitzer
+            N, Cooper JL, Cai X, Rong-Mullins X, Kohlschmidt J, Archer KJ,
+            Freitas MA, Zheng Y, Lee RJ, Aifantis I, Vassiliou G, Singh G,
+            Kauppinen S, Bloomfield CD, Dorrance AM and Garzon R.
+  TITLE     The long non-coding RNA HOXB-AS3 regulates ribosomal RNA
+            transcription in NPM1-mutated acute myeloid leukemia
+  JOURNAL   Nat Commun 10 (1), 5351 (2019)
+   PUBMED   31767858
+  REMARK    GeneRIF: Data suggest that in the context of nucleophosmin 1 (NPM1)
+            mutations, the long non-coding RNA HOXB-AS3 (HOXB-AS3)
+            overexpression acts as a compensatory mechanism, which allows
+            adequate protein production in leukemic blasts.
+            Erratum:[Nat Commun. 2020 Jan 7;11(1):204. PMID: 31911614]
+            Publication Status: Online-Only
+REFERENCE   7  (bases 1 to 611)
+  AUTHORS   Huang HH, Chen FY, Chou WC, Hou HA, Ko BS, Lin CT, Tang JL, Li CC,
+            Yao M, Tsay W, Hsu SC, Wu SJ, Chen CY, Huang SY, Tseng MH, Tien HF
+            and Chen RH.
+  TITLE     Long non-coding RNA HOXB-AS3 promotes myeloid cell proliferation
+            and its higher expression is an adverse prognostic marker in
+            patients with acute myeloid leukemia and myelodysplastic syndrome
+  JOURNAL   BMC Cancer 19 (1), 617 (2019)
+   PUBMED   31234830
+  REMARK    GeneRIF: This study uncovers a promoting role of HOXB-AS3 in
+            myeloid malignancies and identifies the prognostic value of
+            HOXB-AS3 expression in acute myeloid leukemia and myelodysplastic
+            syndromepatients, particularly in the lower-risk group.
+            Publication Status: Online-Only
+REFERENCE   8  (bases 1 to 611)
+  AUTHORS   Zhang XM, Chen H, Zhou B, Zhang QY, Liao Y, Wang JS and Wang ZH.
+  TITLE     lncRNA HOXB-AS3 promotes hepatoma by inhibiting p53 expression
+  JOURNAL   Eur Rev Med Pharmacol Sci 22 (20), 6784-6792 (2018)
+   PUBMED   30402841
+  REMARK    GeneRIF: Highly expressed HOXB-AS3 was confirmed to promote the
+            proliferation of hepatocellular carcinoma cells and inhibit
+            apoptosis, and the mechanism was related to the regulatory role of
+            HOXB-AS3 in p53 expression by binding to DNMT1 promoter.
+REFERENCE   9  (bases 1 to 611)
+  AUTHORS   Huang JZ, Chen M, Chen, Gao XC, Zhu S, Huang H, Hu M, Zhu H and Yan
+            GR.
+  TITLE     A Peptide Encoded by a Putative lncRNA HOXB-AS3 Suppresses Colon
+            Cancer Growth
+  JOURNAL   Mol Cell 68 (1), 171-184 (2017)
+   PUBMED   28985503
+  REMARK    GeneRIF: A peptide encoded by a putative lncRNA HOXB-AS3 suppresses
+            colon cancer growth.
+REFERENCE   10 (bases 1 to 611)
+  AUTHORS   Harrington JJ, Sherf B, Rundlett S, Jackson PD, Perry R, Cain S,
+            Leventhal C, Thornton M, Ramachandran R, Whittington J, Lerner L,
+            Costanzo D, McElligott K, Boozer S, Mays R, Smith E, Veloso N,
+            Klika A, Hess J, Cothren K, Lo K, Offenbacher J, Danzig J and Ducar
+            M.
+  TITLE     Creation of genome-wide protein expression libraries using random
+            activation of gene expression
+  JOURNAL   Nat Biotechnol 19 (5), 440-445 (2001)
+   PUBMED   11329013
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            DA741273.1, CF127739.1, W39335.1 and BC010732.1.
+            
+            On Jan 17, 2014 this sequence version replaced NR_033201.1.
+            
+            Transcript Variant: This variant (1) is the reference transcript.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: BE552174.1, AI743312.1 [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMEA1968540, SAMEA1970526
+                                           [ECO:0000348]
+            ##Evidence-Data-END##
+            COMPLETENESS: complete on the 3' end.
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-59                DA741273.1         3-61
+            60-170              CF127739.1         38-148
+            171-197             W39335.1           130-156
+            198-611             BC010732.1         56-469
+FEATURES             Location/Qualifiers
+     source          1..611
+                     /organism="Homo sapiens"
+                     /mol_type="transcribed RNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="17"
+                     /map="17q21.32"
+     gene            1..611
+                     /gene="HOXB-AS3"
+                     /note="HOXB cluster antisense RNA 3"
+                     /db_xref="GeneID:404266"
+                     /db_xref="HGNC:HGNC:40283"
+     ncRNA           1..611
+                     /ncRNA_class="lncRNA"
+                     /gene="HOXB-AS3"
+                     /product="HOXB cluster antisense RNA 3, transcript variant
+                     1"
+                     /db_xref="GeneID:404266"
+                     /db_xref="HGNC:HGNC:40283"
+     exon            1..170
+                     /gene="HOXB-AS3"
+                     /inference="alignment:Splign:2.1.0"
+     exon            171..290
+                     /gene="HOXB-AS3"
+                     /inference="alignment:Splign:2.1.0"
+     exon            291..573
+                     /gene="HOXB-AS3"
+                     /inference="alignment:Splign:2.1.0"
+ORIGIN      
+        1 gtcatagcga cttttgggat agtttgctat cgacaaaggg agacaaagtc aaggggtgaa
+       61 gggaaaggag ggccaagtag agcctccacg accctcggct tcctcctcac cagctccccc
+      121 tccctccaag tccagtaaga agttgggcca agctggaagg gattgaccgg ccgtttcctc
+      181 tccctcgccg gcctcggcgg agattccagg ccctatagaa accaggacgt cccttagcgc
+      241 caccgcctca catgccagtg ctgccgggaa cccagcgata tccgcaccag cggagaaggt
+      301 tccaggctgc cggcggcggc gcagagagcg ggaagagagg ctcggaggaa gccccgggcg
+      361 tggcgtggtc aggctccgag agcggccggg atgcggccac accggcctgg taaactcgca
+      421 cctcttagga tcttgctccc ggactcattc ccttccccac cccctatttt aaagttttat
+      481 ttgggtcgtc tgtatcaatt tagaacgaga taaattaaga caaagaaagt aaaataaatc
+      541 gaaataaaat ataggaatag ctcttggcga aaaaaaaaaa aaaaaaaaaa aaaaaaaaaa
+      601 aaaaaaaaaa a
+//
+
+LOCUS       NM_001352688            1011 bp    mRNA    linear   PRI 24-DEC-2022
+DEFINITION  Homo sapiens small integral membrane protein 30 (SMIM30),
+            transcript variant 2, mRNA.
+ACCESSION   NM_001352688 NR_015442
+VERSION     NM_001352688.2
+KEYWORDS    RefSeq; MANE Select.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 1011)
+  AUTHORS   Pang Y, Liu Z, Han H, Wang B, Li W, Mao C and Liu S.
+  TITLE     Peptide SMIM30 promotes HCC development by inducing SRC/YES1
+            membrane anchoring and MAPK pathway activation
+  JOURNAL   J Hepatol 73 (5), 1155-1169 (2020)
+   PUBMED   32461121
+  REMARK    GeneRIF: Peptide SMIM30 promotes HCC development by inducing
+            SRC/YES1 membrane anchoring and MAPK pathway activation.
+REFERENCE   2  (bases 1 to 1011)
+  AUTHORS   Ye N, Rao S, Du T, Hu H, Liu Z, Shen Y and Xu Q.
+  TITLE     Intergenic variants may predispose to major depression disorder
+            through regulation of long non-coding RNA expression
+  JOURNAL   Gene 601, 21-26 (2017)
+   PUBMED   27940106
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            BX537645.1 and BU630382.1.
+            
+            On Nov 22, 2018 this sequence version replaced NM_001352688.1.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: SRR1660807.241495.1,
+                                           SRR1660809.126565.1 [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMEA1965299, SAMEA1966682
+                                           [ECO:0000348]
+            ##Evidence-Data-END##
+            
+            ##RefSeq-Attributes-START##
+            MANE Ensembl match     :: ENST00000397764.8/ ENSP00000490095.1
+            RefSeq Select criteria :: based on conservation, expression,
+                                      longest protein
+            ##RefSeq-Attributes-END##
+            COMPLETENESS: full length.
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-1006              BX537645.1         2-1007
+            1007-1011           BU630382.1         17-21               c
+FEATURES             Location/Qualifiers
+     source          1..1011
+                     /organism="Homo sapiens"
+                     /mol_type="mRNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="7"
+                     /map="7q31.1"
+     gene            1..1011
+                     /gene="SMIM30"
+                     /gene_synonym="LINC00998"
+                     /note="small integral membrane protein 30"
+                     /db_xref="GeneID:401397"
+                     /db_xref="HGNC:HGNC:48953"
+     exon            1..27
+                     /gene="SMIM30"
+                     /gene_synonym="LINC00998"
+                     /inference="alignment:Splign:2.1.0"
+     exon            28..121
+                     /gene="SMIM30"
+                     /gene_synonym="LINC00998"
+                     /inference="alignment:Splign:2.1.0"
+     misc_feature    49..51
+                     /gene="SMIM30"
+                     /gene_synonym="LINC00998"
+                     /note="upstream in-frame stop codon"
+     exon            122..1011
+                     /gene="SMIM30"
+                     /gene_synonym="LINC00998"
+                     /inference="alignment:Splign:2.1.0"
+     CDS             151..330
+                     /gene="SMIM30"
+                     /gene_synonym="LINC00998"
+                     /note="long intergenic non-protein coding RNA 998;
+                     putative transmembrane protein LINC00998"
+                     /codon_start=1
+                     /product="small integral membrane protein 30 precursor"
+                     /protein_id="NP_001339617.1"
+                     /db_xref="CCDS:CCDS87543.1"
+                     /db_xref="GeneID:401397"
+                     /db_xref="HGNC:HGNC:48953"
+                     /translation="MTSVSTQLSLVLMSLLLVLPVVEAVEAGDAIALLLGVVLSITGI
+                     CACLGVYARKRNGQM"
+     sig_peptide     151..222
+                     /gene="SMIM30"
+                     /gene_synonym="LINC00998"
+                     /inference="COORDINATES: ab initio prediction:SignalP:4.0"
+     misc_feature    238..300
+                     /gene="SMIM30"
+                     /gene_synonym="LINC00998"
+                     /note="propagated from UniProtKB/Swiss-Prot (A4D0T7.2);
+                     transmembrane region"
+     regulatory      986..991
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="SMIM30"
+                     /gene_synonym="LINC00998"
+                     /note="hexamer: TATAAA"
+     polyA_site      1011
+                     /gene="SMIM30"
+                     /gene_synonym="LINC00998"
+                     /note="major polyA site"
+ORIGIN      
+        1 attcctgtaa tggctgcttc ctagaaggtc gtgtcacgtg gaacctctta atctcagcat
+       61 ccggagctcc aggaagggaa aatttcaagt cagatagaat tctatatata ccatttcttt
+      121 ggaaccttca gccctcaaga ttccaacatc atgacctcag tttcaacaca gttgtcctta
+      181 gtcctcatgt cactgctttt ggtgctgcct gttgtggaag cagtagaagc cggtgatgca
+      241 atcgcccttt tgttaggtgt ggttctcagc attacaggca tttgtgcctg cttgggggta
+      301 tatgcacgaa aaagaaatgg acagatgtga ctttgaaagg cctactgagt caaacctcac
+      361 cctgaaaacc tttgcgcttt agaggctaaa cctgagattt ggtgtgtgaa aggttccaag
+      421 aatcagtaaa taagggagtt tcacattttt cattgtttcc atgaaatggc aacaaacata
+      481 catttataaa ttgaaaaaaa aatgttttct ttacaacaaa taatgcacag aaaaatgcag
+      541 cctataattt gctagttagg tagtcaaaga agtaagatgg ctgaaattta cataagtaat
+      601 atttcataat cttagaattc tctcaaagca tgtgaaatag gaagaaggaa gttcttgccc
+      661 agaatcttag gaaatcacca ctgttcggtt ataatcactg cctcctgaat cgttgaggag
+      721 tcttttaaat tagatttttg ttttgttgtc tcccaagtta atattatatt tagatatcag
+      781 agagtcaggc aaaaaggaaa acttttatct ctagggaaaa aacatttaga aaaatgtatt
+      841 cagtgtatct aatactgaaa tgcggaaaaa aatttaatgt taaaaaaaaa ctatagacat
+      901 tgacatggaa aagagattta atgttttgaa aaaaaacttt atattaactg agtaacatcc
+      961 tcctgatgag aagtactata ttaaatataa acccattatg ttataagtta a
+//
+
+LOCUS       NM_001352129             783 bp    mRNA    linear   PRI 25-DEC-2022
+DEFINITION  Homo sapiens small transmembrane regulator of ion transport 1
+            (STRIT1), mRNA.
+ACCESSION   NM_001352129 NR_037902
+VERSION     NM_001352129.2
+KEYWORDS    RefSeq; MANE Select.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 783)
+  AUTHORS   Cleary SR, Fang X, Cho EE, Pribadi MP, Seflova J, Beach JR,
+            Kekenes-Huskey PM and Robia SL.
+  TITLE     Inhibitory and stimulatory micropeptides preferentially bind to
+            different conformations of the cardiac calcium pump
+  JOURNAL   J Biol Chem 298 (7), 102060 (2022)
+   PUBMED   35605666
+  REMARK    GeneRIF: Inhibitory and stimulatory micropeptides preferentially
+            bind to different conformations of the cardiac calcium pump.
+REFERENCE   2  (bases 1 to 783)
+  AUTHORS   Fisher ME, Bovo E, Aguayo-Ortiz R, Cho EE, Pribadi MP, Dalton MP,
+            Rathod N, Lemieux MJ, Espinoza-Fonseca LM, Robia SL, Zima AV and
+            Young HS.
+  TITLE     Dwarf open reading frame (DWORF) is a direct activator of the
+            sarcoplasmic reticulum calcium pump SERCA
+  JOURNAL   Elife 10, e65545 (2021)
+   PUBMED   34075877
+  REMARK    GeneRIF: Dwarf open reading frame (DWORF) is a direct activator of
+            the sarcoplasmic reticulum calcium pump SERCA.
+            Publication Status: Online-Only
+REFERENCE   3  (bases 1 to 783)
+  AUTHORS   Li A, Yuen SL, Stroik DR, Kleinboehl E, Cornea RL and Thomas DD.
+  TITLE     The transmembrane peptide DWORF activates SERCA2a via dual
+            mechanisms
+  JOURNAL   J Biol Chem 296, 100412 (2021)
+   PUBMED   33581112
+  REMARK    GeneRIF: The transmembrane peptide DWORF activates SERCA2a via dual
+            mechanisms.
+REFERENCE   4  (bases 1 to 783)
+  AUTHORS   Luck K, Kim DK, Lambourne L, Spirohn K, Begg BE, Bian W, Brignall
+            R, Cafarelli T, Campos-Laborie FJ, Charloteaux B, Choi D, Cote AG,
+            Daley M, Deimling S, Desbuleux A, Dricot A, Gebbia M, Hardy MF,
+            Kishore N, Knapp JJ, Kovacs IA, Lemmens I, Mee MW, Mellor JC,
+            Pollis C, Pons C, Richardson AD, Schlabach S, Teeking B, Yadav A,
+            Babor M, Balcha D, Basha O, Bowman-Colin C, Chin SF, Choi SG,
+            Colabella C, Coppin G, D'Amata C, De Ridder D, De Rouck S,
+            Duran-Frigola M, Ennajdaoui H, Goebels F, Goehring L, Gopal A,
+            Haddad G, Hatchi E, Helmy M, Jacob Y, Kassa Y, Landini S, Li R, van
+            Lieshout N, MacWilliams A, Markey D, Paulson JN, Rangarajan S,
+            Rasla J, Rayhan A, Rolland T, San-Miguel A, Shen Y, Sheykhkarimli
+            D, Sheynkman GM, Simonovsky E, Tasan M, Tejeda A, Tropepe V,
+            Twizere JC, Wang Y, Weatheritt RJ, Weile J, Xia Y, Yang X,
+            Yeger-Lotem E, Zhong Q, Aloy P, Bader GD, De Las Rivas J, Gaudet S,
+            Hao T, Rak J, Tavernier J, Hill DE, Vidal M, Roth FP and Calderwood
+            MA.
+  TITLE     A reference map of the human binary protein interactome
+  JOURNAL   Nature 580 (7803), 402-408 (2020)
+   PUBMED   32296183
+REFERENCE   5  (bases 1 to 783)
+  AUTHORS   Pirkmajer S, Kirchner H, Lundell LS, Zelenin PV, Zierath JR,
+            Makarova KS, Wolf YI and Chibalin AV.
+  TITLE     Early vertebrate origin and diversification of small transmembrane
+            regulators of cellular ion transport
+  JOURNAL   J Physiol 595 (14), 4611-4630 (2017)
+   PUBMED   28436536
+REFERENCE   6  (bases 1 to 783)
+  AUTHORS   Rion N and Ruegg MA.
+  TITLE     LncRNA-encoded peptides: More than translational noise?
+  JOURNAL   Cell Res 27 (5), 604-605 (2017)
+   PUBMED   28290465
+REFERENCE   7  (bases 1 to 783)
+  AUTHORS   Oehler D and Haas J.
+  TITLE     Hide and Seek: Protein-coding Sequences Inside 'Non-coding' RNAs
+  JOURNAL   Genomics Proteomics Bioinformatics 14 (4), 179-180 (2016)
+   PUBMED   27071812
+REFERENCE   8  (bases 1 to 783)
+  AUTHORS   Nelson BR, Makarewich CA, Anderson DM, Winders BR, Troupes CD, Wu
+            F, Reese AL, McAnally JR, Chen X, Kavalali ET, Cannon SC, Houser
+            SR, Bassel-Duby R and Olson EN.
+  TITLE     A peptide encoded by a transcript annotated as long noncoding RNA
+            enhances SERCA activity in muscle
+  JOURNAL   Science 351 (6270), 271-275 (2016)
+   PUBMED   26816378
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            AC104831.3 and BC015836.1.
+            
+            On Nov 23, 2018 this sequence version replaced NM_001352129.1.
+            
+            Sequence Note: This RefSeq record was created from transcript and
+            genomic sequence data to make the sequence consistent with the
+            reference genome assembly. The genomic coordinates used for the
+            transcript record were based on transcript alignments.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: SRR5189655.57659.1,
+                                           SRR5189655.110266.1 [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMEA2162946 [ECO:0000348]
+            ##Evidence-Data-END##
+            
+            ##RefSeq-Attributes-START##
+            MANE Ensembl match     :: ENST00000489090.2/ ENSP00000489859.1
+            RefSeq Select criteria :: based on single protein-coding transcript
+            ##RefSeq-Attributes-END##
+            COMPLETENESS: full length.
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-1                 AC104831.3         20231-20231
+            2-615               BC015836.1         7-620
+            616-783             AC104831.3         23520-23687
+FEATURES             Location/Qualifiers
+     source          1..783
+                     /organism="Homo sapiens"
+                     /mol_type="mRNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="3"
+                     /map="3q25.2"
+     gene            1..783
+                     /gene="STRIT1"
+                     /gene_synonym="DWORF"
+                     /note="small transmembrane regulator of ion transport 1"
+                     /db_xref="GeneID:100507537"
+                     /db_xref="HGNC:HGNC:52297"
+                     /db_xref="MIM:616891"
+     exon            1..64
+                     /gene="STRIT1"
+                     /gene_synonym="DWORF"
+                     /inference="alignment:Splign:2.1.0"
+     misc_feature    25..27
+                     /gene="STRIT1"
+                     /gene_synonym="DWORF"
+                     /note="upstream in-frame stop codon"
+     CDS             52..159
+                     /gene="STRIT1"
+                     /gene_synonym="DWORF"
+                     /note="SERCA regulator DWORF"
+                     /codon_start=1
+                     /product="sarcoplasmic/endoplasmic reticulum calcium
+                     ATPase regulator DWORF"
+                     /protein_id="NP_001339058.1"
+                     /db_xref="CCDS:CCDS87158.1"
+                     /db_xref="GeneID:100507537"
+                     /db_xref="HGNC:HGNC:52297"
+                     /db_xref="MIM:616891"
+                     /translation="MAEKAGSTFSHLLVPILLLIGWIVGCIIMIYVVFS"
+     misc_feature    91..153
+                     /gene="STRIT1"
+                     /gene_synonym="DWORF"
+                     /note="propagated from UniProtKB/Swiss-Prot (P0DN84.2);
+                     transmembrane region"
+     exon            65..163
+                     /gene="STRIT1"
+                     /gene_synonym="DWORF"
+                     /inference="alignment:Splign:2.1.0"
+     exon            164..783
+                     /gene="STRIT1"
+                     /gene_synonym="DWORF"
+                     /inference="alignment:Splign:2.1.0"
+     regulatory      226..231
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="STRIT1"
+                     /gene_synonym="DWORF"
+                     /note="hexamer: ATTAAA"
+     polyA_site      248
+                     /gene="STRIT1"
+                     /gene_synonym="DWORF"
+                     /note="major polyA site"
+     regulatory      762..767
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="STRIT1"
+                     /gene_synonym="DWORF"
+                     /note="hexamer: AATAAA"
+     polyA_site      763
+                     /gene="STRIT1"
+                     /gene_synonym="DWORF"
+     polyA_site      783
+                     /gene="STRIT1"
+                     /gene_synonym="DWORF"
+ORIGIN      
+        1 caaaagaaag aggtaagcgt ggcctgacct agccacccac caacaggaat aatggctgaa
+       61 aaagcggggt ctacattttc acaccttctg gttcctattc ttctcctgat tggctggatt
+      121 gtgggctgca tcataatgat ttatgttgtc ttctcttaga aaggcaagaa gatatcagat
+      181 tgacatcatt tagaagaatt aagaaaacta tgaacatgac tgattattaa atgtctcatg
+      241 ttaaacaatg caatgtttga catcacttta caaacttgga tcataaactg gcactttggt
+      301 atgcataaga atttcttcag gacaataaga aattatgagt gaatttctct atattctgag
+      361 tgagaaaaat gtttagctgt gatgaaaaat gcatgtcatt aaaaaaagtt tgataaattt
+      421 aatcacatta caaaaaatta tccccccttc cctctggaaa aaactataga gaaagtgggc
+      481 tgaggctgtg caaggtggct catgcctgta atcccagcac tttgtgagga tcctttgagc
+      541 ccagaaattg gagaccttcc taggcgacag agagagaccc catctctaca aaaaaaaaaa
+      601 aaaaaaaaaa aaaaaagaaa gaaaatgggc tagagataaa aacagacaat tcagagaaca
+      661 tataatgtaa aagtacactt acttaatctc ttgttcacaa aaagagaaat gtaattaaaa
+      721 ctacactgag gaattgttgc tcacttatca gatgggaaaa aaataaagat gtttgacaac
+      781 ata
+//
+
+LOCUS       BK010446                1084 bp    RNA     circular PRI 15-MAR-2019
+DEFINITION  TPA_exp: Homo sapiens PINT87aa (circPINTexon2) gene, complete cds.
+ACCESSION   BK010446
+VERSION     BK010446.1
+KEYWORDS    Third Party Data; TPA; TPA:experimental.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 1084)
+  AUTHORS   Zhang,M., Zhao,K., Xu,X., Yang,Y., Yan,S., Wei,P., Liu,H., Xu,J.,
+            Xiao,F., Zhou,H., Yang,X., Huang,N., Liu,J., He,K., Xie,K.,
+            Zhang,G., Huang,S. and Zhang,N.
+  TITLE     A peptide encoded by circular form of LINC-PINT suppresses
+            oncogenic transcriptional elongation in glioblastoma
+  JOURNAL   Nat Commun 9 (1), 4475 (2018)
+   PUBMED   30367041
+  REMARK    Publication Status: Online-Only
+REFERENCE   2  (bases 1 to 1084)
+  AUTHORS   Zhang,M.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (23-JAN-2018) Neurosurgery, The 1st Affiliated Hospital
+            of Sun Yat-sen University, Zhongshan two Road 58, Guangzhou,
+            Guangdong 510080, China
+COMMENT     THIRD PARTY DATABASE: This TPA record uses data from
+            DDBJ/EMBL/GenBank entries AC013434.8, AK125651.1, AL713664.1,
+            BC130416.1 and DB472406.1.
+FEATURES             Location/Qualifiers
+     source          1..1084
+                     /organism="Homo sapiens"
+                     /mol_type="genomic RNA"
+                     /db_xref="taxon:9606"
+     gene            479..742
+                     /gene="circPINTexon2"
+                     /note="formed by the circularization of exon 2 of the long
+                     intergenic non-protein-coding RNA p53-induced transcript
+                     (LINC-PINT) gene"
+     CDS             479..742
+                     /gene="circPINTexon2"
+                     /function="controls the cell cycle and cell proliferation;
+                     interacts with polymerase associated factor complex
+                     (PAF1c) and inhibits the transcriptional elongation of
+                     multiple oncogenes"
+                     /codon_start=1
+                     /product="PINT87aa"
+                     /protein_id="DAC74127.1"
+                     /translation="MLWLPDRGSCSARSPSGMLRGAPGGWRYGRRCGRRRQSCCCCCC
+                     CSHVGAPLSFHREASLVSHDGHDIMKQHCGEESIRGAHGYKNK"
+ORIGIN      
+        1 gtcatatctc cgtacctcac ttcctgacac aaacaagttt tcactgttgt cagcaacaaa
+       61 gccctaatat agctgcggaa gagaaaaact gcattgcatt ttgcctcctg caagcatcat
+      121 caacagttac tggaggaacg taattccaga aagcttgaaa gccgtggtga tggtaattat
+      181 gtatcaaatg cctggttcta tttctgttat tattgttttg tcatttctgt tttcccagcg
+      241 atctgactga actcgcagag ggacaaatcc agtttttctt tttgactttt gtcaaactaa
+      301 atcaggcctg atagaaaact cattgctctc cggggaaaca aagtaggagc cacgaaatgt
+      361 cattttaaca gagcgtgggt ttggtgactg taggaaagga tttgaggacg ctccttctgt
+      421 tcggcttcct atgtcatgag cacaggctcc acgcacgcac agacaccacg gctcccggat
+      481 gctgtggctc cccgatcggg gctcctgcag cgccagaagc ccctccggga tgcttcgagg
+      541 ggctcccggt gggtggaggt acggacgccg ctgcggccgc cgccgccagt cctgctgctg
+      601 ttgttgctgc tgcagtcacg tgggagcccc tttaagtttc catagagagg cctctctggt
+      661 gtcacatgat ggacatgata taatgaaaca acattgtgga gaggaaagca ttaggggagc
+      721 ccacggctac aaaaacaagt gagtgagaag aggtgggagg aagagaaact acgccacctc
+      781 ccctgcagcc gagtgcacgc agcagcctgg cgtgacaagt gggcgacgcc ggggggcagg
+      841 gagccggggt ccttggccct ggccggggac cccaccgccc accgcgcgga ggacaacttt
+      901 tagccggcag cccagaccag cgcggcacct gtctccggag tctccaccgc tcctcccgat
+      961 tcatcccagg gaaattctca agaatacgct ctacaaatct acgtgcgcat cattttcacc
+     1021 tcgcgtcgcg cccgggagga aggaacgagg caaggagcta aagcagcgtg cgttcagccc
+     1081 tggg
+//
+
+LOCUS       NM_001348129            2344 bp    mRNA    linear   PRI 25-DEC-2022
+DEFINITION  Homo sapiens negative regulator of P-body association (NBDY), mRNA.
+ACCESSION   NM_001348129 NR_015367 XM_001718993 XM_001720195 XM_001721066
+VERSION     NM_001348129.2
+KEYWORDS    RefSeq; MANE Select.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 2344)
+  AUTHORS   Na Z, Luo Y, Schofield JA, Smelyansky S, Khitun A, Muthukumar S,
+            Valkov E, Simon MD and Slavoff SA.
+  TITLE     The NBDY Microprotein Regulates Cellular RNA Decapping
+  JOURNAL   Biochemistry 59 (42), 4131-4142 (2020)
+   PUBMED   33059440
+REFERENCE   2  (bases 1 to 2344)
+  AUTHORS   Zhai H, Zhang X, Sun X, Zhang D and Ma S.
+  TITLE     Long Non-coding RNA LINC01420 Contributes to Pancreatic Cancer
+            Progression Through Targeting KRAS Proto-oncogene
+  JOURNAL   Dig Dis Sci 65 (4), 1042-1052 (2020)
+   PUBMED   31562613
+  REMARK    GeneRIF: Long Non-coding RNA LINC01420 Contributes to Pancreatic
+            Cancer Progression Through Targeting KRAS Proto-oncogene.
+REFERENCE   3  (bases 1 to 2344)
+  AUTHORS   Konina DO, Filatova AY and Skoblov MY.
+  TITLE     LINC01420 RNA structure and influence on cell physiology
+  JOURNAL   BMC Genomics 20 (Suppl 3), 298 (2019)
+   PUBMED   32039714
+  REMARK    GeneRIF: LINC01420 RNA structure and influence on cell physiology
+            Publication Status: Online-Only
+REFERENCE   4  (bases 1 to 2344)
+  AUTHORS   D'Lima NG, Ma J, Winkler L, Chu Q, Loh KH, Corpuz EO, Budnik BA,
+            Lykke-Andersen J, Saghatelian A and Slavoff SA.
+  TITLE     A human microprotein that interacts with the mRNA decapping complex
+  JOURNAL   Nat Chem Biol 13 (2), 174-180 (2017)
+   PUBMED   27918561
+  REMARK    GeneRIF: results implicate NoBody as a novel component of the mRNA
+            decapping complex and demonstrate potential functionality of a
+            newly discovered microprotein
+REFERENCE   5  (bases 1 to 2344)
+  AUTHORS   Evans DM, Zhu G, Dy V, Heath AC, Madden PA, Kemp JP, McMahon G, St
+            Pourcain B, Timpson NJ, Golding J, Lawlor DA, Steer C, Montgomery
+            GW, Martin NG, Smith GD and Whitfield JB.
+  TITLE     Genome-wide association study identifies loci affecting blood
+            copper, selenium and zinc
+  JOURNAL   Hum Mol Genet 22 (19), 3998-4006 (2013)
+   PUBMED   23720494
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            AL158200.17, BX537532.1, AA131515.1, BC048131.1, CA444043.1 and
+            AL354865.9.
+            
+            On May 17, 2019 this sequence version replaced NM_001348129.1.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: BX537532.1, SRR1660809.362555.1
+                                           [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMEA1965299, SAMEA1966682
+                                           [ECO:0000348]
+            ##Evidence-Data-END##
+            
+            ##RefSeq-Attributes-START##
+            MANE Ensembl match     :: ENST00000374922.9/ ENSP00000489583.1
+            NMD candidate          :: PMID: 27918561
+            RefSeq Select criteria :: based on single protein-coding transcript
+            ##RefSeq-Attributes-END##
+            COMPLETENESS: complete on the 3' end.
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-9                 AL158200.17        10088-10096
+            10-502              BX537532.1         1-493
+            503-844             AA131515.1         4-345               c
+            845-1334            BC048131.1         829-1318
+            1335-1541           CA444043.1         18-224              c
+            1542-2116           BX537532.1         1534-2108
+            2117-2161           AL354865.9         14259-14303
+            2162-2344           BX537532.1         2154-2336
+FEATURES             Location/Qualifiers
+     source          1..2344
+                     /organism="Homo sapiens"
+                     /mol_type="mRNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="X"
+                     /map="Xp11.21"
+     gene            1..2344
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /note="negative regulator of P-body association"
+                     /db_xref="GeneID:550643"
+                     /db_xref="HGNC:HGNC:50713"
+                     /db_xref="MIM:300992"
+     exon            1..347
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /inference="alignment:Splign:2.1.0"
+     misc_feature    88..90
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /note="upstream in-frame stop codon"
+     CDS             112..318
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /note="long intergenic non-protein coding RNA 1420;
+                     non-annotated P-body dissociating polypeptide; protein
+                     NoBody; P-body dissociating protein"
+                     /codon_start=1
+                     /product="negative regulator of P-body association"
+                     /protein_id="NP_001335058.1"
+                     /db_xref="CCDS:CCDS87751.1"
+                     /db_xref="GeneID:550643"
+                     /db_xref="HGNC:HGNC:50713"
+                     /db_xref="MIM:300992"
+                     /translation="MGDQPCASGRSTLPPGNAREAKPPKKRCLLAPRWDYPEGTPNGG
+                     STTLPSAPPPASAGLKSHPPPPEK"
+     misc_feature    112..315
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /note="propagated from UniProtKB/Swiss-Prot
+                     (A0A0U1RRE5.1); Region: Disordered.
+                     /evidence=ECO:0000256|SAM:MobiDB-lite"
+     misc_feature    199..201
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /note="Required for interaction with EDC4.
+                     /evidence=ECO:0000269|PubMed:27918561; propagated from
+                     UniProtKB/Swiss-Prot (A0A0U1RRE5.1); other site"
+     misc_feature    211..213
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /note="Required for interaction with EDC4.
+                     /evidence=ECO:0000269|PubMed:27918561; propagated from
+                     UniProtKB/Swiss-Prot (A0A0U1RRE5.1); other site"
+     exon            348..484
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /inference="alignment:Splign:2.1.0"
+     exon            485..2344
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /inference="alignment:Splign:2.1.0"
+     regulatory      719..724
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /note="hexamer: AATAAA"
+     polyA_site      736
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /note="major polyA site"
+     regulatory      821..826
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /note="hexamer: ACTAAA"
+     polyA_site      844
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+     regulatory      1521..1526
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /note="hexamer: ATTAAA"
+     polyA_site      1545
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+     regulatory      1602..1607
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /note="hexamer: ATTATA"
+     polyA_site      1622
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+     regulatory      2276..2281
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+                     /note="hexamer: AATAAA"
+     polyA_site      2297
+                     /gene="NBDY"
+                     /gene_synonym="LINC01420; NoBody"
+ORIGIN      
+        1 gaaacaggag gaagccagct ctgtgcctgg aggggactcg ccgccatctc aggtctcttg
+       61 gctttgccag ggcccaccgg agaaaactga cgacccgttt ctgtaatcct tatgggagac
+      121 caaccttgtg cctccgggag atccactctc ccacctggaa acgcacggga agccaagcct
+      181 ccaaaaaagc gctgcctcct cgctccgcgt tgggattatc cggaaggaac tcccaacgga
+      241 ggtagtacca ctctaccctc cgcacctcct cctgcatcag ccggcctgaa gtcgcaccct
+      301 cctcctccgg agaagtagag aaataaattt ctcccaccct aaaccagtct ttgagtgatt
+      361 gcagtatgac tccatttccc tggtgcattc atataatagt tcacctggtg aaaacaatga
+      421 agattattta caatgctacc ctgctttttc tggtgtcctg aacctggaag ttgtgctttt
+      481 taagtcttat gatgtaatca gcgcgatttc acttcctgaa tttcgatgaa ttctaagaca
+      541 tgggcaagat cgggttgtaa gacctctgag atttaaggcc atgccctgga tcatggtgaa
+      601 cttaccaaag caaacaatgc ctgtgagatg gtcctgcagc agccaaccag tgaactcttt
+      661 tggtgacatc ctgttcttgt tgtataactt tatattccta taaatccatt aaggccccaa
+      721 taaagtttgt ctctaagcgc tgtgttagat ctatatgact acatctagta aattgtgaat
+      781 tttaagtaaa tattttataa gaactcctat gtaaagcatt actaaaatta gtgttgaaat
+      841 atgaccttct tcctacattt attcatttat ttatgtctat ttattcattt attttagtga
+      901 aaaatataag gaaagtagag gaaggttaaa tccaaaaaag aattgtttcc agtacacttt
+      961 ctttaatttg ctgtcagttt ttgcatggaa tctacatctt tttatgctaa tcctcatcct
+     1021 agtattttac atcttaacta tttttttctg actgaaatgg ttgatgtgct tgttttttgt
+     1081 aattttctac tttccttcta aaatgcttag tattgaacaa atagaatatc ctaattaaaa
+     1141 acagtaataa atattatggt gaaaaaatac aagtaaaatg ggaaaacatt agatagcagc
+     1201 tttcaatatt tcatatagtt cataaatgtt tcaggaatta caaggttata gaaaaaaatt
+     1261 tatagactat aataatttcc agggatataa aaaaataaag cttctacctt tgaattgtaa
+     1321 taataaaaga taaacagact tgaaagcata tattatatct gaaaatgtca gataaacttg
+     1381 gcttataaat taaaatataa aataataata caatttgttc aaataagtaa ttaaagctta
+     1441 cattgtaaaa tgaatattta gagagattgt gaaacctgag tattttaccc aatcctctga
+     1501 aattagtccc tagcatcaga attaaagaat ctgaaaaatc acaaatggag gtatggtgac
+     1561 atttatgtat attctagagt tatgttatgc acacttaata aattatagac agttatttta
+     1621 aagattgtat aatattacta atcacacatt agagttttaa aacttctgag ccaggctgaa
+     1681 catcacaaac agtaaacaca gacttcttta aaaggacatc tggtgaaagg cattttatgc
+     1741 atcagaaggc acagtattat aaagatgaca acactcttca aaataatcaa actattcaat
+     1801 gcaaccctta tcaaaattaa ggttgcctac tttgaagaaa tttataacct gattctaaag
+     1861 ttcatatgaa aatgtaatgg acccagaata gccaaaacaa tcttgaagta tacaaagttt
+     1921 gaagagtcac atttccaaat tttaaaactt attacaaagc tacaataaac aagtctatgt
+     1981 ggtactggca taggatataa atattgatca atgaaataga atccaaagtc cagacataag
+     2041 ccctcacaaa agttaatttg cagccaatta acttctgaga aggaggcaag acaaaagggg
+     2101 aaataactat tttcaataaa tggtactggg acaacttggt atctacatgc aaaaaaaaaa
+     2161 caaaaaaaca aaaaacttcc acccctacct catgcaaaat acaaaaatta actcaaaata
+     2221 ggccaaagac tcaaatataa gggttacact ataaaactct tgggaggaaa tatagaataa
+     2281 atttttgtga ccttgaatta agtattagat ttttaattct tacaccaaag cacaagttaa
+     2341 taaa
+//
+
+LOCUS       NM_001348107            1605 bp    mRNA    linear   PRI 25-DEC-2022
+DEFINITION  Homo sapiens small regulatory polypeptide of amino acid response
+            (SPAAR), mRNA.
+ACCESSION   NM_001348107 NR_024283 XM_001129749 XM_001130949 XM_001721058
+VERSION     NM_001348107.3
+KEYWORDS    RefSeq; MANE Select.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 1605)
+  AUTHORS   Hu JX, Zheng ZQ, Kang T, Qian W, Huang SH and Li BG.
+  TITLE     LncRNA LINC00961 regulates endothelialmesenchymal transition via
+            the PTENPI3KAKT pathway
+  JOURNAL   Mol Med Rep 26 (1) (2022)
+   PUBMED   35656895
+  REMARK    GeneRIF: LncRNA LINC00961 regulates endothelialmesenchymal
+            transition via the PTENPI3KAKT pathway.
+REFERENCE   2  (bases 1 to 1605)
+  AUTHORS   Sui J, Zhao Q, Zhang Y and Liang G.
+  TITLE     Dysregulated LINC00961 Contributes to the Vitality and Migration of
+            NSCLC Via miR-19a-3p/miR-19b-3p/miR-125b-5p
+  JOURNAL   DNA Cell Biol 41 (3), 319-329 (2022)
+   PUBMED   35244469
+  REMARK    GeneRIF: Dysregulated LINC00961 Contributes to the Vitality and
+            Migration of NSCLC Via miR-19a-3p/miR-19b-3p/miR-125b-5p.
+REFERENCE   3  (bases 1 to 1605)
+  AUTHORS   Lee J, Wacholder A and Carvunis AR.
+  TITLE     Evolutionary Characterization of the Short Protein SPAAR
+  JOURNAL   Genes (Basel) 12 (12), 1864 (2021)
+   PUBMED   34946813
+  REMARK    GeneRIF: Evolutionary Characterization of the Short Protein SPAAR.
+            Publication Status: Online-Only
+REFERENCE   4  (bases 1 to 1605)
+  AUTHORS   Spencer HL, Sanders R, Boulberdaa M, Meloni M, Cochrane A, Spiroski
+            AM, Mountford J, Emanueli C, Caporali A, Brittan M, Rodor J and
+            Baker AH.
+  TITLE     The LINC00961 transcript and its encoded micropeptide, small
+            regulatory polypeptide of amino acid response, regulate endothelial
+            cell function
+  JOURNAL   Cardiovasc Res 116 (12), 1981-1994 (2020)
+   PUBMED   31990292
+  REMARK    GeneRIF: The LINC00961 transcript and its encoded micropeptide,
+            small regulatory polypeptide of amino acid response, regulate
+            endothelial cell function.
+REFERENCE   5  (bases 1 to 1605)
+  AUTHORS   Wu H, Dai Y, Zhang D, Zhang X, He Z, Xie X and Cai C.
+  TITLE     LINC00961 inhibits the migration and invasion of colon cancer cells
+            by sponging miR-223-3p and targeting SOX11
+  JOURNAL   Cancer Med 9 (7), 2514-2523 (2020)
+   PUBMED   32045135
+  REMARK    GeneRIF: LINC00961 inhibits the migration and invasion of colon
+            cancer cells by sponging miR-223-3p and targeting SOX11.
+REFERENCE   6  (bases 1 to 1605)
+  AUTHORS   Chen D, Zhu M, Su H, Chen J, Xu X and Cao C.
+  TITLE     LINC00961 restrains cancer progression via modulating
+            epithelial-mesenchymal transition in renal cell carcinoma
+  JOURNAL   J Cell Physiol 234 (5), 7257-7265 (2019)
+   PUBMED   30367453
+  REMARK    GeneRIF: LINC00961 is involved in renal cell carcinoma progression
+            by targeting the epithelial-mesenchymal transition pathway.
+REFERENCE   7  (bases 1 to 1605)
+  AUTHORS   Lu XW, Xu N, Zheng YG, Li QX and Shi JS.
+  TITLE     Increased expression of long noncoding RNA LINC00961 suppresses
+            glioma metastasis and correlates with favorable prognosis
+  JOURNAL   Eur Rev Med Pharmacol Sci 22 (15), 4917-4924 (2018)
+   PUBMED   30070327
+  REMARK    GeneRIF: Overexpression of LINC00961 significantly suppressed
+            glioma cells proliferation, migration, and invasion.
+            Mechanistically, we found that overexpression of LINC00961
+            inhibited glioma cell epithelial-mesenchymal transition .
+REFERENCE   8  (bases 1 to 1605)
+  AUTHORS   Jiang B, Liu J, Zhang YH, Shen D, Liu S, Lin F, Su J, Lin QF, Yan
+            S, Li Y, Mao WD and Liu ZL.
+  TITLE     Long noncoding RNA LINC00961 inhibits cell invasion and metastasis
+            in human non-small cell lung cancer
+  JOURNAL   Biomed Pharmacother 97, 1311-1318 (2018)
+   PUBMED   29156520
+  REMARK    GeneRIF: decreased LINC00961 might play a key role in non-small
+            cell lung cancer (NSCLC) progression, and may serve as a novel
+            prognostic marker in human NSCLC
+REFERENCE   9  (bases 1 to 1605)
+  AUTHORS   Rion N and Ruegg MA.
+  TITLE     LncRNA-encoded peptides: More than translational noise?
+  JOURNAL   Cell Res 27 (5), 604-605 (2017)
+   PUBMED   28290465
+REFERENCE   10 (bases 1 to 1605)
+  AUTHORS   Matsumoto A, Pasut A, Matsumoto M, Yamashita R, Fung J, Monteleone
+            E, Saghatelian A, Nakayama KI, Clohessy JG and Pandolfi PP.
+  TITLE     mTORC1 and muscle regeneration are regulated by the
+            LINC00961-encoded SPAR polypeptide
+  JOURNAL   Nature 541 (7636), 228-232 (2017)
+   PUBMED   28024296
+  REMARK    GeneRIF: data provide a mechanism by which mTORC1 activation may be
+            finely regulated in a tissue-specific manner in response to injury,
+            and a paradigm by which lncRNAs encoding small polypeptides like
+            SPAR can modulate general biological pathways and processes to
+            facilitate tissue-specific requirements, consistent with their
+            restricted and highly regulated expression profile
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            AK056723.1, BC113682.1, AA807870.1 and AL135841.11.
+            
+            On May 17, 2019 this sequence version replaced NM_001348107.2.
+            
+            Publication Note:  This RefSeq record includes a subset of the
+            publications that are available for this gene. Please see the Gene
+            record to access additional publications.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: AK056723.1, SRR5189655.86859.1
+                                           [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMEA1968540, SAMEA1970526
+                                           [ECO:0000348]
+            ##Evidence-Data-END##
+            
+            ##RefSeq-Attributes-START##
+            CDS uses downstream in-frame AUG :: upstream AUG and CDS extension
+                                                is not conserved
+            MANE Ensembl match               :: ENST00000443779.3/
+                                                ENSP00000490187.1
+            RefSeq Select criteria           :: based on single protein-coding
+                                                transcript
+            ##RefSeq-Attributes-END##
+            COMPLETENESS: complete on the 3' end.
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-366               AK056723.1         8-373
+            367-974             BC113682.1         235-842
+            975-1292            AK056723.1         982-1299
+            1293-1356           AK056723.1         1301-1364
+            1357-1540           AA807870.1         66-249              c
+            1541-1605           AL135841.11        36224-36288
+FEATURES             Location/Qualifiers
+     source          1..1605
+                     /organism="Homo sapiens"
+                     /mol_type="mRNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="9"
+                     /map="9p13.3"
+     gene            1..1605
+                     /gene="SPAAR"
+                     /gene_synonym="LINC00961; SPAR"
+                     /note="small regulatory polypeptide of amino acid
+                     response"
+                     /db_xref="GeneID:158376"
+                     /db_xref="HGNC:HGNC:27244"
+                     /db_xref="MIM:617627"
+     exon            1..75
+                     /gene="SPAAR"
+                     /gene_synonym="LINC00961; SPAR"
+                     /inference="alignment:Splign:2.1.0"
+     exon            76..1605
+                     /gene="SPAAR"
+                     /gene_synonym="LINC00961; SPAR"
+                     /inference="alignment:Splign:2.1.0"
+     misc_feature    269..271
+                     /gene="SPAAR"
+                     /gene_synonym="LINC00961; SPAR"
+                     /note="upstream in-frame stop codon"
+     misc_feature    338..340
+                     /gene="SPAAR"
+                     /gene_synonym="LINC00961; SPAR"
+                     /note="upstream_AUG_codon; putative N-terminal extension:
+                     MGAKAPRGPKVAQWA"
+     CDS             383..610
+                     /gene="SPAAR"
+                     /gene_synonym="LINC00961; SPAR"
+                     /note="small regulatory polypeptide of amino acids
+                     response; long intergenic non-protein coding RNA 961"
+                     /codon_start=1
+                     /product="small regulatory polypeptide of amino acid
+                     response"
+                     /protein_id="NP_001335036.2"
+                     /db_xref="CCDS:CCDS94407.1"
+                     /db_xref="GeneID:158376"
+                     /db_xref="HGNC:HGNC:27244"
+                     /db_xref="MIM:617627"
+                     /translation="METAVIGVVVVLFVVTVAITCVLCCFSCDSRAQDPQGGPGRSFT
+                     VATFRQEASLFTGPVRHAQPVPSAQDFWTFM"
+     regulatory      1277..1282
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="SPAAR"
+                     /gene_synonym="LINC00961; SPAR"
+                     /note="hexamer: AATAAG"
+     polyA_site      1296
+                     /gene="SPAAR"
+                     /gene_synonym="LINC00961; SPAR"
+                     /note="major polyA site"
+     regulatory      1515..1520
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="SPAAR"
+                     /gene_synonym="LINC00961; SPAR"
+                     /note="hexamer: AATAAA"
+     polyA_site      1540
+                     /gene="SPAAR"
+                     /gene_synonym="LINC00961; SPAR"
+                     /note="major polyA site"
+ORIGIN      
+        1 acagaggctg cagcacccag ggaggaacgc cgtggtccct gggacggcca ccaggccagg
+       61 aggctgcagc accagggaat ctgtgctcac gtcttccagg acagtgcttc ttctagaagc
+      121 tgacatggag ctgaccacag ctcttggagg catggcctga ggcttagaaa atagacagag
+      181 atcatctgag atttcagcag tggggccacg tggcagcgcc cgaaggcctg gagcaggagc
+      241 gacccaggga ctcagagcag catcttctta ggagacggaa ggagagccgc cggaggagca
+      301 cggggcacct gcgatcgcga agagcctcct gttctggatg ggagcgaagg ctccgagagg
+      361 acctaaggtt gctcagtggg ccatggaaac ggcagtgatt ggggtggtgg tggtgctgtt
+      421 cgtggtgact gtggccatca cctgcgtcct ctgctgcttc agctgtgact caagggccca
+      481 ggatcctcag gggggtcctg gccgcagctt cacggtggcc acgtttcgcc aggaagcttc
+      541 tctcttcacg gggcctgttc gccatgccca gccagtgcca agtgcccagg acttctggac
+      601 cttcatgtga cgcccgagtc cccaggattt gctgtgctga tgggtcagac tcacccgctc
+      661 ctcagcaagc cttccctggc cttcccctcc tcccagggcc ttctccctgt ccttcccctc
+      721 cagtaacctg tgaacttccc gtctcctccc attccagcct tctgtgccct ccagcctcag
+      781 ggatccttgt tattgggaca gcccagctgg ggttgaccca caggatgggg cttaggagag
+      841 ctctgaggag tgagtgaaca gacagcgccg gagtgcacgg tgggccggct ctgctgatct
+      901 acaccaggaa ctgaaatatc actggaattt attgtaaacg gtgtgcctat gatgctggtt
+      961 ctgttgccac ctgggcacgc agcaccctca agtggacatt tctagaaacc gcttcttact
+     1021 tgctcctaat tgattacttt tgcacattgc acagaaccca acctcgaggc ctgctccctg
+     1081 ccagttgcct gaaatcagcc ctgaaattct gaaaccaaag agctgcttcc tgagaacaag
+     1141 ttatttacct tagaattgaa aatgtatatc cttttatggg cctttccaaa tctgattaga
+     1201 aaaaccacaa aaggaaacag aagagaaaat aagagccaca gaaagtacaa tatgttttat
+     1261 taacaggaaa gccagaaata agatatttta aacatatttt taatgagact ttattgctat
+     1321 attccaacag gtcactccta ttcttagaga atgtgaatga cttgtgtcac ttcggagtga
+     1381 cagaaaaatc aggaactgaa agataattcc agacaagtta aaatgttatg ttacattcaa
+     1441 agctcttgtt ttcatcacaa ataaggggat attcagtttt tattaacaga aaacccattc
+     1501 tcccatggcc atggaataaa tgccatgcta tatttaagga gtttggtttg aagggtgcaa
+     1561 aattgtgagc ctcctggctc ttatgtctgt atccagccct gaata
+//
+
+LOCUS       NM_001304732             857 bp    mRNA    linear   PRI 25-DEC-2022
+DEFINITION  Homo sapiens myoregulin (MRLN), transcript variant 1, mRNA.
+ACCESSION   NM_001304732 NR_038200
+VERSION     NM_001304732.2
+KEYWORDS    RefSeq.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 857)
+  AUTHORS   Wu X, Cao Z, Chen H, Ou Q, Huang X and Wang Y.
+  TITLE     Downregulation of Linc-RNA activator of myogenesis lncRNA
+            participates in FGF2-mediated proliferation of human periodontal
+            ligament stem cells
+  JOURNAL   J Periodontol 91 (3), 422-427 (2020)
+   PUBMED   31378921
+  REMARK    GeneRIF: downregulation of Linc-RAM lncRNA may participate in FGF-2
+            mediated- proliferation of human PDLSCs
+REFERENCE   2  (bases 1 to 857)
+  AUTHORS   Yu X, Zhang Y, Li T, Ma Z, Jia H, Chen Q, Zhao Y, Zhai L, Zhong R,
+            Li C, Zou X, Meng J, Chen AK, Puri PL, Chen M and Zhu D.
+  TITLE     Long non-coding RNA Linc-RAM enhances myogenic differentiation by
+            interacting with MyoD
+  JOURNAL   Nat Commun 8, 14016 (2017)
+   PUBMED   28091529
+  REMARK    Publication Status: Online-Only
+REFERENCE   3  (bases 1 to 857)
+  AUTHORS   Anderson DM, Anderson KM, Chang CL, Makarewich CA, Nelson BR,
+            McAnally JR, Kasaragod P, Shelton JM, Liou J, Bassel-Duby R and
+            Olson EN.
+  TITLE     A micropeptide encoded by a putative long noncoding RNA regulates
+            muscle performance
+  JOURNAL   Cell 160 (4), 595-606 (2015)
+   PUBMED   25640239
+  REMARK    GeneRIF: The human and mouse MLN genes consist of three exons that
+            span 16.5 and 15.0 kb, respectively, with the ORF located in exon
+            3; findings identify MLN as an important regulator of skeletal
+            muscle physiology.
+COMMENT     REVIEWED REFSEQ: This record has been curated by NCBI staff. The
+            reference sequence was derived from AC022027.7, AB019391.1,
+            BM021470.1 and BG210823.1.
+            
+            On May 31, 2019 this sequence version replaced NM_001304732.1.
+            
+            Summary: This gene encodes a small peptide that shares structural
+            similarity to the small peptides sarcolipin and phospholamban,
+            which are key regulators of sarcoplasmic reticulum Ca(2+)-ATPases
+            (SERCAs). This protein is thought to have a similar function to
+            these peptides, regulating Ca(2+) reuptake in the sarcoplasmic
+            reticulum by inhibiting the Ca(2+) pump activity of SERCAs.
+            Alternative splicing results in multiple transcript variants.
+            [provided by RefSeq, Jun 2015].
+            
+            Transcript Variant: This variant (1) represents the longer
+            transcript. Both variants 1 and 2 encode the same protein.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: BM021470.1, DRR138525.566912.1
+                                           [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMEA1970526, SAMEA2158800
+                                           [ECO:0000348]
+            ##Evidence-Data-END##
+            COMPLETENESS: complete on the 3' end.
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-10                AC022027.7         6005-6014
+            11-71               AB019391.1         1-61
+            72-553              BM021470.1         1-482
+            554-559             BG210823.1         230-235
+            560-857             AC022027.7         22471-22768
+FEATURES             Location/Qualifiers
+     source          1..857
+                     /organism="Homo sapiens"
+                     /mol_type="mRNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="10"
+                     /map="10q21.2"
+     gene            1..857
+                     /gene="MRLN"
+                     /gene_synonym="Linc-RAM; LINC00948; M1; MLN; MUSER1"
+                     /note="myoregulin"
+                     /db_xref="GeneID:100507027"
+                     /db_xref="HGNC:HGNC:48649"
+                     /db_xref="MIM:616246"
+     exon            1..102
+                     /gene="MRLN"
+                     /gene_synonym="Linc-RAM; LINC00948; M1; MLN; MUSER1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            103..224
+                     /gene="MRLN"
+                     /gene_synonym="Linc-RAM; LINC00948; M1; MLN; MUSER1"
+                     /inference="alignment:Splign:2.1.0"
+     exon            225..328
+                     /gene="MRLN"
+                     /gene_synonym="Linc-RAM; LINC00948; M1; MLN; MUSER1"
+                     /inference="alignment:Splign:2.1.0"
+     misc_feature    238..240
+                     /gene="MRLN"
+                     /gene_synonym="Linc-RAM; LINC00948; M1; MLN; MUSER1"
+                     /note="upstream in-frame stop codon"
+     exon            329..857
+                     /gene="MRLN"
+                     /gene_synonym="Linc-RAM; LINC00948; M1; MLN; MUSER1"
+                     /inference="alignment:Splign:2.1.0"
+     CDS             349..489
+                     /gene="MRLN"
+                     /gene_synonym="Linc-RAM; LINC00948; M1; MLN; MUSER1"
+                     /note="muscle specific 1; muscle enriched RNA 1; long
+                     intergenic non-protein coding RNA 948; Linc-RNA activator
+                     of myogenesis"
+                     /codon_start=1
+                     /product="myoregulin"
+                     /protein_id="NP_001291661.1"
+                     /db_xref="CCDS:CCDS81467.1"
+                     /db_xref="GeneID:100507027"
+                     /db_xref="HGNC:HGNC:48649"
+                     /db_xref="MIM:616246"
+                     /translation="MTGKNWILISTTTPKSLEDEIVGRLLKILFVIFVDLISIIYVVI
+                     TS"
+     misc_feature    412..474
+                     /gene="MRLN"
+                     /gene_synonym="Linc-RAM; LINC00948; M1; MLN; MUSER1"
+                     /note="propagated from UniProtKB/Swiss-Prot (P0DMT0.1);
+                     transmembrane region"
+     regulatory      535..540
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="MRLN"
+                     /gene_synonym="Linc-RAM; LINC00948; M1; MLN; MUSER1"
+                     /note="hexamer: AATAAA"
+     polyA_site      554
+                     /gene="MRLN"
+                     /gene_synonym="Linc-RAM; LINC00948; M1; MLN; MUSER1"
+                     /note="major polyA site"
+ORIGIN      
+        1 agaccagtga gcctcctgat ccaccaagac catatggtgt ttttcataaa agagagagat
+       61 cattcccttg actttggact tcgcttattg aacccctgga caacggaatc tccctctgtc
+      121 gcccaggctg gagtgcagtg gcaccatctc ggcttaccgc aacctccgcc tcctgggttc
+      181 aaacaatact cctaccttgg cctcctgagt agctgggatt acaggaatca aggttgctaa
+      241 gagaccacct gtgctgaata cactttgttc tggcaagagc agaaaactga gaagccgtgt
+      301 tacctaccac tacctgggat taattcaggg agcgggataa ttctggatat gactggtaaa
+      361 aactggatat taatttctac tactactccc aaaagtctag aagatgaaat tgtgggaaga
+      421 cttctaaaaa ttttgtttgt tatctttgtt gacttaattt ctattatata tgttgtgata
+      481 acttcttaga aagctgactt cctttccatg tacatttcaa actgaattac agtgaataaa
+      541 aatttgtatt ttaacttgtt gagtgactca cattttatga cattgccaat ttattctaga
+      601 agccaacagg acactgcaat acaaacaaca ttgtgtattg tttagttctt tatggtttat
+      661 gaaacattca catatactga agtgaatttt tttccccaaa aacatctatc ctactgagtc
+      721 atgaaacttc tagattttta gccaggtgtg gtggctcaca cctgtaatcc cagcactttg
+      781 agaggcccag gtaggcggat cccttgagtg caggagttcg atacgggcct gagcaacctg
+      841 aagaaatccc atctcta
+//
+
+LOCUS       NM_001347931             854 bp    mRNA    linear   PRI 25-DEC-2022
+DEFINITION  Homo sapiens myomixer, myoblast fusion factor (MYMX), transcript
+            variant 2, mRNA.
+ACCESSION   NM_001347931
+VERSION     NM_001347931.2
+KEYWORDS    RefSeq.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 854)
+  AUTHORS   Yang JH, Chang MW, Tsitsipatis D, Yang X, Martindale JL, Munk R,
+            Cheng A, Izydore E, Pandey PR, Piao Y, Mazan-Mamczarz K, De S,
+            Abdelmohsen K and Gorospe M.
+  TITLE     LncRNA OIP5-AS1-directed miR-7 degradation promotes MYMX production
+            during human myogenesis
+  JOURNAL   Nucleic Acids Res 50 (12), 7115-7133 (2022)
+   PUBMED   35736212
+  REMARK    GeneRIF: LncRNA OIP5-AS1-directed miR-7 degradation promotes MYMX
+            production during human myogenesis.
+REFERENCE   2  (bases 1 to 854)
+  AUTHORS   Ramirez-Martinez A, Zhang Y, van den Boogaard MJ, McAnally JR,
+            Rodriguez-Caycedo C, Chai AC, Chemello F, Massink MP, Cuppen I,
+            Elferink MG, van Es RJ, Janssen NG, Walraven-van Oijen LP, Liu N,
+            Bassel-Duby R, van Jaarsveld RH and Olson EN.
+  TITLE     Impaired activity of the fusogenic micropeptide Myomixer causes
+            myopathy resembling Carey-Fineman-Ziter syndrome
+  JOURNAL   J Clin Invest 132 (11) (2022)
+   PUBMED   35642635
+REFERENCE   3  (bases 1 to 854)
+  AUTHORS   Chen B, You W, Wang Y and Shan T.
+  TITLE     The regulatory role of Myomaker and Myomixer-Myomerger-Minion in
+            muscle development and regeneration
+  JOURNAL   Cell Mol Life Sci 77 (8), 1551-1569 (2020)
+   PUBMED   31642939
+  REMARK    GeneRIF: This articles reviews and discusses the latest studies
+            related to Myomaker and Myomixer-Myomerger-Minion, including the
+            discovery, structure, expression pattern, functions of the two
+            proteins. [review]
+            Review article
+REFERENCE   4  (bases 1 to 854)
+  AUTHORS   Quinn ME, Goh Q, Kurosaka M, Gamage DG, Petrany MJ, Prasad V and
+            Millay DP.
+  TITLE     Myomerger induces fusion of non-fusogenic cells and is required for
+            skeletal muscle development
+  JOURNAL   Nat Commun 8, 15665 (2017)
+   PUBMED   28569755
+  REMARK    Publication Status: Online-Only
+REFERENCE   5  (bases 1 to 854)
+  AUTHORS   Zhang Q, Vashisht AA, O'Rourke J, Corbel SY, Moran R, Romero A,
+            Miraglia L, Zhang J, Durrant E, Schmedt C, Sampath SC and Sampath
+            SC.
+  TITLE     The microprotein Minion controls cell fusion and muscle formation
+  JOURNAL   Nat Commun 8, 15664 (2017)
+   PUBMED   28569745
+  REMARK    Publication Status: Online-Only
+REFERENCE   6  (bases 1 to 854)
+  AUTHORS   Bi P, Ramirez-Martinez A, Li H, Cannavino J, McAnally JR, Shelton
+            JM, Sanchez-Ortiz E, Bassel-Duby R and Olson EN.
+  TITLE     Control of muscle formation by the fusogenic micropeptide myomixer
+  JOURNAL   Science 356 (6335), 323-327 (2017)
+   PUBMED   28386024
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            AL139392.10 and AA501523.1.
+            
+            On May 31, 2019 this sequence version replaced NM_001347931.1.
+            
+            Transcript Variant: This variant (2) differs in the 5' UTR compared
+            to variant 1. Both variants 1 and 2 encode the same protein.
+            
+            Sequence Note: This RefSeq record was created from transcript and
+            genomic sequence data to make the sequence consistent with the
+            reference genome assembly. The genomic coordinates used for the
+            transcript record were based on transcript alignments.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: BE298792.1 [ECO:0000332]
+            ##Evidence-Data-END##
+            COMPLETENESS: complete on the 3' end.
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-69                AL139392.10        1403-1471
+            70-850              AL139392.10        1927-2707
+            851-854             AA501523.1         15-18               c
+FEATURES             Location/Qualifiers
+     source          1..854
+                     /organism="Homo sapiens"
+                     /mol_type="mRNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="6"
+                     /map="6p21.1"
+     gene            1..854
+                     /gene="MYMX"
+                     /gene_synonym="CFZS2; hMINION; MINION"
+                     /note="myomixer, myoblast fusion factor"
+                     /db_xref="GeneID:101929726"
+                     /db_xref="HGNC:HGNC:52391"
+                     /db_xref="MIM:619912"
+     exon            1..69
+                     /gene="MYMX"
+                     /gene_synonym="CFZS2; hMINION; MINION"
+                     /inference="alignment:Splign:2.1.0"
+     exon            70..854
+                     /gene="MYMX"
+                     /gene_synonym="CFZS2; hMINION; MINION"
+                     /inference="alignment:Splign:2.1.0"
+     misc_feature    74..76
+                     /gene="MYMX"
+                     /gene_synonym="CFZS2; hMINION; MINION"
+                     /note="upstream in-frame stop codon"
+     CDS             92..346
+                     /gene="MYMX"
+                     /gene_synonym="CFZS2; hMINION; MINION"
+                     /note="microprotein inducer of fusion; myomerger; protein
+                     minion; protein myomixer"
+                     /codon_start=1
+                     /product="protein myomixer precursor"
+                     /protein_id="NP_001334860.1"
+                     /db_xref="CCDS:CCDS83093.1"
+                     /db_xref="GeneID:101929726"
+                     /db_xref="HGNC:HGNC:52391"
+                     /db_xref="MIM:619912"
+                     /translation="MPTPLLPLLLRLLLSCLLLPAARLARQYLLPLLRRLARRLGSQD
+                     MREALLGCLLFILSQRHSPDAGEASRVDRLERRERLGPQK"
+     sig_peptide     92..163
+                     /gene="MYMX"
+                     /gene_synonym="CFZS2; hMINION; MINION"
+                     /inference="COORDINATES: ab initio prediction:SignalP:4.0"
+     misc_feature    104..166
+                     /gene="MYMX"
+                     /gene_synonym="CFZS2; hMINION; MINION"
+                     /note="propagated from UniProtKB/Swiss-Prot
+                     (A0A1B0GTQ4.1); transmembrane region"
+     misc_feature    233..262
+                     /gene="MYMX"
+                     /gene_synonym="CFZS2; hMINION; MINION"
+                     /note="propagated from UniProtKB/Swiss-Prot
+                     (A0A1B0GTQ4.1); Region: AxLyCxL.
+                     /evidence=ECO:0000250|UniProtKB:P0DP88"
+     misc_feature    275..343
+                     /gene="MYMX"
+                     /gene_synonym="CFZS2; hMINION; MINION"
+                     /note="propagated from UniProtKB/Swiss-Prot
+                     (A0A1B0GTQ4.1); Region: Disordered.
+                     /evidence=ECO:0000256|SAM:MobiDB-lite"
+     regulatory      831..836
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="MYMX"
+                     /gene_synonym="CFZS2; hMINION; MINION"
+                     /note="hexamer: AATAAA"
+     polyA_site      854
+                     /gene="MYMX"
+                     /gene_synonym="CFZS2; hMINION; MINION"
+                     /note="major polyA site"
+ORIGIN      
+        1 gcaaatccag ccagagactg attctgagca gcagttctgc ccggtgagag ctgccgtgga
+       61 ttggtggggg cactgactca ctggccctgc catgcccacg ccactgctcc cgctgctgct
+      121 tcgattgctg ctgtcctgcc tgctgctgcc tgctgcccgc ctggcccgcc aatacctcct
+      181 gcccctgctg cgccgattgg cccgccgcct gggctcccag gacatgcgag aggctttgct
+      241 gggctgtctg ctgttcattc tcagccagcg acactcgcca gacgctgggg aggcctcaag
+      301 agtggaccgc ctggagagga gggagaggtt aggcccccaa aagtgaggcc acaagtcctg
+      361 gcagcagctg tatccacaaa atgctttctt ttggagtagg ataatcctgg caccagcact
+      421 gaccgaagcc tgcccagtgg acagaagata tagtgagggt tgtgcatgag agggatctgc
+      481 cacagacatg cctctccact cccaacagaa atgtctttct ggaagaatgc cttgcatcta
+      541 gcacaaaact gattattgcc cctctgtcct ccagcagttc ctcccaaaga ccactcctaa
+      601 tcacctctgg cctcaggcgg gaggggaact aacacccacc cacccctgcc ctccctgcaa
+      661 atgggaacat caaggttccc agtgcttaac tgagggacaa gtgacaattt agcagagagg
+      721 caagatttga atccagactg tcttccagac tcaggaccta ccttaaaata atatctgagt
+      781 tgcttatgga ggcagacctg cctgcaaagc ccagcactca gcaagtgctc aataaatatt
+      841 tgatttgaat tctt
+//
+
+LOCUS       KY559104                2536 bp    RNA     linear   PRI 24-MAR-2020
+DEFINITION  Homo sapiens HBVPTPAP lncRNA, complete sequence.
+ACCESSION   KY559104
+VERSION     KY559104.2
+KEYWORDS    .
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 2536)
+  AUTHORS   Yao,X.K., Pan,Z.P., Li,Y., Lun,Y.Z., Chi,Q., Jiang,S.J., Wang,F.
+            and Sui,W.
+  TITLE     Downregulation of SWI5 and CTC1 genes: hepatitis B virus DNA
+            polymerase transactivated protein 1-mediated inhibition of DNA
+            repair
+  JOURNAL   Acta Virol. 60 (2), 190-195 (2016)
+   PUBMED   27265469
+REFERENCE   2  (bases 1 to 2536)
+  AUTHORS   Lun,Y.-Z., Pan,Z.-P. and Cheng,J.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (01-FEB-2017) School of Pharmacy and Medical Technology,
+            Putian University, No. 450 Dongzhen West Street, Chengxiang
+            District, Putian, Fujian 351100, China
+COMMENT     On Mar 19, 2020 this sequence version replaced KY559104.1.
+FEATURES             Location/Qualifiers
+     source          1..2536
+                     /organism="Homo sapiens"
+                     /mol_type="transcribed RNA"
+                     /db_xref="taxon:9606"
+                     /cell_line="HepG2"
+                     /cell_type="hepatocyte"
+     ncRNA           1..2536
+                     /ncRNA_class="lncRNA"
+                     /product="HBVPTPAP"
+     CDS             315..749
+                     /note="HBVDNAPTP1; DNAPTP1; apoptosis protein"
+                     /codon_start=1
+                     /product="Hepatitis B virus DNA polymerase-transactivated
+                     pro-apoptotic protein"
+                     /protein_id="AQX45471.1"
+                     /translation="MMFVLLNTLRCVGQPHHGEWTEPAYHMLRLRSPGLMIGAIQDLS
+                     SLPSQRAMSFRKCAGLVSRTIFFRGLFLNLFRGVGKTHSEELFHKHVAIISADFLLRF
+                     PSNDCISPVEMGCVCCCTSQADVGDPVCFVAVGTVAILERTY"
+ORIGIN      
+        1 tgattttgtc atcaacaagg caaataccct ggttttcaga atgggaggcc tagaagatgc
+       61 tggaaggtac caccatcttt gttgggaagg gaatgcgatg acgagctgga aggttcctgt
+      121 tctcgtctgt aaaatgactg tttgaaggtg aaaaacatcc atgttttctt cagcaccgag
+      181 tcagtctatg acagtggctc tcagccctgg tgattggccc ccaagggaca tttggagacg
+      241 ttgattgtca agacttggtg tgggcactgg attttaatgg gtgaagccta gacattttaa
+      301 cgggtgaaga caacatgatg tttgtgctgc taaacaccct acggtgtgtg ggacagcccc
+      361 atcacggaga gtggacagag ccagcgtatc atatgctaag gttgaggagc cctggtctaa
+      421 tgataggagc aattcaagat ctgtcttcac tgccttcaca gagagccatg tctttcagaa
+      481 aatgtgctgg attagtctca aggaccattt ttttcagagg cttattttta aatctgttca
+      541 gaggagtggg gaagacccat tcagaagagt tatttcacaa acacgtggca attatcagtg
+      601 cagatttctt gttaaggttc cctagcaatg actgtatttc cccagtagaa atggggtgtg
+      661 tgtgctgctg cacatcacag gcagatgtgg gagaccctgt ttgttttgtg gcagtgggaa
+      721 cagtcgcaat tttagagagg acttattgag gggcatttgt tactttaaac aatttagtgc
+      781 catacaaagg attagacaga gctcctgaag ggggaatctc cctcattttc agggtgttaa
+      841 ctacagagga gttgagggaa ggggccatgg agggaactga ctgagacagg tagagcatct
+      901 accgcccaaa agtcaaagca aagacagggt tagaaggacc cagctgggca ttttctgctc
+      961 ttgaatctgc agagagtgtc attaggccaa aattggcatc ctctctcttc tgtttatcag
+     1021 aaaccacctt ctcatttgtt gtccttcatt ttaaacaggg cagacctcct tatgctgctt
+     1081 cagcagaaga agtggccaaa gaacttaagt caaaatctgg ggaatcgaag tcctctgcta
+     1141 tgtcttcaga cgggtccctg gctgaaaacg gagtgatggc cgaggagaag ccggctcccc
+     1201 agatgaacgg gagcacgggt gacgccaggg cccccagcca ctctgaaagt gccttgaata
+     1261 atgactctaa aacgtgcaat acaaatcctc atttaaatgc actaagtaca gacagcgctt
+     1321 gccgcagaga agctgctctg gaggcagctg tcttaaataa agaagagtaa acttattttt
+     1381 tatagagggt gaaggatgct ggaagggtaa ggatttagga atatctggag agaaagagag
+     1441 cctgcagtta tgtacatttt gtcctttccg taagagaaaa atgaggactt tggaaattca
+     1501 gatccctctt tgatatcaga gatttaaaca acacattttt agttttaacc agttgtagtc
+     1561 aaaatgctac aataaaacaa aaaagagaaa gaaaatgaag agcatttgac tcccgcactt
+     1621 aaaatgaagt acacataaag tttaaactgg ttatgacaaa agcctttagt tgtgtttctt
+     1681 gaactataaa gaaaacaaat tttggcagtc tttaagtata tatagcttaa aatataattt
+     1741 ttagcatttg gcaccatatg tatgccatta tatttgattt tgcattactg tttcacaatg
+     1801 aagctttctt taaggctttg atttttatga ttatgaaaga aataaggcac aaccacagtt
+     1861 tttctttctt aaatttcatc actgttgatg tggttctttt gtgttaaaaa aaaaaagtgc
+     1921 aactatcaaa actaaaaaat tatagagtaa tattgccgtt ctgctgattt taaatataca
+     1981 atacatcata catactttac aagcaagtta aatggagata aagttgaaat catagaagat
+     2041 gcaaatgacc tttcaaaatc aacacaatgt gttctgaaac tttcgtgact aataccatgc
+     2101 atctgtgatc aatgaactat gtggttttga atcggatgta gaccattagt actactactt
+     2161 gagctaaact tctgcatggt tcataatttt taaagtgtgt agttaatatg catgttatcg
+     2221 tcctttcttc cattcttaac agtatgtgcc catttgcaaa acaaaaatgc taataatcag
+     2281 taatagtcct ataaaagatg ttaactctgt ttagtcattg actgatcttg ctctaacctt
+     2341 aaaattttgt gattattgac ctctgttgca tttattctaa agccccccaa aaattatcta
+     2401 gccgtttcga atatcaacat taccctggtg tattcactgc tgtatgcatt attgttcttt
+     2461 gttgctgttt tatgccttca tattagcaaa tatgaaattc tgtgaaaaaa aaccctttga
+     2521 tcttaaaaaa aaaaaa
+//
+
+LOCUS       NM_001384134             427 bp    mRNA    linear   PRI 07-FEB-2023
+DEFINITION  Homo sapiens mitoregulin (MTLN), mRNA.
+ACCESSION   NM_001384134
+VERSION     NM_001384134.1
+KEYWORDS    RefSeq; MANE Select.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (bases 1 to 427)
+  AUTHORS   Iwai M, Kajino T, Nakatochi M, Yanagisawa K, Hosono Y, Isomura H,
+            Shimada Y, Suzuki M, Taguchi A and Takahashi T.
+  TITLE     Long non-coding RNA TILR constitutively represses TP53 and
+            apoptosis in lung cancer
+  JOURNAL   Oncogene 42 (5), 364-373 (2023)
+   PUBMED   36522487
+  REMARK    GeneRIF: Long non-coding RNA TILR constitutively represses TP53 and
+            apoptosis in lung cancer.
+REFERENCE   2  (bases 1 to 427)
+  AUTHORS   Friesen M, Warren CR, Yu H, Toyohara T, Ding Q, Florido MHC, Sayre
+            C, Pope BD, Goff LA, Rinn JL and Cowan CA.
+  TITLE     Mitoregulin Controls beta-Oxidation in Human and Mouse Adipocytes
+  JOURNAL   Stem Cell Reports 14 (4), 590-602 (2020)
+   PUBMED   32243843
+  REMARK    GeneRIF: Mitoregulin Controls beta-Oxidation in Human and Mouse
+            Adipocytes.
+REFERENCE   3  (bases 1 to 427)
+  AUTHORS   Lai Y, Zhou B, Tan Q, Xu J, Wan T and Zhang L.
+  TITLE     LINC00116 enhances cervical cancer tumorigenesis through
+            miR-106a/c-Jun pathway
+  JOURNAL   J Cell Biochem 121 (3), 2247-2257 (2020)
+   PUBMED   31693227
+  REMARK    GeneRIF: LINC00116 enhances cervical cancer tumorigenesis through
+            miR-106a/c-Jun pathway.
+REFERENCE   4  (bases 1 to 427)
+  AUTHORS   Chugunova A, Loseva E, Mazin P, Mitina A, Navalayeu T, Bilan D,
+            Vishnyakova P, Marey M, Golovina A, Serebryakova M, Pletnev P,
+            Rubtsova M, Mair W, Vanyushkina A, Khaitovich P, Belousov V,
+            Vysokikh M, Sergiev P and Dontsova O.
+  TITLE     LINC00116 codes for a mitochondrial peptide linking respiration and
+            lipid metabolism
+  JOURNAL   Proc Natl Acad Sci U S A 116 (11), 4940-4945 (2019)
+   PUBMED   30796188
+REFERENCE   5  (bases 1 to 427)
+  AUTHORS   Stein CS, Jadiya P, Zhang X, McLendon JM, Abouassaly GM, Witmer NH,
+            Anderson EJ, Elrod JW and Boudreau RL.
+  TITLE     Mitoregulin: A lncRNA-Encoded Microprotein that Supports
+            Mitochondrial Supercomplexes and Respiratory Efficiency
+  JOURNAL   Cell Rep 23 (13), 3710-3720 (2018)
+   PUBMED   29949756
+REFERENCE   6  (bases 1 to 427)
+  AUTHORS   Makarewich CA, Baskin KK, Munir AZ, Bezprozvannaya S, Sharma G,
+            Khemtong C, Shah AM, McAnally JR, Malloy CR, Szweda LI, Bassel-Duby
+            R and Olson EN.
+  TITLE     MOXI Is a Mitochondrial Micropeptide That Enhances Fatty Acid
+            beta-Oxidation
+  JOURNAL   Cell Rep 23 (13), 3701-3709 (2018)
+   PUBMED   29949755
+REFERENCE   7  (bases 1 to 427)
+  AUTHORS   Crappe J, Van Criekinge W, Trooskens G, Hayakawa E, Luyten W,
+            Baggerman G and Menschaert G.
+  TITLE     Combining in silico prediction and ribosome profiling in a
+            genome-wide search for novel putatively coding sORFs
+  JOURNAL   BMC Genomics 14, 648 (2013)
+   PUBMED   24059539
+  REMARK    Publication Status: Online-Only
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            AC140479.3.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: BC031315.2, BU589328.1 [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMEA2155550, SAMEA2159080
+                                           [ECO:0000348]
+            ##Evidence-Data-END##
+            
+            ##RefSeq-Attributes-START##
+            MANE Ensembl match     :: ENST00000611969.5/ ENSP00000485064.1
+            NMD candidate          :: translation inferred from conservation
+            RefSeq Select criteria :: based on single protein-coding transcript
+            ##RefSeq-Attributes-END##
+            COMPLETENESS: complete on the 3' end.
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-333               AC140479.3         73715-74047         c
+            334-427             AC140479.3         73029-73122         c
+FEATURES             Location/Qualifiers
+     source          1..427
+                     /organism="Homo sapiens"
+                     /mol_type="mRNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="2"
+                     /map="2q13"
+     gene            1..427
+                     /gene="MTLN"
+                     /gene_synonym="LEMP; LINC00116; MOXI; MPM; NCRNA00116;
+                     SMIM37; TILR"
+                     /note="mitoregulin"
+                     /db_xref="GeneID:205251"
+                     /db_xref="HGNC:HGNC:27339"
+     exon            1..333
+                     /gene="MTLN"
+                     /gene_synonym="LEMP; LINC00116; MOXI; MPM; NCRNA00116;
+                     SMIM37; TILR"
+                     /inference="alignment:Splign:2.1.0"
+     CDS             23..193
+                     /gene="MTLN"
+                     /gene_synonym="LEMP; LINC00116; MOXI; MPM; NCRNA00116;
+                     SMIM37; TILR"
+                     /note="long intergenic non-protein coding RNA 116; small
+                     integral membrane protein 37; micropeptide regulator of
+                     beta-oxidation; lncRNA encoded micropeptide; micropeptide
+                     in mitochondria; TP53-inhibiting lncRNA"
+                     /codon_start=1
+                     /product="mitoregulin"
+                     /protein_id="NP_001371063.1"
+                     /db_xref="CCDS:CCDS92837.1"
+                     /db_xref="GeneID:205251"
+                     /db_xref="HGNC:HGNC:27339"
+                     /translation="MADVSERTLQLSVLVAFASGVLLGWQANRLRRRYLDWRKRRLQD
+                     KLAATQKKLDLA"
+     misc_feature    50..103
+                     /gene="MTLN"
+                     /gene_synonym="LEMP; LINC00116; MOXI; MPM; NCRNA00116;
+                     SMIM37; TILR"
+                     /note="propagated from UniProtKB/Swiss-Prot (Q8NCU8.2);
+                     transmembrane region"
+     exon            334..427
+                     /gene="MTLN"
+                     /gene_synonym="LEMP; LINC00116; MOXI; MPM; NCRNA00116;
+                     SMIM37; TILR"
+                     /inference="alignment:Splign:2.1.0"
+     regulatory      409..414
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="MTLN"
+                     /gene_synonym="LEMP; LINC00116; MOXI; MPM; NCRNA00116;
+                     SMIM37; TILR"
+                     /note="hexamer: AATAAA"
+     polyA_site      427
+                     /gene="MTLN"
+                     /gene_synonym="LEMP; LINC00116; MOXI; MPM; NCRNA00116;
+                     SMIM37; TILR"
+                     /note="major polyA site"
+ORIGIN      
+        1 gcgctgcacg ccggcggcag ccatggcgga tgtgtcagag aggacactgc agttgtccgt
+       61 gctagtagcc ttcgcttctg gagtactcct gggctggcag gcgaaccgac tgcggaggcg
+      121 ctacttggac tggaggaaaa ggaggctgca ggacaagctg gcggcgacgc agaagaagct
+      181 ggacctggcc tgagactctg cgccttccgc cccattctgt ccccctcatg gccaccttgc
+      241 catgtccgcg ccggagcccc ggtccgccgg cgcccagaac caggcttgcc acacagtccc
+      301 cgcctgccat ggccggctct tcctggagtg ttgcttgttg aagatgcata tagactaccg
+      361 gaaagaaatg acttcttctt gcactttatg aatcaatttt atttttaaaa taaaaaaatt
+      421 aaacatc
+//
+
+LOCUS       NM_001384235             608 bp    mRNA    linear   ROD 29-NOV-2022
+DEFINITION  Mus musculus short transmembrane mitochondrial protein 1 (Stmp1),
+            transcript variant 2, mRNA; nuclear gene for mitochondrial product.
+ACCESSION   NM_001384235
+VERSION     NM_001384235.1
+KEYWORDS    RefSeq; RefSeq Select.
+SOURCE      Mus musculus (house mouse)
+  ORGANISM  Mus musculus
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Glires; Rodentia; Myomorpha;
+            Muroidea; Muridae; Murinae; Mus; Mus.
+REFERENCE   1  (bases 1 to 608)
+  AUTHORS   Zheng X, Guo Y, Zhang R, Chen H, Liu S, Qiu S and Xiang M.
+  TITLE     The mitochondrial micropeptide Stmp1 promotes retinal cell
+            differentiation
+  JOURNAL   Biochem Biophys Res Commun 636 (Pt 2), 79-86 (2022)
+   PUBMED   36368158
+  REMARK    GeneRIF: The mitochondrial micropeptide Stmp1 promotes retinal cell
+            differentiation.
+REFERENCE   2  (bases 1 to 608)
+  AUTHORS   Makarewich CA, Munir AZ, Bezprozvannaya S, Gibson AM, Young Kim S,
+            Martin-Sandoval MS, Mathews TP, Szweda LI, Bassel-Duby R and Olson
+            EN.
+  TITLE     The cardiac-enriched microprotein mitolamban regulates
+            mitochondrial respiratory complex assembly and function in mice
+  JOURNAL   Proc Natl Acad Sci U S A 119 (6) (2022)
+   PUBMED   35101990
+  REMARK    GeneRIF: The cardiac-enriched microprotein mitolamban regulates
+            mitochondrial respiratory complex assembly and function in mice.
+REFERENCE   3  (bases 1 to 608)
+  AUTHORS   Bhatta A, Atianand M, Jiang Z, Crabtree J, Blin J and Fitzgerald
+            KA.
+  TITLE     A Mitochondrial Micropeptide Is Required for Activation of the
+            Nlrp3 Inflammasome
+  JOURNAL   J Immunol 204 (2), 428-437 (2020)
+   PUBMED   31836654
+REFERENCE   4  (bases 1 to 608)
+  AUTHORS   Alvarez-Dominguez JR, Zhang X and Hu W.
+  TITLE     Widespread and dynamic translational control of red blood cell
+            development
+  JOURNAL   Blood 129 (5), 619-629 (2017)
+   PUBMED   27899360
+REFERENCE   5  (bases 1 to 608)
+  AUTHORS   Harrow JL, Steward CA, Frankish A, Gilbert JG, Gonzalez JM,
+            Loveland JE, Mudge J, Sheppard D, Thomas M, Trevanion S and Wilming
+            LG.
+  TITLE     The Vertebrate Genome Annotation browser 10 years on
+  JOURNAL   Nucleic Acids Res 42 (Database issue), D771-D779 (2014)
+   PUBMED   24316575
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            AC158681.3.
+            
+            Sequence Note: The RefSeq transcript and protein were derived from
+            genomic sequence to make the sequence consistent with the reference
+            genome assembly. The genomic coordinates used for the transcript
+            record were based on alignments.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: AK007895.1, BY707899.1 [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMN00849374, SAMN00849375
+                                           [ECO:0000348]
+            ##Evidence-Data-END##
+            
+            ##RefSeq-Attributes-START##
+            gene product(s) localized to mito. :: inferred from homology
+            RefSeq Select criteria             :: based on single
+                                                  protein-coding transcript
+            ##RefSeq-Attributes-END##
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-73                AC158681.3         116832-116904       c
+            74-127              AC158681.3         109151-109204       c
+            128-608             AC158681.3         107975-108455       c
+FEATURES             Location/Qualifiers
+     source          1..608
+                     /organism="Mus musculus"
+                     /mol_type="mRNA"
+                     /strain="C57BL/6"
+                     /db_xref="taxon:10090"
+                     /chromosome="6"
+                     /map="6"
+     gene            1..608
+                     /gene="Stmp1"
+                     /gene_synonym="1810058I24Rik; Mm47"
+                     /note="short transmembrane mitochondrial protein 1"
+                     /db_xref="GeneID:67705"
+                     /db_xref="MGI:MGI:1914955"
+     exon            1..73
+                     /gene="Stmp1"
+                     /gene_synonym="1810058I24Rik; Mm47"
+                     /inference="alignment:Splign:2.1.0"
+     CDS             59..202
+                     /gene="Stmp1"
+                     /gene_synonym="1810058I24Rik; Mm47"
+                     /note="mitochondrial micropeptide-47; protein mitolamban"
+                     /codon_start=1
+                     /product="short transmembrane mitochondrial protein 1"
+                     /protein_id="NP_001371164.1"
+                     /db_xref="GeneID:67705"
+                     /db_xref="MGI:MGI:1914955"
+                     /translation="MLQFLLGFTLGNVVGMYLAQNYEMPNLAKKLEEIKKDLEAKKKP
+                     PSS"
+     misc_feature    77..127
+                     /gene="Stmp1"
+                     /gene_synonym="1810058I24Rik; Mm47"
+                     /note="propagated from UniProtKB/Swiss-Prot (P0DP99.2);
+                     transmembrane region"
+     exon            74..127
+                     /gene="Stmp1"
+                     /gene_synonym="1810058I24Rik; Mm47"
+                     /inference="alignment:Splign:2.1.0"
+     exon            128..608
+                     /gene="Stmp1"
+                     /gene_synonym="1810058I24Rik; Mm47"
+                     /inference="alignment:Splign:2.1.0"
+ORIGIN      
+        1 ggagccgagc tggagctgga gcacctctca caccctcctc gccctcccca ccgacatcat
+       61 gctccagttc ctgcttggat ttactttggg caacgtggtt ggaatgtatc tggctcagaa
+      121 ctatgaaatg ccaaacctgg ctaaaaaact tgaagagatt aagaaggacc tggaagccaa
+      181 gaagaagccc cctagttcct gatgcctgcc tggcactgca atctggaccc accagttcca
+      241 tcctgggggg cctgtctcct tcacagccac gtccaaagct gtgttcctct ttggtctcag
+      301 accctgcgcg ttgctgaggc tccagcacgg gccagaagtg gagttagctt tccgtttcca
+      361 gcatctcccc gttcccgtat cttccgtcca cctgcttctg agacctaagc ctggaaccat
+      421 ggtgctaggt tagcagccgc aaccatgaca ggactcactc gcctgtgctc tgggattcct
+      481 accgcctact gtcaagaaat gaatggattt ggatagctgc tggggactca ctgtctagca
+      541 gtgataacag gagcttgcta gacaaactaa actgtgttaa agtcattaaa gtcagtatct
+      601 tcaagcca
+//
+

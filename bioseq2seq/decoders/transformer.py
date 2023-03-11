@@ -120,7 +120,8 @@ class TransformerDecoderLayer(nn.Module):
                 dec_mask = tgt_pad_mask
         input_norm = self.layer_norm_1(inputs)
         
-        
+        #print(f'dec_mask = {dec_mask}, step = {step}, future = {future}')
+
         if isinstance(self.self_attn, MultiHeadedAttention):
             query, dec_attns = self.self_attn(input_norm, input_norm, input_norm,
                                       mask=dec_mask,

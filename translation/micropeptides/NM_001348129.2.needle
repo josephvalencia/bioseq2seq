@@ -1,0 +1,97 @@
+########################################
+# Program: needle
+# Rundate: Mon  6 Mar 2023 21:36:10
+# Commandline: needle
+#    -asequence translation/micropeptides/NM_001348129.2_true_PROTEIN.fa
+#    -bsequence translation/micropeptides/NM_001348129.2.micropeptides.fa
+#    -outfile translation/micropeptides/NM_001348129.2.needle
+#    -gapopen 10
+#    -gapextend 0.5
+#    -brief
+# Align_format: srspair
+# Report_file: translation/micropeptides/NM_001348129.2.needle
+########################################
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001348129.2
+# 2: NM_001348129.2.peptide.2
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 68
+# Identity:      64/68 (94.1%)
+# Similarity:    64/68 (94.1%)
+# Gaps:           4/68 ( 5.9%)
+# Score: 360.0
+# 
+#
+#=======================================
+
+NM_001348129.      1 MGDQPCASGRSTLPPGNAREAKPPKKRCLLAPRWDYPEGTPNGGSTTLPS     50
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+NM_001348129.      1 MGDQPCASGRSTLPPGNAREAKPPKKRCLLAPRWDYPEGTPNGGSTTLPS     50
+
+NM_001348129.     51 APPPASAGLKSHPP----     64
+                     ||||||||||||||    
+NM_001348129.     51 APPPASAGLKSHPPPPEK     68
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001348129.2
+# 2: NM_001348129.2.peptide.3
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 67
+# Identity:      64/67 (95.5%)
+# Similarity:    64/67 (95.5%)
+# Gaps:           3/67 ( 4.5%)
+# Score: 360.0
+# 
+#
+#=======================================
+
+NM_001348129.      1 MGDQPCASGRSTLPPGNAREAKPPKKRCLLAPRWDYPEGTPNGGSTTLPS     50
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+NM_001348129.      1 MGDQPCASGRSTLPPGNAREAKPPKKRCLLAPRWDYPEGTPNGGSTTLPS     50
+
+NM_001348129.     51 APPPASAGLKSHPP---     64
+                     ||||||||||||||   
+NM_001348129.     51 APPPASAGLKSHPPPEK     67
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001348129.2
+# 2: NM_001348129.2.peptide.4
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 68
+# Identity:      64/68 (94.1%)
+# Similarity:    64/68 (94.1%)
+# Gaps:           4/68 ( 5.9%)
+# Score: 360.0
+# 
+#
+#=======================================
+
+NM_001348129.      1 MGDQPCASGRSTLPPGNAREAKPPKKRCLLAPRWDYPEGTPNGGSTTLPS     50
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+NM_001348129.      1 MGDQPCASGRSTLPPGNAREAKPPKKRCLLAPRWDYPEGTPNGGSTTLPS     50
+
+NM_001348129.     51 APPPASAGLKSHPP----     64
+                     ||||||||||||||    
+NM_001348129.     51 APPPASAGLKSHPPPQEK     68
+
+
+#---------------------------------------
+#---------------------------------------

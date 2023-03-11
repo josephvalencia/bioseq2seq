@@ -1,5 +1,5 @@
 import logomaker
-from utils import parse_config, build_EDA_file_list, load_CDS, grad_simplex_correction
+from utils import parse_config, build_EDA_file_list, load_CDS, grad_simplex_correction, setup_fonts
 import random
 import numpy as np
 import pandas as pd
@@ -7,42 +7,24 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import sys
+import sys,os
 
-def plot(consensus_df,name,target_pos,attr,axis=None):
+def plot(summary_df,signed_df,window,vlim,tallest,ref,window_name,tscript,save_dir,class_type,target_pos,attr,axis=None):
+
     
-    domain = list(range(-18,60))
-    crp_logo = logomaker.Logo(consensus_df,shade_below=.5,fade_below=.5,flip_below=True,ax=axis)
+    left,right = window 
+    domain = list(range(-left,right))
+    full_width = 8.5
+    width = full_width * len(domain) / 135
+    print('width',width) 
+    fig,axs = plt.subplots(2,2,figsize=(width,1.75),
+                         gridspec_kw={'height_ratios':[1.25,2],
+                             'width_ratios': [35,1],
+                             'wspace' : 0.05,
+                             'hspace' :0.0})
+    
+    crp_logo = logomaker.Logo(summary_df,shade_below=.5,fade_below=.5,flip_below=True,ax=axs[0][0])
     crp_logo.style_spines(visible=False)
-    crp_logo.style_spines(spines=['left', 'bottom'], visible=True)
-    threes = [x for x in domain if x % 3 == 0]
-  
-    target_pos = int(target_pos)
-
-    crp_logo.ax.axvspan(-0.5, 2.5, color='green', alpha=0.3)
-    if target_pos > 2: 
-        left = 3*(target_pos-2)-0.5
-        right = left+2.5
-        crp_logo.ax.axvspan(left,right, color='red', alpha=0.3)
-    crp_logo.ax.set_xticks(threes)
-    crp_logo.ax.set_xticklabels(threes)
-    crp_logo.ax.set_title(name)
-    
-    
-    plt_filename = f'{name}_{attr}_summary_logo.svg'
-    plt.tight_layout()
-    plt.savefig(plt_filename)
-    print(f'saved {plt_filename}')
-    plt.close()
-
-def plot_v2(summary_df,signed_df,name,class_type,target_pos,attr,axis=None):
-
-    fig,(ax1,ax2) = plt.subplots(2,1,figsize=(7.5,2))
-    domain = list(range(-18,60))
-    crp_logo = logomaker.Logo(summary_df,shade_below=.5,fade_below=.5,flip_below=True,ax=ax1,figsize=[7.5,1.25])
-    crp_logo.style_spines(visible=False)
-    crp_logo.style_spines(spines=['left', 'bottom'], visible=True)
-    threes = [x for x in domain if x % 3 == 0]
   
     target_pos = int(target_pos)
 
@@ -54,102 +36,141 @@ def plot_v2(summary_df,signed_df,name,class_type,target_pos,attr,axis=None):
     
     crp_logo.ax.set_xticks([])
     crp_logo.ax.set_xticklabels([])
-    crp_logo.ax.set_title(name)
-   
-    vlim = np.nanmax(np.abs(signed_df.to_numpy()))
+    crp_logo.ax.set_yticks([])
+    crp_logo.ax.set_yticklabels([])
+    crp_logo.ax.set_ylim(0,tallest)
+    
+    short_title = attr.split('.')[0]
     g = sns.heatmap(signed_df,
                     cmap='RdBu_r',
                     linewidths=0,
-                    cbar=False,
-                    #cbar_kws= {'orientation':'horizontal'},
+                    cbar=True,
+                    cbar_ax=axs[1][1],
                     center=0,
                     vmin=-vlim,
                     vmax=vlim,
-                    xticklabels=3,
-                    ax=ax2)
-    g.yaxis.set_ticklabels('ACGT',rotation='horizontal')
-    plt.xticks(rotation=0) 
-    plt.xlabel('Position rel. to start codon')
-    #cbar_kws = {'orientation' :'horizontal'})
-    #ax.set_yticklabels(ax.get_yticklabels(), rotation = 0, fontsize = 18)
-    #ax.tick_params(axis='x',labelsize=28)
-    #ax.axhline(y=0, color='k',linewidth=2.5)
-    #ax.axhline(y=consensus.shape[0], color='k',linewidth=2.5)
-    #ax.axvline(x=0, color='k',linewidth=2.5)
-    #ax.axvline(x=consensus.shape[1], color='k',linewidth=2.5)
-    #ax.set_xticks(threes)
-    #ax.set_xticklabels(threes)
-    #ax.add_patch(Rectangle((b,0),3, 4, fill=False, edgecolor='yellow', lw=2.5))
-    #cax = plt.gcf().axes[-1]
-    #cax.tick_params(labelsize=24)
-
-    plt_filename = f'{name}_{class_type}.{target_pos}.{attr}.mutations_logo.svg'
-    plt.tight_layout(h_pad=0.3)
+                    ax=axs[1][0])
+    
+    g.yaxis.set_ticklabels('ACGU',rotation='horizontal',fontsize=8)
+    g.tick_params(axis='x',length=2)
+    g.tick_params(axis='y',length=2) 
+    g.set_xticks([0,left,left+right]) 
+    g.set_xticklabels([f'{-left}','0',f'+{right}'],rotation=0) 
+    g.set_xlabel(f'{window_name}={ref}',fontsize=8)
+    axs[1][1].set_title(short_title,fontsize=8,loc='right') 
+    plt.subplots_adjust(bottom=0.3) 
+    axs[0][1].axis('off')
+    
+    name = f'{tscript}_{window_name}' 
+    plt_filename = f'{save_dir}/{name}_{class_type}.{target_pos}.{attr}.mutations_logo.svg'
     plt.savefig(plt_filename)
     print(f'saved {plt_filename}')
     plt.close()
 
-def plot_line(domain,grads,name,class_type,target_pos,attr):
+def plot_line(domain,grads,name,save_dir,class_type,target_pos,attr):
    
-    plt.figure(figsize=(6.4,3.2))
-    #normed_grads = np.linalg.norm(grads,ord=2,axis=1)
+    plt.figure(figsize=(6,3.2))
     labels = 'ACGT'
     for j in range(grads.shape[1]):
-        plt.plot(domain,grads[:,j],linewidth=1,label=labels[j])
+        plt.plot(domain,grads[:,j],linewidth=1,label=labels[j],alpha=0.6)
     
-    plt_filename = f'{name}_{attr}_lineplot.svg'
+    plt_filename = f'{save_dir}/{name}_{class_type}.{target_pos}.{attr}_lineplot.svg'
     plt.legend()
     plt.tight_layout()
     plt.savefig(plt_filename)
     print(f'saved {plt_filename}')
     plt.close()
 
-def plot_examples(parent,attr_type,class_type,target_pos):
+def plot_examples(save_dir,savefile,onehot_file,test_csv,attr_type,args):
 
-    savefile = "/home/bb/valejose/valejose/bioseq2seq/{}.{}.{}.{}.npz".format(parent,class_type,target_pos,attr_type)
     saved = np.load(savefile)
-
-    test_file = '/home/bb/valejose/valejose/bioseq2seq/data/mammalian_200-1200_test_nonredundant_80.csv'
-    onehot_file = '/home/bb/valejose/valejose/bioseq2seq/coding/coding_RNA.PC.1.onehot.npz'
-    test_cds = load_CDS(test_file)
-    df_test = pd.read_csv(test_file,sep='\t')
+    test_cds = load_CDS(test_csv)
+    df_test = pd.read_csv(test_csv,sep='\t')
     onehot_seqs = np.load(onehot_file)
-    ncols = 1
-    nrows = 4
-    i = 0 
+   
+    # top 5 closest to median reproducibility for each class
+    examples = ['NR_109777.1', 'NR_105045.1', 'NR_135529.1', 'NR_122105.1', 'NR_126388.1', 'NM_001009141.1', 'NM_001257433.1', 'NM_001015628.1', 'NM_001891.3', 'NM_001164444.2']
     
-    for tscript,attr in saved.items():
-        cds_loc = [int(x) for x in test_cds[tscript].split(':')] 
-        s,e = tuple(cds_loc) 
-        domain = list(range(-18,60))
-        labels = ['A','C','G','T']
-        onehot = onehot_seqs[tscript][:,2:6]
-        if attr_type == 'grad':
-            attr = attr[:,2:6]
-            attr -= onehot * attr
-        print(attr.shape) 
-        if s>=18 and s+60 < attr.shape[0]:
-            cds_attr = attr[s-18:s+60,:] 
-            mins = np.min(attr,axis=1,keepdims=True) 
-            max_min = np.max(mins[mins < 0.0]) 
-            summary = np.abs(mins)
-            summary = np.where(summary < 0.1*np.max(summary),0.1*np.max(summary),summary)
-            print(summary) 
+    for i,(tscript,attr) in enumerate(saved.items()):
+        if tscript in examples: 
+            cds_loc = [int(x) for x in test_cds[tscript].split(':')] 
+            s,e = tuple(cds_loc) 
+            labels = ['A','C','G','U']
+            onehot = onehot_seqs[tscript][:,2:6]
+            
+            if attr_type == 'Taylor':
+                attr = attr[:,2:6]
+                attr -= onehot * attr
+
+            # importance defined as magnitude of largest change possible towards counterfactual 
+            is_coding = lambda x : x.startswith('XM') or x.startswith('NM') 
+            if is_coding(tscript): 
+                # mRNA -> NC
+                importance = np.min(attr,axis=1,keepdims=True) 
+                positive_mask = importance > 0.0
+            else:
+                # lncRNA -> PC
+                importance = np.max(attr,axis=1,keepdims=True)
+                positive_mask = importance < 0.0
+
+            summary = np.abs(importance)
+            tallest = np.max(summary) 
+            tallest_loc = np.argmax(summary)
+            
+            print(summary.shape) 
+            # enforce minimum heights
+            small_negative_mask = summary < 0.1 * tallest
+            # 10% of top height for pos. with small negative val as min 
+            summary = np.where(small_negative_mask,0.1*tallest,summary)
+            # 5% of top height for pos. with positive val as min (if all mutations are positive this pos. is not well conserved) 
+            summary = np.where(positive_mask,0.05*tallest,summary)
             summary = onehot * summary
-            summary = summary[s-18:s+60,:] 
-            domain = list(range(-18,60))
-            summary_df = pd.DataFrame(data=summary,index=domain,columns=labels)
-            signed_df = pd.DataFrame(data=cds_attr,index=domain,columns=labels).T
-            plot_v2(summary_df,signed_df,tscript,class_type,target_pos,attr_type)
-            #plot(signed_df.T,tscript,target_pos,attr_type)
-            #cds_attr = -attr[:,s-18:s+60]
-            #cds_attr = -attr_simplex_correction(attr[:,s-18:s+60])
-            #attr_df = pd.DataFrame(data=cds_attr,index=labels,columns=domain).T
-            #plot(attr_df,tscript,target_pos,attr)
-        row = i 
-        domain = list(range(-s,attr.shape[0]-s))
-        plot_line(domain,attr,tscript,class_type,target_pos,attr_type)
+            vlim = np.nanmax(np.abs(attr))
+            print(f'tallest: val = {tallest:.3f}, loc = {tallest_loc}, vlim = {vlim:.3f}')
+
+            # window of (-start_left_offset,+start_right_offset) around the start codon
+            start_left_offset = 18 if s>= 18 else s 
+            start_right_offset = 45 if s+45 < attr.shape[0] else attr.shape[0] - s
+            # window of (-stop_left_offset,+stop_right_offset) around the stop codon
+            stop_left_offset = 18 if e-18 > s+start_right_offset else 0 
+            stop_right_offset = 18 if e+18 < attr.shape[0] else attr.shape[0] - e
+            # window of (-stop_left_offset,+stop_right_offset) around the stop codon
+            max_left_offset = 18 if tallest_loc-18 > 0 else tallest_loc
+            max_right_offset = 18 if tallest_loc+18 < attr.shape[0] else attr.shape[0] - tallest
+
+            references = [s,e-3,tallest_loc]
+            names = ['Start','Stop','Max']
+            windows = [(start_left_offset,start_right_offset),(stop_left_offset,stop_right_offset),(max_left_offset,max_right_offset)]
+            
+            for window_name,window,ref in zip(names,windows,references):
+                left,right = window 
+                print(f'{window_name} rel={(-left,right)},abs={(ref-left,ref+right)}')
+                domain = list(range(-left,right))
+                local_attr = attr[ref-left:ref+right,:] 
+                local_summary = summary[ref-left:ref+right,:]
+                summary_df = pd.DataFrame(data=local_summary,index=domain,columns=labels)
+                signed_df = pd.DataFrame(data=local_attr,index=domain,columns=labels).T
+                plot(summary_df,signed_df,window,vlim,tallest,ref,window_name,tscript,save_dir,args.reference_class,args.position,attr_type)
+            
+            domain = list(range(-s,attr.shape[0]-s))
+            plot_line(domain,attr,tscript,save_dir,args.reference_class,args.position,attr_type)
 
 if __name__ == "__main__":
+    
+    args,unknown_args = parse_config() 
+    setup_fonts() 
+    
+    test_file = os.path.join(args.data_dir,args.test_prefix+'.csv')
+    best_EDC_MDIG = os.path.join(args.best_EDC_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.MDIG.max_0.10.npz')
+    best_EDC_ISM = os.path.join(args.best_EDC_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.ISM.npz')
+    best_BIO_ISM = os.path.join(args.best_BIO_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.ISM.npz')
+    best_EDC_grad = os.path.join(args.best_EDC_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.grad.npz')
+    best_EDC_onehot = os.path.join(args.best_EDC_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.onehot.npz')
+    best_BIO_onehot = os.path.join(args.best_BIO_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.onehot.npz')
+    
+    #plot_examples(args.best_EDC_DIR,best_EDC_ISM,best_EDC_onehot,test_file,'ISM',args)
+    plot_examples(args.best_BIO_DIR,best_BIO_ISM,best_BIO_onehot,test_file,'ISM',args)
+    #plot_examples(args.best_EDC_DIR,best_EDC_MDIG,best_EDC_onehot,test_file,'MDIG',args)
+    #plot_examples(args.best_EDC_DIR,best_EDC_grad,best_EDC_onehot,test_file,'Taylor',args)
 
-    plot_examples(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4])
+

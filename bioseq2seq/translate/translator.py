@@ -554,8 +554,9 @@ class Inference(object):
 
                     if save_preds:
                         self.out_file.write("ID: {}\n".format(transcript_name))
+                        #print("ID: {}\n".format(transcript_name))
                         for pred,score in zip(n_best_preds,n_best_scores):
-                            self.out_file.write("PRED: {} SCORE: {}\n".format(pred,score))
+                            self.out_file.write("PRED: {} SCORE: {}\n".format(pred,torch.exp(score)))
                         self.out_file.write("\n")
                         self.out_file.flush()
 
@@ -591,7 +592,8 @@ class Inference(object):
                         else:
                             os.write(1, output.encode("utf-8"))
         end_time = time.time()
-        np.savez(self.attn_file,**attn_kwargs) 
+        if self.attn_file:
+            np.savez_compressed(self.attn_file,**attn_kwargs) 
         
         if self.report_score:
             msg = self._report_score(
@@ -750,7 +752,8 @@ class Inference(object):
         src_vocabs,
         use_src_map,
         decode_strategy,
-        enc_cache = None
+        enc_cache = None,
+        class_logit=None
     ):
         results = {
             "predictions": None,
@@ -948,7 +951,6 @@ class Translator(Inference):
         # (3) Begin decoding step by step:
         for step in range(decode_strategy.max_length):
             decoder_input = decode_strategy.current_predictions.view(1, -1, 1)
-            #print(f'step {step}, decoder_input={decoder_input}, {decoder_input.shape} alive_seq = {decode_strategy.alive_seq}')
             log_probs, attn = self._decode_and_generate(
                 decoder_input,
                 memory_bank,
@@ -959,7 +961,12 @@ class Translator(Inference):
                 step=step,
                 batch_offset=decode_strategy.batch_offset,
             )
-
+            
+            pc_token = self._tgt_vocab.stoi['<PC>']
+            nc_token = self._tgt_vocab.stoi['<NC>']
+            logit_score =  log_probs[:,pc_token] - log_probs[:,nc_token]
+            #print(f'step {step}, logit_score = {logit_score}')
+            
             decode_strategy.advance(log_probs, attn)
             any_finished = decode_strategy.is_finished.any()
             if any_finished:

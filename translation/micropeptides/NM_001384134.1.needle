@@ -1,0 +1,124 @@
+########################################
+# Program: needle
+# Rundate: Mon  6 Mar 2023 21:36:09
+# Commandline: needle
+#    -asequence translation/micropeptides/NM_001384134.1_true_PROTEIN.fa
+#    -bsequence translation/micropeptides/NM_001384134.1.micropeptides.fa
+#    -outfile translation/micropeptides/NM_001384134.1.needle
+#    -gapopen 10
+#    -gapextend 0.5
+#    -brief
+# Align_format: srspair
+# Report_file: translation/micropeptides/NM_001384134.1.needle
+########################################
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001384134.1
+# 2: NM_001384134.1.peptide.1
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 56
+# Identity:      53/56 (94.6%)
+# Similarity:    55/56 (98.2%)
+# Gaps:           0/56 ( 0.0%)
+# Score: 267.0
+# 
+#
+#=======================================
+
+NM_001384134.      1 MADVSERTLQVSVLVAFASGVVLGWQANRLRRRYLDWRKRRLQDKLATTQ     50
+                     ||||||||||:||||||||||:|||||||||||||||||||||||||.||
+NM_001384134.      1 MADVSERTLQLSVLVAFASGVLLGWQANRLRRRYLDWRKRRLQDKLAATQ     50
+
+NM_001384134.     51 KKLDLA     56
+                     ||||||
+NM_001384134.     51 KKLDLA     56
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001384134.1
+# 2: NM_001384134.1.peptide.2
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 80
+# Identity:      53/80 (66.2%)
+# Similarity:    55/80 (68.8%)
+# Gaps:          24/80 (30.0%)
+# Score: 267.0
+# 
+#
+#=======================================
+
+NM_001384134.      1 MADVSERTLQVSVLVAFASGVVLGWQANRLRRRYLDWRKRRLQDKLATTQ     50
+                     ||||||||||:||||||||||:|||||||||||||||||||||||||.||
+NM_001384134.      1 MADVSERTLQLSVLVAFASGVLLGWQANRLRRRYLDWRKRRLQDKLAATQ     50
+
+NM_001384134.     51 KKLDLA------------------------     56
+                     ||||||                        
+NM_001384134.     51 KKLDLAXDSAPSAPFCPPHGHLAMTSSCTL     80
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001384134.1
+# 2: NM_001384134.1.peptide.3
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 80
+# Identity:      53/80 (66.2%)
+# Similarity:    55/80 (68.8%)
+# Gaps:          24/80 (30.0%)
+# Score: 267.0
+# 
+#
+#=======================================
+
+NM_001384134.      1 MADVSERTLQVSVLVAFASGVVLGWQANRLRRRYLDWRKRRLQDKLATTQ     50
+                     ||||||||||:||||||||||:|||||||||||||||||||||||||.||
+NM_001384134.      1 MADVSERTLQLSVLVAFASGVLLGWQANRLRRRYLDWRKRRLQDKLAATQ     50
+
+NM_001384134.     51 KKLDLA------------------------     56
+                     ||||||                        
+NM_001384134.     51 KKLDLAUDSAPSAPFCPPHGHLAMTSSCTL     80
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001384134.1
+# 2: NM_001384134.1.peptide.4
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 56
+# Identity:      52/56 (92.9%)
+# Similarity:    55/56 (98.2%)
+# Gaps:           0/56 ( 0.0%)
+# Score: 264.0
+# 
+#
+#=======================================
+
+NM_001384134.      1 MADVSERTLQVSVLVAFASGVVLGWQANRLRRRYLDWRKRRLQDKLATTQ     50
+                     :|||||||||:||||||||||:|||||||||||||||||||||||||.||
+NM_001384134.      1 LADVSERTLQLSVLVAFASGVLLGWQANRLRRRYLDWRKRRLQDKLAATQ     50
+
+NM_001384134.     51 KKLDLA     56
+                     ||||||
+NM_001384134.     51 KKLDLA     56
+
+
+#---------------------------------------
+#---------------------------------------

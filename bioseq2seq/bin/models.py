@@ -24,10 +24,14 @@ class Generator(nn.Module):
         else:
             return linear
 
-def make_cnn_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dropout=0.1,encoder_kernel_size=3,decoder_kernel_size=3,dilation_factor=1):
+#def make_cnn_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dropout=0.1,encoder_kernel_size=3,decoder_kernel_size=3,dilation_factor=1):
 
+def make_cnn_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dropout=0.1,encoder_kernel_size=3,decoder_kernel_size=3,dilation_factor=1,dim_ff=2048,heads=8,max_rel_pos=8):
+    
     '''construct CNN encoder-decoder from hyperparameters'''
 
+    attention_dropout = 0.1
+    
     nucleotide_embeddings = Embeddings(word_vec_size = model_dim,
                                        word_vocab_size = n_input_classes,
                                        word_padding_idx = 1,
@@ -44,13 +48,29 @@ def make_cnn_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=
                                        dropout = dropout,
                                        embeddings = nucleotide_embeddings,
                                        dilation_factor=dilation_factor)
-    
+    ''' 
     decoder_stack = CNNDecoder(num_layers = n_dec,
                                        hidden_size = model_dim,
                                        cnn_kernel_width = decoder_kernel_size,
                                        dropout = dropout,
                                        embeddings = protein_embeddings)
+    '''
 
+    decoder_stack = TransformerDecoder(num_layers = n_dec,
+                                       d_model = model_dim,
+                                       heads = heads,
+                                       d_ff = dim_ff,
+                                       dropout = dropout,
+                                       embeddings = protein_embeddings,
+                                       self_attn_type = 'scaled-dot',
+                                       copy_attn = False,
+                                       max_relative_positions = max_rel_pos,
+                                       aan_useffn = False,
+                                       attention_dropout = attention_dropout,
+                                       full_context_alignment = False,
+                                       alignment_heads = None,
+                                       alignment_layer = None)
+    
     generator = Generator(model_dim,n_output_classes)
     model = NMTModel(encoder_stack,decoder_stack)
     model.generator = generator

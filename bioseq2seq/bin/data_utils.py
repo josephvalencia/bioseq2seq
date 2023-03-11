@@ -60,7 +60,7 @@ def iterator_from_fasta(src,tgt,vocab_fields,mode,is_train,max_tokens,external_t
     # build the ParallelCorpus
     corpus_name = "train" if is_train else "valid"
     corpus = ParallelFastaCorpus("train",src,tgt,mode)
-   
+    print('Corpus made!') 
     transforms = {"attach_class_label" : xfm.AttachClassLabel(opts=None),'omit_peptide' : xfm.OmitPeptide(opts=None)}
     
     if mode == "bioseq2seq":

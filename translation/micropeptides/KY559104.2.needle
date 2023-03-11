@@ -1,0 +1,109 @@
+########################################
+# Program: needle
+# Rundate: Mon  6 Mar 2023 21:36:10
+# Commandline: needle
+#    -asequence translation/micropeptides/KY559104.2_true_PROTEIN.fa
+#    -bsequence translation/micropeptides/KY559104.2.micropeptides.fa
+#    -outfile translation/micropeptides/KY559104.2.needle
+#    -gapopen 10
+#    -gapextend 0.5
+#    -brief
+# Align_format: srspair
+# Report_file: translation/micropeptides/KY559104.2.needle
+########################################
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: KY559104.2
+# 2: KY559104.2.peptide.2
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 144
+# Identity:     144/144 (100.0%)
+# Similarity:   144/144 (100.0%)
+# Gaps:           0/144 ( 0.0%)
+# Score: 768.0
+# 
+#
+#=======================================
+
+KY559104.2         1 MMFVLLNTLRCVGQPHHGEWTEPAYHMLRLRSPGLMIGAIQDLSSLPSQR     50
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+KY559104.2.pe      1 MMFVLLNTLRCVGQPHHGEWTEPAYHMLRLRSPGLMIGAIQDLSSLPSQR     50
+
+KY559104.2        51 AMSFRKCAGLVSRTIFFRGLFLNLFRGVGKTHSEELFHKHVAIISADFLL    100
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+KY559104.2.pe     51 AMSFRKCAGLVSRTIFFRGLFLNLFRGVGKTHSEELFHKHVAIISADFLL    100
+
+KY559104.2       101 RFPSNDCISPVEMGCVCCCTSQADVGDPVCFVAVGTVAILERTY    144
+                     ||||||||||||||||||||||||||||||||||||||||||||
+KY559104.2.pe    101 RFPSNDCISPVEMGCVCCCTSQADVGDPVCFVAVGTVAILERTY    144
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: KY559104.2
+# 2: KY559104.2.peptide.3
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 144
+# Identity:     143/144 (99.3%)
+# Similarity:   143/144 (99.3%)
+# Gaps:           0/144 ( 0.0%)
+# Score: 762.0
+# 
+#
+#=======================================
+
+KY559104.2         1 MMFVLLNTLRCVGQPHHGEWTEPAYHMLRLRSPGLMIGAIQDLSSLPSQR     50
+                     ||.|||||||||||||||||||||||||||||||||||||||||||||||
+KY559104.2.pe      1 MMLVLLNTLRCVGQPHHGEWTEPAYHMLRLRSPGLMIGAIQDLSSLPSQR     50
+
+KY559104.2        51 AMSFRKCAGLVSRTIFFRGLFLNLFRGVGKTHSEELFHKHVAIISADFLL    100
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+KY559104.2.pe     51 AMSFRKCAGLVSRTIFFRGLFLNLFRGVGKTHSEELFHKHVAIISADFLL    100
+
+KY559104.2       101 RFPSNDCISPVEMGCVCCCTSQADVGDPVCFVAVGTVAILERTY    144
+                     ||||||||||||||||||||||||||||||||||||||||||||
+KY559104.2.pe    101 RFPSNDCISPVEMGCVCCCTSQADVGDPVCFVAVGTVAILERTY    144
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: KY559104.2
+# 2: KY559104.2.peptide.4
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 149
+# Identity:     136/149 (91.3%)
+# Similarity:   138/149 (92.6%)
+# Gaps:           6/149 ( 4.0%)
+# Score: 710.0
+# 
+#
+#=======================================
+
+KY559104.2         1 -----MMFVLLNTLRCVGQPHHGEWTEPAYHMLRLRSPGLMIGAIQDLSS     45
+                          .:|| ...:|.||||||||||||||||||||||||||||||||||
+KY559104.2.pe      1 MLEGTTIFV-GKGMRXVGQPHHGEWTEPAYHMLRLRSPGLMIGAIQDLSS     49
+
+KY559104.2        46 LPSQRAMSFRKCAGLVSRTIFFRGLFLNLFRGVGKTHSEELFHKHVAIIS     95
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+KY559104.2.pe     50 LPSQRAMSFRKCAGLVSRTIFFRGLFLNLFRGVGKTHSEELFHKHVAIIS     99
+
+KY559104.2        96 ADFLLRFPSNDCISPVEMGCVCCCTSQADVGDPVCFVAVGTVAILERTY    144
+                     |||||||||||||||||||||||||||||||||||||||||||||||||
+KY559104.2.pe    100 ADFLLRFPSNDCISPVEMGCVCCCTSQADVGDPVCFVAVGTVAILERTY    148
+
+
+#---------------------------------------
+#---------------------------------------

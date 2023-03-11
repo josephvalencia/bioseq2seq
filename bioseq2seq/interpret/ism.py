@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 import logomaker
 import torch.nn.functional as F
 import numpy as np
+import time
+from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq
+from Bio import SeqIO
 
 def plot(consensus_df,name,target_pos,class_token,axis=None):
     
@@ -58,6 +62,35 @@ class InSilicoMutagenesis(Attribution):
         self.predictor = PredictionWrapper(model,softmax)
         super().__init__(model,device,vocab,tgt_class,softmax=softmax,sample_size=sample_size,minibatch_size=minibatch_size)
     
+    def gen_full_point_mutations(self,raw_src,src,copies_per_step):
+
+        baselines = []
+        
+        start,end = getLongestORF(''.join(raw_src))
+        
+        info = [] 
+        bases =  ['A','C','G','T'] 
+        int_bases = [torch.tensor([self.get_src_token(b)]) for b in bases]
+        for base,src_base in zip(bases,int_bases):
+            for loc in range(len(raw_src)):
+                c = raw_src[loc]    
+                if base != c:
+                    s_mutated = src.clone().squeeze()
+                    s_mutated[loc] = src_base
+                    s_mutated = s_mutated.reshape(-1,1)
+                    diff = src - s_mutated
+                    assert diff.sum() == (src[0,loc,0]-s_mutated[loc,0])
+                    baselines.append(s_mutated)
+                    info.append((loc,base))
+
+        upper = max(len(baselines),1)
+        for i in range(0,upper,copies_per_step):
+            chunk = baselines[i:i+copies_per_step]
+            stacked = torch.stack(chunk,dim=0).to(device=src.device)
+            yield stacked, info[i:i+copies_per_step]
+        else:
+            yield None
+    
     def gen_point_mutations(self,raw_src,src,copies_per_step):
 
         baselines = []
@@ -69,7 +102,7 @@ class InSilicoMutagenesis(Attribution):
         abs_end = start+rel_end
         
         info = [] 
-        bases =  ['A','G','C','T'] 
+        bases =  ['A','C','G','T'] 
         int_bases = [torch.tensor([self.get_src_token(b)]) for b in bases]
         if abs_start >=0 and abs_end <= len(raw_src):
             for base,src_base in zip(bases,int_bases):
@@ -91,7 +124,36 @@ class InSilicoMutagenesis(Attribution):
                 yield stacked, info[i:i+copies_per_step]
         else:
             yield None
-        
+
+    def safe_predict(self,mutant,src_lens,decoder_input,class_token):
+       
+        try:
+            B = mutant.shape[0]
+            with torch.no_grad():
+                mutant_logit, probs = self.predict_logits(mutant,src_lens,
+                                                            decoder_input,
+                                                            B,class_token,ratio=True)
+                return mutant_logit,probs
+        except RuntimeError as e:
+            if 'out of memory' in str(e):
+                torch.cuda.empty_cache()
+                print('Recovering from OOM')
+                mutant_chunks = mutant.chunk(2,dim=0)
+                input_chunks = decoder_input[0].chunk(2,dim=0)
+                total_logits = []
+                total_probs = []
+                for mut,item in zip(mutant_chunks,input_chunks): 
+                    B = mutant.shape[0]
+                    with torch.no_grad():
+                        logit, probs = self.predict_logits(mut,src_lens,
+                                                            (item,),B,
+                                                            class_token,ratio=True)
+                        total_logits.append(logit)
+                        total_probs.append(probs)
+                return torch.cat(total_logits,dim=1), torch.cat(total_probs,dim=1) 
+            else:
+                raise RuntimeError(e)
+
     def run(self,savefile,val_iterator,target_pos,baseline,transcript_names):
         
         all_ism = {}
@@ -113,48 +175,83 @@ class InSilicoMutagenesis(Attribution):
             tgt_prefix = batch.tgt[:tgt_prefix_len,:,:]
             batch_size = batch.batch_size
             
-            pred_classes = self.predictor(src,src_lens,self.decoder_input(batch_size,tgt_prefix),batch_size)
+            #pred_classes = self.predictor(src,src_lens,self.decoder_input(batch_size,tgt_prefix),batch_size)
             class_logit, probs = self.predict_logits(src,src_lens,
                                                         self.decoder_input(batch_size,tgt_prefix),
-                                                        batch_size,self.class_token,ratio=True)
-            
-            '''
-            #print(f'GT({tscript}) : {ground_truth}, argmax : {torch.argmax(probs)}, class_token: {class_token}')
-            
-            probs = F.softmax(pred_classes,dim=-1)
-            counterfactual = [x for x in range(pred_classes.shape[1]) if x != class_token]
-            counter_idx = torch.tensor(counterfactual,device=pred_classes.device)
-            counterfactuals = pred_classes.index_select(1,counter_idx)
-            class_score = pred_classes[:,:,class_token] - counterfactuals.sum() 
-            '''
-
+                                                        batch_size,class_token,ratio=True)
+            print(src.shape,class_logit,class_logit.shape)
             ism = []
             storage = []
-
-            copies_per_step = 8
-            for variant in self.gen_point_mutations(raw_src,src,copies_per_step):
+            fasta_storage = []
+            save_fasta = False
+            copies_per_step = 16
+            s = time.time()
+            for variant in self.gen_full_point_mutations(raw_src,src,copies_per_step):
                 if variant is not None:
                     mutant,info = variant
                     B = mutant.shape[0]
-                    '''
-                    pred_classes = self.predictor(mutant,src_lens,self.decoder_input(B,tgt_prefix),B)
-                    counterfactuals = pred_classes.index_select(1,counter_idx)
-                    mutant_scores = pred_classes[:,:,class_token] - counterfactuals.sum(dim=-1)
-                    '''
-                    mutant_logit, probs = self.predict_logits(mutant,src_lens,
-                                                                self.decoder_input(B,tgt_prefix),
-                                                                B,self.class_token,ratio=True)
+                    mutant_logit, probs = self.safe_predict(mutant,src_lens,
+                                                            self.decoder_input(B,tgt_prefix),class_token)
                     diff = mutant_logit - class_logit
                     diff = diff.detach().cpu().numpy()
+                    maxes = torch.max(probs,dim=2)
+                    best_prob = maxes.values
+                    best_pred = maxes.indices
+                    curr = probs[:,:,class_token]
+                    #print(f'original = {class_logit}, mutant = {mutant_logit}, diff = {diff}, best  = {curr}, info = {info}')
+                    
                     for j in range(B):
                         entry = {'base' : info[j][1], 'loc' : info[j][0] , 'score' : diff[0][j]}
                         storage.append(entry)
-            
-            if len(storage) == 216:
-                df = pd.DataFrame(storage)
-                df = df.pivot(index='loc',columns='base',values='score').fillna(0.0)
-                plot(df,tscript,target_pos,self.tgt_vocab.itos[class_token]) 
-                all_ism[tscript] = df.to_numpy()
+                        if save_fasta: 
+                            src_entry = ''.join(self.get_raw_src(mutant[j,:].reshape(1,-1,1)))
+                            variant_name=f'{tscript}-{info[j][1]}-{info[j][0]}'
+                            description = f'P({self.get_tgt_string(best_pred[0,j])})={best_prob[0,j]:.3f}, delta={diff[0][j]}'
+                            record = SeqRecord(Seq(src_entry),
+                                        id=variant_name,
+                                        description=description)
+                            fasta_storage.append(record)
+            e = time.time()
+            print(f'{tscript} finished in {e-s} s.')
+            print(f'time elapsed = {e-s}')
+            df = pd.DataFrame(storage)
+            df = df.pivot(index='loc',columns='base',values='score').fillna(0.0)
+            #print(df)
+            all_ism[tscript] = df.to_numpy()
         
         print(f'saving {savefile}')
-        np.savez_compressed(savefile,**all_ism) 
+        np.savez_compressed(savefile,**all_ism)
+       
+        if save_fasta:
+            with open('ism_results.fa','w') as outFile:
+                SeqIO.write(fasta_storage, outFile, "fasta")
+
+
+class LogitsOnly(Attribution):
+
+    def __init__(self,model,device,vocab,tgt_class,softmax=True,sample_size=None,minibatch_size=None,times_input=False,smoothgrad=False):
+        self.predictor = PredictionWrapper(model,softmax)
+        super().__init__(model,device,vocab,tgt_class,softmax=softmax,sample_size=sample_size,minibatch_size=minibatch_size)
+    
+    def run(self,savefile,val_iterator,target_pos,baseline,transcript_names):
+        
+        all_ref = {}
+        
+        for i,batch in enumerate(val_iterator):
+            ids = batch.indices.tolist()
+            src, src_lens = batch.src
+            src = src.transpose(0,1)
+            batch_size = batch.batch_size
+            tscript = transcript_names[ids[0]]
+
+            # score true
+            tgt_prefix = batch.tgt[:target_pos,:,:] 
+            class_token = batch.tgt[target_pos,0,0].item() if self.class_token == 'GT' else self.class_token
+            class_logit, probs = self.predict_logits(src,src_lens,
+                                                        self.decoder_input(batch_size,tgt_prefix),
+                                                        batch_size,class_token,ratio=True)
+            print(f'bad = {1.0 - probs[0,0,self.pc_token].item() - probs[0,0,self.nc_token].item()}') 
+            all_ref[tscript] = class_logit.detach().cpu().numpy() 
+        
+        print(f'saving {savefile}')
+        np.savez_compressed(savefile,**all_ref) 

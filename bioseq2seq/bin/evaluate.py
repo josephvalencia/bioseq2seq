@@ -1,12 +1,12 @@
 #from bioseq2seq.evaluate.evaluator import Evaluator
-import sys,re
+import os,sys,re
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.metrics import classification_report, f1_score, matthews_corrcoef, recall_score, precision_score, confusion_matrix
 from scipy.stats import chisquare, ks_2samp, mannwhitneyu
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, isdir
 import seaborn as sns
 
 def findPositionProbability(position_x, base):
@@ -231,7 +231,6 @@ def analysis_pipeline(groupA_df,groupB_df,names,test='KS'):
     else:
         stat_name = 'Mann-Whitney U'
 
-
     obs_stops,obs_no_stops = count_upstream_inframe_stops(groupA_df)
     exp_stops,exp_no_stops = count_upstream_inframe_stops(groupB_df)
     calc_stops = (exp_stops)/(exp_stops+exp_no_stops)*(obs_stops+obs_no_stops)
@@ -398,6 +397,12 @@ def build_ground_truth(eval_file):
     eval_df['Fickett'] = [ficketTestcode(x) for x in eval_df['RNA'].tolist()] 
     return eval_df
 
+def get_model_names(filename):
+    model_list = [] 
+    with open(filename) as inFile:
+        model_list += [x.rstrip().replace('/','').replace('.pt','') for x in inFile.readlines()]
+    return model_list
+
 if __name__ == "__main__":
 
     all_model_performances = []
@@ -405,46 +410,35 @@ if __name__ == "__main__":
     test_file = 'data/mammalian_200-1200_test_nonredundant_80.csv'
     gt_df = build_ground_truth(test_file)
     
+    bio_models ='experiments/scripts/top1_bioseq2seq_models.txt'
+    EDC_models ='experiments/scripts/top1_EDC-large_models.txt'
+    EDC_eq_models ='experiments/scripts/top1_EDC-small_models.txt'
+    
     parent = 'experiments/output'
+    all_models = get_model_names(bio_models)+get_model_names(EDC_models) +get_model_names(EDC_eq_models)
+    print(all_models)
+    quit()
     all_results = []
-    for f in listdir(parent):
-        if not isfile(f):
-            fname = join(parent,f,'preds.txt')
-            if isfile(fname):
-                results = evaluate(fname,gt_df,error_analysis=False)
-                model = 'EDC' if results['trial'].startswith('EDC') else 'bioseq2seq'
-                model = 'EDC-small' if results['trial'].startswith('EDC_small') else model
-                results['model'] = model
-                all_results.append(results)
-    '''
-    onlyfiles = [join('experiments/',f) for f in listdir('experiments/') if isfile(join('experiments/', f))]
-    all_preds = [f for f in onlyfiles if f.endswith('preds') and not 'full_len' in f]
-    print(all_preds)
-
-    all_results = []
-    for f in all_preds:
-        results = evaluate(f,gt_df,error_analysis=False)
-        model = 'EDC' if results['trial'].startswith('EDC') else 'bioseq2seq'
-        results['model'] = model
-        all_results.append(results)
-    '''
+    for f in all_models:
+        fname = join(parent,f,'mammalian_200-1200_test_RNA_nonredundant_80_preds.txt')
+        if os.path.exists(fname):
+            print(f'parsing {fname}')
+            results = evaluate(fname,gt_df,error_analysis=False)
+            model = 'EDC' if results['trial'].startswith('EDC') else 'bioseq2seq'
+            model = 'EDC-small' if results['trial'].startswith('EDC_small') else model
+            results['model'] = model
+            all_results.append(results)
+        else:
+            print(f'{fname} does not exist')
+    
     results_df = pd.DataFrame(all_results)
-    print(results_df)
-    by_type_mean = results_df.groupby(results_df['trial'].str.extract('(\w*)_\d_test')[0]).mean()
-    by_type_std = results_df.groupby(results_df['trial'].str.extract('(\w*)_\d_test')[0]).std()
+    results_df.to_csv('classification_performance.csv',sep='\t') 
+    by_type_mean = results_df.groupby(results_df['trial'].str.extract('(\w*)_\d_')[0]).mean()
+    by_type_std = results_df.groupby(results_df['trial'].str.extract('(\w*)_\d_')[0]).std()
     for_latex_mean = by_type_mean.applymap('{:.3f}'.format)
     for_latex_std = by_type_std.applymap('{:.3f}'.format)
     for_latex = for_latex_mean.add(' $\pm$ ').add(for_latex_std)
     col_format = 'c'*len(for_latex.columns)
     table = for_latex.style.to_latex(column_format=f'|{col_format}|',hrules=True)
     print(table)
-    results_df['id'] = results_df.index
-    long_df = pd.wide_to_long(results_df,stubnames='validation performance',i='id',j='metric',suffix=r'\w+\d?',sep='-')
-    long_df = long_df.reset_index()
-    sns.set_theme(style='whitegrid')
-    ax = sns.boxplot(data=long_df,x='metric',y='validation performance',hue='model',width=0.6,palette='Set2')
-    plt.xlabel('')
-    plt.savefig('boxplot_comparison.svg')
-    plt.close()
-
-
+    

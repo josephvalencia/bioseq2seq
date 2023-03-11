@@ -55,9 +55,9 @@ def run_helper(rank,model,vocab,args):
 
     init_logger()
     
-    scorer = GNMTGlobalScorer(alpha=0.6, 
+    scorer = GNMTGlobalScorer(alpha=0.0, 
                                 beta=0.0, 
-                                length_penalty="none", 
+                                length_penalty="avg", 
                                 coverage_penalty="none")
     
     gpu = rank if args.num_gpus > 0 else -1
@@ -71,12 +71,13 @@ def run_helper(rank,model,vocab,args):
     if not os.path.isdir(args.output_name):
         os.mkdir(args.output_name)
     
-    outfile = open(f'{args.output_name}preds.txt.rank{rank}','w')
+    input_filename = os.path.split(args.input)[-1].replace('.fa','').replace('.fasta','')
+    outfile = open(f'{args.output_name}/{input_filename}_preds.txt','w')
     attnfile = None
 
     if args.save_EDA:
         model.decoder.attn_save_layer = args.attn_save_layer
-        attnfile = open(f'{args.output_name}/enc_dec_attns_layer{args.attn_save_layer}.npz.rank{rank}','wb')
+        attnfile = open(f'{args.output_name}/EDA_layer{args.attn_save_layer}.npz','wb')
     
     src_text_field = vocab['src'].base_field
     src_vocab = src_text_field.vocab
@@ -102,7 +103,7 @@ def run_helper(rank,model,vocab,args):
 
     src = []
     tscripts = []
-
+    
     with maybe_fastafile_open(args.input) as fa:
         for i,record in enumerate(fa):
             if (i % stride) == offset:
@@ -118,15 +119,10 @@ def run_helper(rank,model,vocab,args):
                         batch_size=args.max_tokens,
                         batch_type="tokens",
                         attn_debug=args.save_EDA)
-
     outfile.close()
+    print(f'predictions saved at {outfile}')
     if attnfile is not None:
         attnfile.close()
-
-def file_cleanup(output_name):
-
-    os.system(f'cat {output_name}/preds.txt.rank* > {output_name}/preds.txt')
-    os.system(f'rm {output_name}/preds.txt.rank* ')
 
 def translate_from_checkpoint(args):
 
@@ -150,15 +146,12 @@ def translate_from_checkpoint(args):
     if args.num_gpus > 1:
         logger.info('Translating on {} GPUs'.format(args.num_gpus))
         torch.multiprocessing.spawn(run_helper, nprocs=args.num_gpus, args=(model,vocab,args))
-        file_cleanup(args.output_name)
     elif args.num_gpus > 0:
         logger.info('Translating on single GPU'.format(args.num_gpus))
         run_helper(args.rank,model,vocab,args)
-        file_cleanup(args.output_name)
     else:
         logger.info('Translating on single CPU'.format(args.num_gpus))
         run_helper(args.rank,model,vocab,args)
-        file_cleanup(args.output_name)
 
 if __name__ == "__main__":
 

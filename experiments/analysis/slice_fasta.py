@@ -25,8 +25,8 @@ def parse(fname,outname,only_verified=True,n=None):
   
     n = min(len(coding),len(noncoding)) if n is None else n
     print(f"sampling {n} each of mRNA/lncRNA")
-    coding = sample(coding,0)
-    noncoding = sample(noncoding,n)
+    coding = sample(coding,n)
+    noncoding = sample(noncoding,0)
 
     combined = [(rna_dict[c],prot_dict[c]) for c in coding+noncoding]
     shuffle(combined)
@@ -40,4 +40,4 @@ def parse(fname,outname,only_verified=True,n=None):
 
 if __name__ == "__main__":
 
-    parse(sys.argv[1],sys.argv[2],False,10)
+    parse(sys.argv[1],sys.argv[2])

@@ -76,13 +76,13 @@ if __name__ == "__main__":
     parent_dir = sys.argv[1]    
     
     for i in range(1,6):
-        samba = f'{parent_dir}/test_rnasamba_mammalian_{i}.tsv'
+        samba = f'{parent_dir}/rnasamba/test_rnasamba_mammalian_{i}.tsv'
         storage.append(eval_rnasamba(samba,i)) 
     
-    cpc = f'test_cpc2_mammalian.txt'
+    cpc = f'{parent_dir}/CPC2/test_cpc2_mammalian.txt'
     storage.append(eval_cpc2(cpc,'mammalian')) 
-    cpat_a = f'test_cpat_mammalian.ORF_prob.best.tsv'
-    cpat_b = f'test_cpat_mammalian.no_ORF.txt'
+    cpat_a = f'{parent_dir}/CPAT/test_cpat_mammalian.ORF_prob.best.tsv'
+    cpat_b = f'{parent_dir}/CPAT/test_cpat_mammalian.no_ORF.txt'
     storage.append(eval_cpat(cpat_a,cpat_b,'mammalian'))
     df = pd.DataFrame(storage)
     by_type_mean = df.groupby('model').mean()

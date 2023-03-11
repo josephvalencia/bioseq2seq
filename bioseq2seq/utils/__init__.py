@@ -7,7 +7,6 @@ from bioseq2seq.utils.statistics import Statistics
 from bioseq2seq.utils.optimizers import MultipleOptimizer, \
     Optimizer, AdaFactor
 from bioseq2seq.utils.earlystopping import EarlyStopping
-
 __all__ = ["split_corpus", "aeq", "use_gpu", "set_random_seed", "ReportMgr",
            "build_report_manager", "Statistics",
            "MultipleOptimizer", "Optimizer", "AdaFactor", "EarlyStopping",

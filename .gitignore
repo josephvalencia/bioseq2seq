@@ -33,9 +33,12 @@
 .DS_Store
 data/
 /OLD/
+/design/
 /results_config/
+/results_PC.1/
 /checkpoints/
 /experiments/wandb/
+experiments/competitor_results/
 /experiments/logs/
 /experiments/archive/
 /experiments/tools/

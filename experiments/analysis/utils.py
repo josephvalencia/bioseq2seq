@@ -1,31 +1,55 @@
 import yaml
 import configargparse
-import re
+import os,re
 import pandas as pd
+
+from pathlib import Path
+import matplotlib as mpl
+from matplotlib import font_manager
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from matplotlib.ticker import ScalarFormatter
+
+class ScalarFormatterClass(ScalarFormatter):
+       def _set_format(self):
+                 self.format = "%1.1f"
+
+def setup_fonts():
+    
+    # manually add Helvetica for CentOS, if it fails just let matplotlib define defaults 
+    try:
+        font_path = os.path.join(Path.home(),'.fonts','Helvetica.ttc') 
+        font_manager.fontManager.addfont(font_path) 
+    except:
+        print('Helvetica.ttc not found')
+
+    mpl.rcParams['font.family'] = 'Helvetica'
+    plt.rcParams.update({'font.family':'Helvetica'})
+    sns.set_theme(font='Helvetica',context='paper',style='ticks')
 
 def parse_config():
 
     p = configargparse.ArgParser() 
     
     p.add('--c','--config',required=False,is_config_file=True,help='path to config file')
-    p.add('--test_csv',help='test dataset (.csv)' )
-    p.add('--val_csv',help='validation dataset (.csv)')
-    p.add('--train_csv',help='train dataset (.csv)')
+    p.add('--test_prefix',help='test dataset (.csv)' )
+    p.add('--data_dir',help='data directory' )
+    p.add('--val_prefix',help='validation dataset (.csv)')
+    p.add('--train_prefix',help='train dataset (.csv)')
     p.add('--competitors_results',help='competitors results (.csv)')
     p.add('--bioseq2seq_results',help='bioseq2seq results (.csv)')
-    p.add('--EDC_results',help='EDC results (.csv)')
-    p.add('--best_BIO_EDA',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
-    p.add('--best_EDC_EDA',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
     p.add('--best_BIO_DIR',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
     p.add('--best_EDC_DIR',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
-    p.add('--best_BIO_grad_PC',help = 'best bioseq2seq Integrated Gradients (.ig)',type=yaml.safe_load)
-    p.add('--best_EDC_grad_PC',help = 'best EDC Integrated Gradients (.ig)',type=yaml.safe_load)
-    p.add('--best_BIO_grad_NC',help = 'best bioseq2seq Integrated Gradients (.ig)',type=yaml.safe_load)
-    p.add('--best_EDC_grad_NC',help = 'best EDC Integrated Gradients (.ig)',type=yaml.safe_load)
-    p.add('--best_BIO_inputXgrad_PC',help = 'best bioseq2seq Integrated Gradients (.ig)',type=yaml.safe_load)
-    p.add('--best_EDC_inputXgrad_PC',help = 'best EDC Integrated Gradients (.ig)',type=yaml.safe_load)
-    p.add('--best_BIO_inputXgrad_NC',help = 'best bioseq2seq Integrated Gradients (.ig)',type=yaml.safe_load)
-    p.add('--best_EDC_inputXgrad_NC',help = 'best EDC Integrated Gradients (.ig)',type=yaml.safe_load)
+    p.add('--best_BIO_chkpt',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
+    p.add('--best_EDC_chkpt',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
+    p.add('--all_BIO_replicates',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
+    p.add('--all_EDC_replicates',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
+    p.add('--all_EDC_small_replicates',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
+    p.add('--best_BIO_EDA',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
+    p.add('--best_EDC_EDA',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
+    p.add('--reference_class',help ='class type')
+    p.add('--position',help ='class type')
     return p.parse_known_args()
 
 def grad_simplex_correction(input_grad):
@@ -39,7 +63,7 @@ def build_EDA_file_list(args,parent):
     args['path_list'] = file_list
     return args
 
-def get_CDS_start(cds,rna):
+def get_CDS_loc(cds,rna):
     
     # use provided CDS for mRNA 
     if cds != "-1": 
@@ -51,7 +75,7 @@ def get_CDS_start(cds,rna):
     else:
         start,end = getLongestORF(rna)
     
-    return start
+    return start,end
         
 def getLongestORF(mRNA):
     ORF_start = -1
@@ -68,6 +92,22 @@ def getLongestORF(mRNA):
                         ORF_end = startMatch.start()+stopMatch.end()
                         longestORF = len(ORF)
                     break
+    return ORF_start,ORF_end
+
+def getFirstORF(mRNA):
+    ORF_start = -1
+    ORF_end = -1
+    longestORF = 0
+    is_found = False
+    for startMatch in re.finditer('ATG',mRNA):
+        remaining = mRNA[startMatch.start():]
+        if re.search('TGA|TAG|TAA',remaining):
+            for stopMatch in re.finditer('TGA|TAG|TAA',remaining):
+                ORF = remaining[0:stopMatch.end()]
+                if len(ORF) % 3 == 0 and len(ORF) > 30:
+                    ORF_start = startMatch.start()
+                    ORF_end = startMatch.start()+stopMatch.end()
+                    return ORF_start, ORF_end 
     return ORF_start,ORF_end
 
 def load_CDS(combined_file):

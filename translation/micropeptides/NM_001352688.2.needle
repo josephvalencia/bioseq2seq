@@ -1,0 +1,97 @@
+########################################
+# Program: needle
+# Rundate: Tue  7 Mar 2023 01:38:43
+# Commandline: needle
+#    -asequence translation/micropeptides/NM_001352688.2_true_PROTEIN.fa
+#    -bsequence translation/micropeptides/NM_001352688.2.micropeptides.fa
+#    -outfile translation/micropeptides/NM_001352688.2.needle
+#    -gapopen 10
+#    -gapextend 0.5
+#    -brief
+# Align_format: srspair
+# Report_file: translation/micropeptides/NM_001352688.2.needle
+########################################
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001352688.2
+# 2: NM_001352688.2.peptide.2
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 59
+# Identity:      47/59 (79.7%)
+# Similarity:    50/59 (84.7%)
+# Gaps:           8/59 (13.6%)
+# Score: 229.0
+# 
+#
+#=======================================
+
+NM_001352688.      1 MISVSIQLSLVINSLLIVLPVVEAVEAGDAIALLIGVVLSITGICACLGV     50
+                            ||||:.|||:|||||||||||||||||:|||||||||||||||
+NM_001352688.      1 -------LSLVLMSLLLVLPVVEAVEAGDAIALLLGVVLSITGICACLGV     43
+
+NM_001352688.     51 YARKRNGQ-     58
+                     |||||||| 
+NM_001352688.     44 YARKRNGQM     52
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001352688.2
+# 2: NM_001352688.2.peptide.3
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 60
+# Identity:      47/60 (78.3%)
+# Similarity:    50/60 (83.3%)
+# Gaps:           9/60 (15.0%)
+# Score: 219.0
+# 
+#
+#=======================================
+
+NM_001352688.      1 MISVSIQLS-LVINSLLIVLPVVEAVEAGDAIALLIGVVLSITGICACLG     49
+                            || ||:.|||:|||||||||||||||||:||||||||||||||
+NM_001352688.      1 -------LSHLVLMSLLLVLPVVEAVEAGDAIALLLGVVLSITGICACLG     43
+
+NM_001352688.     50 VYARKRNGQ-     58
+                     ||||||||| 
+NM_001352688.     44 VYARKRNGQM     53
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001352688.2
+# 2: NM_001352688.2.peptide.4
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 62
+# Identity:      47/62 (75.8%)
+# Similarity:    50/62 (80.6%)
+# Gaps:          11/62 (17.7%)
+# Score: 219.0
+# 
+#
+#=======================================
+
+NM_001352688.      1 MISVSIQLS-LVINSLLIVLPVVEAVEAGDAIALLIGVVLSITGICACLG     49
+                            || ||:.|||:|||||||||||||||||:||||||||||||||
+NM_001352688.      1 -------LSHLVLMSLLLVLPVVEAVEAGDAIALLLGVVLSITGICACLG     43
+
+NM_001352688.     50 VYARKRNGQ---     58
+                     |||||||||   
+NM_001352688.     44 VYARKRNGQMXL     55
+
+
+#---------------------------------------
+#---------------------------------------
