@@ -17,7 +17,6 @@
 *.enc_dec_attns
 *.ensemble
 *.gz
-*.fasta
 *.json
 *.scores
 *.csv
@@ -28,7 +27,6 @@
 *.txt
 *.hdf5
 *.attr
-*.pt
 *.failures
 *.needle
 \#*#
@@ -46,6 +44,7 @@ data/
 experiments/competitor_results/
 /experiments/logs/
 /experiments/archive/
+/experiments/checkpoints/
 /experiments/tools/
 /experiments/tools_old/
 /experiments/scripts/logs/

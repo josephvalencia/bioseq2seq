@@ -201,7 +201,6 @@ def restore_seq2seq_model(checkpoint,machine,opts):
     Returns:
         restored model'''
     
-    print(opts)
     vocab_fields = checkpoint['vocab'] 
     
     src_text_field = vocab_fields["src"].base_field
@@ -211,12 +210,9 @@ def restore_seq2seq_model(checkpoint,machine,opts):
     tgt_text_field = vocab_fields['tgt'].base_field
     tgt_vocab = tgt_text_field.vocab
     tgt_padding = tgt_vocab.stoi[tgt_text_field.pad_token]
-    print(tgt_vocab.stoi)    
     n_input_classes = len(src_vocab.stoi)
     n_output_classes = len(tgt_vocab.stoi)
-    print(f'n_enc = {opts.n_enc_layers} ,n_dec={opts.n_dec_layers}, n_output_classes= {n_output_classes} ,n_input_classes ={n_input_classes}')
     n_output_classes = 28 
-    print('WINDOW',opts.window_size) 
     
     if opts.model_type == 'Transformer':
         model = make_transformer_seq2seq(n_input_classes,

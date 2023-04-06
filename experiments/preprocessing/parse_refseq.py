@@ -106,6 +106,7 @@ def build_dataset(species_names,filename):
         print("lncRNAs identified")
         table = refseq_RNA(path,mRNA,lncRNA,cds,protein2rna,table)
     print("Finishing")
+    print(f'saving {filename}') 
     to_csv(table,filename)
 
 if __name__ == "__main__":

@@ -23,24 +23,22 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # optional flags
-    parser.add_argument("--verbose",action="store_true")
-    parser.add_argument("--save_SA", action="store_true")
-    parser.add_argument("--save_EDA", action="store_true")
+    parser.add_argument("--save_EDA",help="Whether to save encoder-decoder attention", action="store_true")
 
     # translate required args
     parser.add_argument("--input",help="FASTA file for translation")
-    parser.add_argument("--output_name","--o", default = "translation",help = "Name of file for saving predicted translations")
-    parser.add_argument("--checkpoint", "--c",help="Model checkpoint (.pt)")
-    parser.add_argument("--max_tokens",type = int , default = 9000, help = "Max number of tokens in training batch")
-    parser.add_argument("--mode",default = "bioseq2seq",help="bioseq2seq|EDC")
-    parser.add_argument("--rank",type=int,default = 0)
-    parser.add_argument("--num_gpus",type=int,default = 1)
+    parser.add_argument("--output_name","--o", default="translation",help="Name of file for saving predicted translations")
+    parser.add_argument("--checkpoint","--c",help="Model checkpoint (.pt)")
+    parser.add_argument("--max_tokens",type=int,default=9000,help="Max number of tokens in prediction batch")
+    parser.add_argument("--mode",default="bioseq2seq",help="Inference mode. One of bioseq2seq|EDC")
+    parser.add_argument("--rank",type=int,help="Rank of process",default=0)
+    parser.add_argument("--num_gpus",type=int,help="Number of available GPU machines",default=0)
 
     # translate optional args
-    parser.add_argument("--beam_size","--b",type = int, default = 8, help ="Beam size for decoding")
-    parser.add_argument("--n_best", type = int, default = 4, help = "Number of beams to wait for")
-    parser.add_argument("--max_decode_len", type = int, default = 400, help = "Maximum length of protein decoding")
-    parser.add_argument("--attn_save_layer", type = int,default=-1,help="If --save_attn flag is used, which layer of EDA to save")
+    parser.add_argument("--beam_size","--b",type=int, default=1, help ="Beam size for decoding")
+    parser.add_argument("--n_best",type=int, default=1, help="Number of beam hypotheses to list")
+    parser.add_argument("--max_decode_len",type=int, default=1, help="Maximum length of protein decoding")
+    parser.add_argument("--attn_save_layer",type=int,default=-1,help="If --save_attn flag is used, which layer of EDA to save")
     return parser.parse_args()
 
 
@@ -81,7 +79,6 @@ def run_helper(rank,model,vocab,args):
     
     src_text_field = vocab['src'].base_field
     src_vocab = src_text_field.vocab
-    print(src_vocab.stoi)
     tgt_text_field = vocab['tgt'].base_field
     tgt_vocab = tgt_text_field.vocab
     tgt_padding = tgt_vocab.stoi[tgt_text_field.pad_token]

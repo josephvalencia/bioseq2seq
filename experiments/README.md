@@ -1,28 +1,30 @@
 ## Reproducing Experiments
-Here we provide instructions and code for reproducing our paper results.
+Here we provide instructions and code for reproducing our paper results. Begin from the root directory for the project.
 
 ### Data preprocessing
 Build a combined mammalian dataset from the raw RefSeq files. Obtain train/test/val split with evaluation sets limited to 80% seq. identity with train set and maximum length of 1200 nt.
 ```
-./scripts/gen_datasets.sh
+bash gen_datasets.sh
 ```
 ### Hyperparameter tuning
 Use Ray Tune to tune hyperparameters for bioseq2seq and EDC using the BOHB algorithm.
 ```
-./scripts/tune_all.sh
+bash experiments/scripts/tune_all.sh
 ```
 ### Model training 
-Train multiple replicates (4) for best bioseq2seq and EDC hyperparams, as well as EDC equivalent.
+Train multiple replicates (4) for best bioseq2seq and EDC hyperparams, as well as EDC equivalent. The driver script run.sh uses GNU Parallell to 
 ```
-./scripts/replicates_train.sh
+bash experiments/scripts/run.sh $SCRIPT_DIR/train_all_replicates.txt
 ```
+
+
 ### Inference and evaluation 
 ```
-./scripts/replicates_predict.sh
+bash experiments/scripts/replicates_predict.sh
 ```
 ### Comparisons with alternative software 
 ```
-./scripts/run_tools.sh
+bash experiments/scripts/run_tools.sh
 ```
 ### Attribution calculation 
 ```

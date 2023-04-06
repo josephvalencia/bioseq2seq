@@ -150,14 +150,6 @@ def to_fasta(df,name,column='RNA'):
 def make_record(id,rna):
     return SeqRecord(Seq(rna),id=id,description='')
 
-def short_zebrafish(zebrafile):
-
-    #data = pd.read_csv(zebrafile,sep='\t')
-    #shorter = filter_by_length(data,1000,min_len=0)
-    #shorter.to_csv('zebrafish_1k.csv',sep='\t',index=False)
-    #to_fasta(shorter,'zebrafish_1k_RNA.fa')
-    reduce_redundancy('data/mammalian_1k_train_RNA.fa','data/zebrafish_1k')
-
 def filter_by_length(df,max_len,min_len=0):
     '''Filter dataframe to RNA within (min_len,max_len)'''
     

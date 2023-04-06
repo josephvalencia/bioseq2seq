@@ -1,61 +1,51 @@
 # bioseq2seq
 
 ## Overview
-This is the official code for the preprint [Learning to translate with LocalFilterNets improves prediction of protein coding potential](https://arxiv.org/pdf/1805.11462).
-In this work, we demonstrate the utility of incorporating a training task based on biological translation into a deep learning classifier for distinguishing messenger RNAs (mRNAs) from long noncoding RNAs (lncRNAs). We introduce an architecture called LocalFilterNet which helps to capture the nonstationary 3-nucleotide periodicity that is typically present in coding RNA regions. Finally, we perform model interpretation and uncover both well-known and potentially novel sequence features that may be related to translational regulation. 
+This is the official repositorty for the preprint [Improving deep models of protein-coding potential with a Fourier-transform architecture and machine translation task](https://www.biorxiv.org/content/10.1101/2023.04.03.535488v1).
 
-This repository began as a fork of [OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py),a library for neural machine translation built by Harvard NLP,  which we have modified for modeling biological translation.
-
-## Citation
-
-If you use our code or data for academic work please cite our preprint:
-
-```
-@article{valencia2022translating,
-title={Learning to translate with LocalFilterNets improves prediction of protein coding potential},
-author={Valencia, Joseph and Hendrix, David},
-journaltitle={},
-pages={},
-year={2022},
-pdf={http://arxiv.org/abs/}
-}
-```
+This repository began as a fork of [OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py), a library for neural machine translation built by Harvard NLP. We have modified and extended it for modeling biological translation.
 
 ## Installation
 
 bioseq2seq requires Python 3.6 or higher and PyTorch 1.8 or higher.
 
-Install `bioseq2seq` from `pip`:
-```bash
-pip install bioseq2seq
-```
-or from  source:
+Install `bioseq2seq` from source:
+
 ```bash
 git clone https://github.com/josephvalencia/bioseq2seq.git
 cd bioseq2seq
-python setup.py install
+./install.sh
 ```
 All dependencies for single-model training and inference are included in the pip distribution as well as [requirements.txt](requirements.txt). Additional dependencies are needed for fully replicating the paper. 
 
 ## Pretrained model
 
-We provide pretrained PyTorch weights for our best model `bioseq2seq_mammalian_refseq.pth`
+We provide pretrained PyTorch weights for our best model `best_bioseq2seq_mammalian_200-1200.pt` and our testing set
+`mammalian_200-1200_test_RNA_nonredundant_80.fasta`
 
-## Usage
+## Basic usage
+To obtain a prediction
+```
+python bioseq2seq/bin/translate_new.py --checkpoint <checkpoint> --input <input_fasta> --num_gpus <n> 
+```
+e.g.
+```
+python bioseq2seq/bin/translate_new.py --checkpoint best_bioseq2seq_mammalian_200-1200.pt --input mammalian_200-1200_test_RNA_nonredundant_80.fasta --num_gpus 1 
+```
+To output peptide predictions for mRNAs, run
+```
+python bioseq2seq/bin/translate_new.py --checkpoint best_bioseq2seq_mammalian_200-1200.pt --input mammalian_200-1200_test_RNA_nonredundant_80.fasta --mode bioseq2seq --num_gpus 1 --beam_size 4 --n_best 4 --max_tokens 1200 --max_decode_len 400
+```
+This will produce four prediction hypotheses, ranked in descending order of score.
 
-### Running inference with a pretrained model
-
-To obtain predictions from a pretrained model, use the `bioseq2seq translate` command. The only required arguments are `--input` for the name of a FASTA file of RNAs, and `--checkpoint` 
-for the model weights (.pth).
-
-### Training a new model
-
-To obtain predictions from a pretrained model, use the `bioseq2seq translate` The only required arguments are `--i` for the name of a FASTA file of RNAs, and `--checkpoint` 
-for the model weights (.pth).
+For further usage options, see
+```
+python bioseq2seq/bin/translate_new.py --help
+```
 
 ## Paper experiments
 
-Detailed instructions and code for reproducing the paper results are given in the [valencia22/](valencia22/) directory. This includes:
+Detailed instructions and code for reproducing the paper results are given in [experiments/](experiments/). This includes:
 * data preprocessing
 * hyperparameter tuning
 * model training 
@@ -63,5 +53,4 @@ Detailed instructions and code for reproducing the paper results are given in th
 * comparisons with alternative software for protein coding potential
 * filter visualization
 * attribution calculation and motif finding 
-* plotting 
-
+* plots for paper figures 
