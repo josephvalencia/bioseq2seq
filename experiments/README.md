@@ -7,17 +7,20 @@ Build a combined mammalian dataset from the raw RefSeq files. Obtain train/test/
 bash gen_datasets.sh
 ```
 ### Hyperparameter tuning
-Use Ray Tune to tune hyperparameters for bioseq2seq and EDC using the BOHB algorithm.
+Use Ray Tune to tune hyperparameters for bioseq2seq and EDC using the BOHB algorithm. First you'll need to set your [Weights & Biases](https://wandb.ai/site) API key for logging purposes.
+
 ```
+export WANDB_KEY=<your_key>
 bash experiments/scripts/tune_all.sh
 ```
+
 ### Model training 
-Train multiple replicates (4) for best bioseq2seq and EDC hyperparams, as well as EDC equivalent. The driver script run.sh uses GNU Parallell to 
-```
-bash experiments/scripts/run.sh $SCRIPT_DIR/train_all_replicates.txt
-```
+Train multiple replicates (4) for best bioseq2seq and EDC hyperparams, as well as EDC equivalent. The driver script run.sh uses GNU Parallel to execute multiple commands from a text file in parallel. First, source `experiments/scripts/templates.sh`, which profides many commands for the remaining steps. 
 
-
+```
+source experiments/scripts/templates.sh
+bash experiments/scripts/run.sh experiments/scripts/train_all_replicates.txt
+```
 ### Inference and evaluation 
 ```
 bash experiments/scripts/replicates_predict.sh

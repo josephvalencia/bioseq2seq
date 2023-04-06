@@ -1,7 +1,7 @@
 import ConfigSpace as CS  
 import argparse
 from argparse import Namespace
-
+import os
 import ray
 from ray import tune
 from ray.tune.schedulers.hb_bohb import HyperBandForBOHB
@@ -78,8 +78,9 @@ if __name__ == "__main__":
     name = f"final_BOHB_search_{cmd_args.mode}_{cmd_args.model_type}"
     train_wrapper = tune.with_parameters(train_protein_coding_potential,cmd_args=cmd_args)
     
-    wandb_callback = WandbLoggerCallback(project=f"{cmd_args.mode}-{cmd_args.model_type} Hyperparam Search",\
-                    api_key="415f7e8e731deb5b2aeb354cb62f72a2c4556657",log_config=False)
+    #wandb_callback = WandbLoggerCallback(project=f"{cmd_args.mode}-{cmd_args.model_type} Hyperparam Search",\
+    wandb_callback = WandbLoggerCallback(project=f"testrun",\
+                    api_key=os.environ["WANDB_KEY"],log_config=False)
     
     total_time_allowed = 7*24*60*60 # 7 days in seconds 
   

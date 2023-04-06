@@ -1,0 +1,4 @@
+$PRED_DESIGNED_EDC_NC --checkpoint ${CHKPT_DIR}/EDC_1_Jun27_08-35-05/_step_6000.pt --output_name ${OUT_DIR}/EDC_1_Jun27_08-35-05_step_6000/ 
+$PRED_DESIGNED_EDC_NC --checkpoint ${CHKPT_DIR}/EDC_2_Jun27_08-35-05/_step_4500.pt --output_name ${OUT_DIR}/EDC_2_Jun27_08-35-05_step_4500/ 
+$PRED_DESIGNED_EDC_NC --checkpoint ${CHKPT_DIR}/EDC_3_Jun27_08-35-05/_step_2000.pt --output_name ${OUT_DIR}/EDC_3_Jun27_08-35-05_step_2000/ 
+$PRED_DESIGNED_EDC_NC --checkpoint ${CHKPT_DIR}/EDC_4_Jun27_08-35-05/_step_3000.pt --output_name ${OUT_DIR}/EDC_4_Jun27_08-35-05_step_3000/ 
