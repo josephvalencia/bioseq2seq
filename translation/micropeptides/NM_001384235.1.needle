@@ -1,0 +1,85 @@
+########################################
+# Program: needle
+# Rundate: Tue  4 Apr 2023 13:33:22
+# Commandline: needle
+#    -asequence translation/micropeptides/NM_001384235.1_true_PROTEIN.fa
+#    -bsequence translation/micropeptides/NM_001384235.1.micropeptides.fa
+#    -outfile translation/micropeptides/NM_001384235.1.needle
+#    -gapopen 10
+#    -gapextend 0.5
+#    -brief
+# Align_format: srspair
+# Report_file: translation/micropeptides/NM_001384235.1.needle
+########################################
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001384235.1
+# 2: NM_001384235.1.peptide.1
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 47
+# Identity:      47/47 (100.0%)
+# Similarity:    47/47 (100.0%)
+# Gaps:           0/47 ( 0.0%)
+# Score: 238.0
+# 
+#
+#=======================================
+
+NM_001384235.      1 MLQFLLGFTLGNVVGMYLAQNYEMPNLAKKLEEIKKDLEAKKKPPSS     47
+                     |||||||||||||||||||||||||||||||||||||||||||||||
+NM_001384235.      1 MLQFLLGFTLGNVVGMYLAQNYEMPNLAKKLEEIKKDLEAKKKPPSS     47
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001384235.1
+# 2: NM_001384235.1.peptide.2
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 47
+# Identity:      46/47 (97.9%)
+# Similarity:    46/47 (97.9%)
+# Gaps:           1/47 ( 2.1%)
+# Score: 224.0
+# 
+#
+#=======================================
+
+NM_001384235.      1 MLQFLLGFTLGNVVGMYLAQNYEMPNLAKKLEEIKKDLEAKKKPPSS     47
+                     |||| ||||||||||||||||||||||||||||||||||||||||||
+NM_001384235.      1 MLQF-LGFTLGNVVGMYLAQNYEMPNLAKKLEEIKKDLEAKKKPPSS     46
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NM_001384235.1
+# 2: NM_001384235.1.peptide.3
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 47
+# Identity:      36/47 (76.6%)
+# Similarity:    37/47 (78.7%)
+# Gaps:          10/47 (21.3%)
+# Score: 168.5
+# 
+#
+#=======================================
+
+NM_001384235.      1 MLQFLLGFTLGNVVGMYLAQNYEMPNLAKKLEEIKKDLEAKKKPPSS     47
+                     |||||          :|||||||||||||||||||||||||||||||
+NM_001384235.      1 MLQFL----------VYLAQNYEMPNLAKKLEEIKKDLEAKKKPPSS     37
+
+
+#---------------------------------------
+#---------------------------------------

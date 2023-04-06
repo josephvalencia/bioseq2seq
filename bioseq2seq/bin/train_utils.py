@@ -38,6 +38,7 @@ def parse_train_args():
     parser.add_argument("--val_src",help = "FASTA file of validation set RNA")
     parser.add_argument("--val_tgt",help = "FASTA file of validation set protein or class labels")
     parser.add_argument("--save-directory","--s", default = "checkpoints/", help = "Name of directory for saving model checkpoints")
+    parser.add_argument("--name", default = "model", help = "Name of saved model")
     parser.add_argument("--model_type","--m", default = "GFNet", help = "Model architecture type.|Transformer|CNN|GFNet|")
     parser.add_argument("--learning-rate","--lr", type = float, default = 1.0,help = "Optimizer learning rate")
     parser.add_argument("--lr_warmup_steps", type = int, default = 4000,help = "Warmup steps for Noam learning rate schedule")
@@ -50,6 +51,7 @@ def parse_train_args():
     parser.add_argument("--patience", type = int, default = 5, help = "Maximum epochs without improvement")
     parser.add_argument("--address",default =  "127.0.0.1",help = "IP address for master process in distributed training")
     parser.add_argument("--port",default = "6000",help = "Port for master process in distributed training")
+    parser.add_argument("--rank",type = int, default = 0,help = "Rank in distributed training")
     parser.add_argument("--n_enc_layers",type=int,default = 6,help= "Number of encoder layers")
     parser.add_argument("--class_weight",type=int,default = 1,help="Relative weight of classification label relative to others")
     parser.add_argument("--dropout",type=float,default = 0.1,help="Dropout of non-attention layers")
@@ -59,6 +61,7 @@ def parse_train_args():
     parser.add_argument("--filter_size",type=int,default = 50,help="Size of GFNet filter")
     parser.add_argument("--window_size",type=int,default = 200,help="Size of STFNet windows")
     parser.add_argument("--lambd_L1",type=float,default = 0.5,help="Sparsity threshold")
+    parser.add_argument("--random_seed",type=int,default = 65,help="Seed")
 
     # optional flags
     parser.add_argument("--checkpoint", "--c", help = "Name of .pt model to initialize training")
@@ -210,7 +213,7 @@ def build_or_restore_model(args):
         
     return seq2seq
 
-def train_helper(rank,args,seq2seq,random_seed,tune=False):
+def train_helper(rank,args,seq2seq,tune=False):
 
     """ Train and validate on subset of data. In DistributedDataParallel setting, use one GPU per process.
     Args:
@@ -220,9 +223,6 @@ def train_helper(rank,args,seq2seq,random_seed,tune=False):
         random_seed (int): Used for deterministic dataset partitioning
     """
     # seed to control allocation of data to devices
-    random.seed(random_seed)
-    random_state = random.getstate()
-   
     vocab_fields = build_standard_vocab()
 
     device = "cpu"
@@ -294,13 +294,17 @@ def train_helper(rank,args,seq2seq,random_seed,tune=False):
         from bioseq2seq.utils.raytune_utils import RayTuneReportMgr # unconditional import is unsafe, Ray takes over exception handling
         report_manager = RayTuneReportMgr(report_every=args.report_every)
     else: # ONMT monitoring 
-        writer = SummaryWriter() if rank == 0 else None 
+
+        writer = None
+        if rank == 0 or args.num_gpus == 1:
+            writer = SummaryWriter()
         report_manager = ReportMgr(report_every=args.report_every,tensorboard_writer=writer)
 
     saver = None
-    # only rank 0 device is responsible for saving models
-    if rank == 0:
-        save_path =  args.save_directory + datetime.now().strftime('%b%d_%H-%M-%S')+"/"
+    # only one device is responsible for saving models
+    if rank == 0 or args.num_gpus == 1:
+        time = datetime.now().strftime('%b%d_%H-%M-%S')
+        save_path = f'{args.save_directory}{args.name}_{time}/'
         if not os.path.isdir(save_path):
             logger.info(f"Building directory {save_path}")
             os.mkdir(save_path)
@@ -333,19 +337,25 @@ def train_helper(rank,args,seq2seq,random_seed,tune=False):
 def train_seq2seq(args,tune=False):
     
     init_logger()
-    seed = 65
+    
+    # set random seed for reproducibility
+    seed = args.random_seed
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+
     seq2seq = build_or_restore_model(args) 
     print_model_size(seq2seq)
 
     if args.num_gpus > 1:
         logger.info("Multi-GPU training")
-        torch.multiprocessing.spawn(train_helper, nprocs=args.num_gpus, join=True, args=(args,seq2seq,seed,tune))
+        torch.multiprocessing.spawn(train_helper, nprocs=args.num_gpus, join=True, args=(args,seq2seq,tune))
         torch.distributed.destroy_process_group()
     elif args.num_gpus == 1:
         logger.info("Single-GPU training")
-        train_helper(0,args,seq2seq,seed,tune)
+        train_helper(args.rank,args,seq2seq,tune)
     else:
         logger.info("CPU training")
-        train_helper(0,args,seq2seq,seed,tune)
+        train_helper(0,args,seq2seq,tune)
     logger.info("Training complete")
     

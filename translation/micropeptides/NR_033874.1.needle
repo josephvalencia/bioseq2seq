@@ -1,0 +1,109 @@
+########################################
+# Program: needle
+# Rundate: Tue  4 Apr 2023 13:33:22
+# Commandline: needle
+#    -asequence translation/micropeptides/NR_033874.1_true_PROTEIN.fa
+#    -bsequence translation/micropeptides/NR_033874.1.micropeptides.fa
+#    -outfile translation/micropeptides/NR_033874.1.needle
+#    -gapopen 10
+#    -gapextend 0.5
+#    -brief
+# Align_format: srspair
+# Report_file: translation/micropeptides/NR_033874.1.needle
+########################################
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NR_033874.1
+# 2: NR_033874.1.peptide.1
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 130
+# Identity:     130/130 (100.0%)
+# Similarity:   130/130 (100.0%)
+# Gaps:           0/130 ( 0.0%)
+# Score: 696.0
+# 
+#
+#=======================================
+
+NR_033874.1        1 MRTKPQRPRATRSYLGQPCGSPRRTEETGETWERVAFSLFTHTCTQPLAG     50
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+NR_033874.1.p      1 MRTKPQRPRATRSYLGQPCGSPRRTEETGETWERVAFSLFTHTCTQPLAG     50
+
+NR_033874.1       51 TVDTHLPSLLLPVILHPLGAASAGRALEPKADPHTCPYGRKESRGEKVRR    100
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+NR_033874.1.p     51 TVDTHLPSLLLPVILHPLGAASAGRALEPKADPHTCPYGRKESRGEKVRR    100
+
+NR_033874.1      101 GRAKSNSGPNVPGPPAAPQSLKSGSPSTRR    130
+                     ||||||||||||||||||||||||||||||
+NR_033874.1.p    101 GRAKSNSGPNVPGPPAAPQSLKSGSPSTRR    130
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NR_033874.1
+# 2: NR_033874.1.peptide.3
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 130
+# Identity:     129/130 (99.2%)
+# Similarity:   129/130 (99.2%)
+# Gaps:           1/130 ( 0.8%)
+# Score: 681.0
+# 
+#
+#=======================================
+
+NR_033874.1        1 MRTKPQRPRATRSYLGQPCGSPRRTEETGETWERVAFSLFTHTCTQPLAG     50
+                     |||||||| |||||||||||||||||||||||||||||||||||||||||
+NR_033874.1.p      1 MRTKPQRP-ATRSYLGQPCGSPRRTEETGETWERVAFSLFTHTCTQPLAG     49
+
+NR_033874.1       51 TVDTHLPSLLLPVILHPLGAASAGRALEPKADPHTCPYGRKESRGEKVRR    100
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+NR_033874.1.p     50 TVDTHLPSLLLPVILHPLGAASAGRALEPKADPHTCPYGRKESRGEKVRR     99
+
+NR_033874.1      101 GRAKSNSGPNVPGPPAAPQSLKSGSPSTRR    130
+                     ||||||||||||||||||||||||||||||
+NR_033874.1.p    100 GRAKSNSGPNVPGPPAAPQSLKSGSPSTRR    129
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NR_033874.1
+# 2: NR_033874.1.peptide.4
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 130
+# Identity:     129/130 (99.2%)
+# Similarity:   129/130 (99.2%)
+# Gaps:           0/130 ( 0.0%)
+# Score: 689.0
+# 
+#
+#=======================================
+
+NR_033874.1        1 MRTKPQRPRATRSYLGQPCGSPRRTEETGETWERVAFSLFTHTCTQPLAG     50
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+NR_033874.1.p      1 MRTKPQRPRATRSYLGQPCGSPRRTEETGETWERVAFSLFTHTCTQPLAG     50
+
+NR_033874.1       51 TVDTHLPSLLLPVILHPLGAASAGRALEPKADPHTCPYGRKESRGEKVRR    100
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
+NR_033874.1.p     51 TVDTHLPSLLLPVILHPLGAASAGRALEPKADPHTCPYGRKESRGEKVRR    100
+
+NR_033874.1      101 GRAKSNSGPNVPGPPAAPQSLKSGSPSTRR    130
+                     |||||||||||||||||||||||||||||.
+NR_033874.1.p    101 GRAKSNSGPNVPGPPAAPQSLKSGSPSTRL    130
+
+
+#---------------------------------------
+#---------------------------------------

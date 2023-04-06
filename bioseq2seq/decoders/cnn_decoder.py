@@ -51,7 +51,7 @@ class CNNDecoder(DecoderBase):
     def detach_state(self):
         self.state["previous_input"] = self.state["previous_input"].detach()
 
-    def forward(self, tgt, memory_bank, step=None, **kwargs):
+    def forward(self, tgt, memory_bank, step=None,grad_mode=False, **kwargs):
         """ See :obj:`bioseq2seq.modules.RNNDecoderBase.forward()`"""
 
         if self.state["previous_input"] is not None:
@@ -60,7 +60,7 @@ class CNNDecoder(DecoderBase):
         dec_outs = []
         attns = {"std": []}
 
-        emb = self.embeddings(tgt)
+        emb = self.embeddings(tgt,grad_mode=grad_mode)
         assert emb.dim() == 3  # len x batch x embedding_dim
 
         tgt_emb = emb.transpose(0, 1).contiguous()

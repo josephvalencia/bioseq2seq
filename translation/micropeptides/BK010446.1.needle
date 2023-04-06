@@ -1,0 +1,149 @@
+########################################
+# Program: needle
+# Rundate: Tue  4 Apr 2023 13:33:22
+# Commandline: needle
+#    -asequence translation/micropeptides/BK010446.1_true_PROTEIN.fa
+#    -bsequence translation/micropeptides/BK010446.1.micropeptides.fa
+#    -outfile translation/micropeptides/BK010446.1.needle
+#    -gapopen 10
+#    -gapextend 0.5
+#    -brief
+# Align_format: srspair
+# Report_file: translation/micropeptides/BK010446.1.needle
+########################################
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: BK010446.1
+# 2: BK010446.1.peptide.2
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 294
+# Identity:      46/294 (15.6%)
+# Similarity:    46/294 (15.6%)
+# Gaps:         248/294 (84.4%)
+# Score: 246.0
+# 
+#
+#=======================================
+
+BK010446.1         1 MLWLPDRGSCSARSPSGMLRGAPGGWRYGRRCGRRRQSCCCCCCCSHVGA     50
+                     |||||||||||||||||||||||||||||||||||||||||||||     
+BK010446.1.pe      1 MLWLPDRGSCSARSPSGMLRGAPGGWRYGRRCGRRRQSCCCCCCC-----     45
+
+BK010446.1        51 PLSFHREASLVSHDGHDIMKQHCGEESIRGAHGYKNK-------------     87
+                                           |                           
+BK010446.1.pe     46 ----------------------C--------------CCCCCCCCCCCCC     59
+
+BK010446.1        87 --------------------------------------------------     87
+                                                                       
+BK010446.1.pe     60 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC    109
+
+BK010446.1        87 --------------------------------------------------     87
+                                                                       
+BK010446.1.pe    110 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC    159
+
+BK010446.1        87 --------------------------------------------------     87
+                                                                       
+BK010446.1.pe    160 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC    209
+
+BK010446.1        87 --------------------------------------------     87
+                                                                 
+BK010446.1.pe    210 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCSHGKELKQRAFSPG    253
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: BK010446.1
+# 2: BK010446.1.peptide.3
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 293
+# Identity:      46/293 (15.7%)
+# Similarity:    46/293 (15.7%)
+# Gaps:         247/293 (84.3%)
+# Score: 246.0
+# 
+#
+#=======================================
+
+BK010446.1         1 MLWLPDRGSCSARSPSGMLRGAPGGWRYGRRCGRRRQSCCCCCCCSHVGA     50
+                     |||||||||||||||||||||||||||||||||||||||||||||     
+BK010446.1.pe      1 MLWLPDRGSCSARSPSGMLRGAPGGWRYGRRCGRRRQSCCCCCCC-----     45
+
+BK010446.1        51 PLSFHREASLVSHDGHDIMKQHCGEESIRGAHGYKNK-------------     87
+                                           |                           
+BK010446.1.pe     46 ----------------------C--------------CCCCCCCCCCCCC     59
+
+BK010446.1        87 --------------------------------------------------     87
+                                                                       
+BK010446.1.pe     60 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC    109
+
+BK010446.1        87 --------------------------------------------------     87
+                                                                       
+BK010446.1.pe    110 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC    159
+
+BK010446.1        87 --------------------------------------------------     87
+                                                                       
+BK010446.1.pe    160 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC    209
+
+BK010446.1        87 -------------------------------------------     87
+                                                                
+BK010446.1.pe    210 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCSHGKELKQRAFSPG    252
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: BK010446.1
+# 2: BK010446.1.peptide.4
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 313
+# Identity:      46/313 (14.7%)
+# Similarity:    46/313 (14.7%)
+# Gaps:         267/313 (85.3%)
+# Score: 246.0
+# 
+#
+#=======================================
+
+BK010446.1         1 MLWLPDRGSCSARSPSGMLRGAPGGWRYGRRCGRRRQSCCCCCCCSHVGA     50
+                     |||||||||||||||||||||||||||||||||||||||||||||     
+BK010446.1.pe      1 MLWLPDRGSCSARSPSGMLRGAPGGWRYGRRCGRRRQSCCCCCCC-----     45
+
+BK010446.1        51 PLSFHREASLVSHDGHDIMKQHCGEESIRGAHGYKNK-------------     87
+                                           |                           
+BK010446.1.pe     46 ----------------------C--------------CCCCCCCCCCCCC     59
+
+BK010446.1        87 --------------------------------------------------     87
+                                                                       
+BK010446.1.pe     60 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC    109
+
+BK010446.1        87 --------------------------------------------------     87
+                                                                       
+BK010446.1.pe    110 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC    159
+
+BK010446.1        87 --------------------------------------------------     87
+                                                                       
+BK010446.1.pe    160 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC    209
+
+BK010446.1        87 --------------------------------------------------     87
+                                                                       
+BK010446.1.pe    210 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCS    259
+
+BK010446.1        87 -------------     87
+                                  
+BK010446.1.pe    260 HGKELKQRAFSPG    272
+
+
+#---------------------------------------
+#---------------------------------------

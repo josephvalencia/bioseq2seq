@@ -212,7 +212,8 @@ class LossComputeBase(nn.Module):
         non_padding = target.ne(self.padding_idx)
         num_correct = pred.eq(target).masked_select(non_padding).sum().item()
         num_non_padding = non_padding.sum().item()
-        return bioseq2seq.utils.Statistics(loss.item(), num_non_padding, num_correct,n_batches,n_correct_class)
+        #return bioseq2seq.utils.Statistics(loss.item(), num_non_padding, num_correct,n_batches,n_correct_class)
+        return bioseq2seq.utils.Statistics(loss.sum().item(), num_non_padding, num_correct,n_batches,n_correct_class)
 
     def _bottle(self, _v):
         return _v.view(-1, _v.size(2))

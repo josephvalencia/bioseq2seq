@@ -23,6 +23,7 @@ class PositionalEncoding(nn.Module):
         if dim % 2 != 0:
             raise ValueError("Cannot use sin/cos positional encoding with "
                              "odd dim (got dim={:d})".format(dim))
+        ''' 
         pe = torch.zeros(max_len, dim)
         position = torch.arange(0, max_len).unsqueeze(1)
         div_term = torch.exp((torch.arange(0, dim, 2, dtype=torch.float) *
@@ -30,10 +31,23 @@ class PositionalEncoding(nn.Module):
         pe[:, 0::2] = torch.sin(position.float() * div_term)
         pe[:, 1::2] = torch.cos(position.float() * div_term)
         pe = pe.unsqueeze(1)
+        '''
+        pe = self.init_encodings(max_len,dim)
         super(PositionalEncoding, self).__init__()
         self.register_buffer('pe', pe)
         self.dropout = nn.Dropout(p=dropout)
         self.dim = dim
+
+    def init_encodings(self,max_len,dim):
+        
+        pe = torch.zeros(max_len, dim)
+        position = torch.arange(0, max_len).unsqueeze(1)
+        div_term = torch.exp((torch.arange(0, dim, 2, dtype=torch.float) *
+                             -(math.log(10000.0) / dim)))
+        pe[:, 0::2] = torch.sin(position.float() * div_term)
+        pe[:, 1::2] = torch.cos(position.float() * div_term)
+        pe = pe.unsqueeze(1)
+        return pe
 
     def forward(self, emb, step=None):
         """Embed inputs.
@@ -45,11 +59,15 @@ class PositionalEncoding(nn.Module):
                 the encoding for this position.
         """
         emb = emb * math.sqrt(self.dim)
+        pe = self.pe 
         if step is None:
-            emb = emb + self.pe[:emb.size(0)]
+            pe = self.pe
+            if emb.shape[0] != self.pe.shape[0]:
+                pe = self.init_encodings(emb.shape[0],self.dim).to(emb.device)
+            #emb = emb + self.pe[:emb.size(0)]
+            emb = emb + pe[:emb.size(0)]
         else:
             emb = emb + self.pe[step]
-        diff = self.pe[:emb.size(0)]
         emb = self.dropout(emb)
         return emb
 

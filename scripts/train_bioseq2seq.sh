@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-source venv/bin/activate
-export BIOHOME=/home/bb/valejose/home/bioseq2seq
-export PYTHONPATH=/home/bb/valejose/home/bioseq2seq
-#bash scripts/bioseq2seq_pred_val.sh
-python $BIOHOME/bioseq2seq/bin/train_single_model.py --train_src $BIOHOME/new_data/mammalian_200-1200_train_RNA_balanced.fa --train_tgt $BIOHOME/new_data/mammalian_200-1200_train_PROTEIN_balanced.fa --val_src $BIOHOME/new_data/mammalian_200-1200_val_RNA_nonredundant_80.fa --val_tgt $BIOHOME/new_data/mammalian_200-1200_val_PROTEIN_nonredundant_80.fa --num_gpus 4 --mode bioseq2seq --save-directory $BIOHOME/checkpoints/coding_noncoding/ --accum_steps 8 --max_tokens 9000 --n_enc_layers 12 --n_dec_layers 2 --model_dim 64 --max_rel_pos 8 --report-every 500 --max-epochs 100000 --patience 10 --lr 1.0 --model_type LFNet --filter_size 50 --window_size 300 --lr_warmup_steps 2000
-#python $biohome/bioseq2seq/bin/train_single_model.py --train data/mammalian_200-1200/mammalian_200-1200_train_balanced.csv --val data/mammalian_200-1200/mammalian_200-1200_val_nonredundant_80.csv --num_gpus 1 --mode bioseq2seq --save-directory $biohome/checkpoints/coding_noncoding/ --accum_steps 8 --max_tokens 9000 --n_enc_layers 2 --n_dec_layers 2 --model_dim 32 --max_rel_pos 8 --report-every 2 --max-epochs 20 --patience 10 --lr 1.0 --model_type gfnet --filter_size 100
-#python $BIOHOME/bioseq2seq/bin/train.py --train data/mammalian_200-1200/mammalian_200-1200_train_balanced.csv --val data/mammalian_200-1200/mammalian_200-1200_val_nonredundant_80.csv --num_gpus 0 --mode bioseq2seq --save-directory $BIOHOME/checkpoints/coding_noncoding/ --accum_steps 1 --max_tokens 9000 --n_enc_layers 8 --n_dec_layers 4 --model_dim 32 --max_rel_pos 8 --report-every 500 --max-epochs 100000 --patience 10 --lr 1e-4 --checkpoint $BIOHOME/checkpoints/coding_noncoding/Jan26_08-04-23/_step_1000.pt
-

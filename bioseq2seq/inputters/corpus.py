@@ -1,5 +1,5 @@
 """Module that contain shard utils for dynamic data."""
-import os
+import os, re
 from bioseq2seq.utils.logging import logger
 from bioseq2seq.constants import CorpusName
 from bioseq2seq.transforms import TransformPipe
@@ -58,7 +58,7 @@ class DatasetAdapter(object):
     """Adapte a buckets of tuples into examples of a torchtext Dataset."""
 
     valid_field_name = (
-        'src', 'tgt', 'indices', 'src_map', 'src_ex_vocab', 'alignment',
+        'src', 'tgt', 'indices','src_map', 'src_ex_vocab', 'alignment',
         'align')
 
     def __init__(self, fields, is_train):
@@ -70,7 +70,7 @@ class DatasetAdapter(object):
         """Return valid fields in dict format."""
         return {
             f_k: f_v for f_k, f_v in fields.items()
-            if f_k in cls.valid_field_name
+            if f_k in cls.valid_field_name or re.search(f'src_.*',f_k)
         }
 
     @staticmethod
@@ -83,7 +83,6 @@ class DatasetAdapter(object):
             example, is_train=is_train, corpus_name=cid)
         if maybe_example is None:
             return None
-
         maybe_example['src'] = {"src": ' '.join(maybe_example['src'])}
 
         # Make features part of src as in TextMultiField
@@ -117,6 +116,7 @@ class DatasetAdapter(object):
                     maybe_example, self.fields_dict)
                 ex_fields = {k: [(k, v)] for k, v in self.fields_dict.items()
                              if k in example}
+                #print(f"example={example},ex_fields={ex_fields}")
                 ex = TorchtextExample.fromdict(example, ex_fields)
                 examples.append(ex)
         return examples
@@ -198,6 +198,7 @@ class ParallelFastaCorpus(ParallelCorpus):
                         'src_original': sline,
                         'tgt_original': tline
                     }
+                    
                     if align is not None:
                         example['align'] = align.decode('utf-8')
                     if features:

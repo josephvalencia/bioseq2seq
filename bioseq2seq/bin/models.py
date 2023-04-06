@@ -24,10 +24,14 @@ class Generator(nn.Module):
         else:
             return linear
 
-def make_cnn_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dropout=0.1,encoder_kernel_size=3,decoder_kernel_size=3,dilation_factor=1):
+#def make_cnn_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dropout=0.1,encoder_kernel_size=3,decoder_kernel_size=3,dilation_factor=1):
 
+def make_cnn_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=128,dropout=0.1,encoder_kernel_size=3,decoder_kernel_size=3,dilation_factor=1,dim_ff=2048,heads=8,max_rel_pos=8):
+    
     '''construct CNN encoder-decoder from hyperparameters'''
 
+    attention_dropout = 0.1
+    
     nucleotide_embeddings = Embeddings(word_vec_size = model_dim,
                                        word_vocab_size = n_input_classes,
                                        word_padding_idx = 1,
@@ -37,20 +41,35 @@ def make_cnn_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=
                                     word_vocab_size = n_output_classes,
                                     word_padding_idx = 1,
                                     position_encoding = True)
-
     encoder_stack = CNNEncoder(num_layers = n_enc,
                                        hidden_size = model_dim,
                                        cnn_kernel_width = encoder_kernel_size,
                                        dropout = dropout,
                                        embeddings = nucleotide_embeddings,
                                        dilation_factor=dilation_factor)
-    
+    ''' 
     decoder_stack = CNNDecoder(num_layers = n_dec,
                                        hidden_size = model_dim,
                                        cnn_kernel_width = decoder_kernel_size,
                                        dropout = dropout,
                                        embeddings = protein_embeddings)
+    '''
 
+    decoder_stack = TransformerDecoder(num_layers = n_dec,
+                                       d_model = model_dim,
+                                       heads = heads,
+                                       d_ff = dim_ff,
+                                       dropout = dropout,
+                                       embeddings = protein_embeddings,
+                                       self_attn_type = 'scaled-dot',
+                                       copy_attn = False,
+                                       max_relative_positions = max_rel_pos,
+                                       aan_useffn = False,
+                                       attention_dropout = attention_dropout,
+                                       full_context_alignment = False,
+                                       alignment_heads = None,
+                                       alignment_layer = None)
+    
     generator = Generator(model_dim,n_output_classes)
     model = NMTModel(encoder_stack,decoder_stack)
     model.generator = generator
@@ -173,3 +192,54 @@ def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_d
 
     return model
 
+
+def restore_seq2seq_model(checkpoint,machine,opts):
+    ''' Restore a seq2seq model from .pt
+    Args:
+        checkpoint : path to .pt saved model
+        machine : torch device
+    Returns:
+        restored model'''
+    
+    vocab_fields = checkpoint['vocab'] 
+    
+    src_text_field = vocab_fields["src"].base_field
+    src_vocab = src_text_field.vocab
+    src_padding = src_vocab.stoi[src_text_field.pad_token]
+
+    tgt_text_field = vocab_fields['tgt'].base_field
+    tgt_vocab = tgt_text_field.vocab
+    tgt_padding = tgt_vocab.stoi[tgt_text_field.pad_token]
+    n_input_classes = len(src_vocab.stoi)
+    n_output_classes = len(tgt_vocab.stoi)
+    n_output_classes = 28 
+    
+    if opts.model_type == 'Transformer':
+        model = make_transformer_seq2seq(n_input_classes,
+                                        n_output_classes,
+                                        n_enc=opts.n_enc_layers,
+                                        n_dec=opts.n_dec_layers,
+                                        model_dim=opts.model_dim,
+                                        max_rel_pos=opts.max_rel_pos)
+    elif opts.model_type == 'CNN':
+        model = make_cnn_seq2seq(n_input_classes,
+                                n_output_classes,
+                                n_enc=opts.n_enc_layers,
+                                n_dec=opts.n_dec_layers,
+                                model_dim=opts.model_dim)
+    else:
+        model = make_hybrid_seq2seq(n_input_classes,
+                                        n_output_classes,
+                                        n_enc=opts.n_enc_layers,
+                                        n_dec=opts.n_dec_layers,
+                                        fourier_type=opts.model_type,
+                                        model_dim=opts.model_dim,
+                                        max_rel_pos=opts.max_rel_pos,
+                                        dim_filter=opts.filter_size,
+                                        window_size=opts.window_size,
+                                        lambd_L1=opts.lambd_L1,
+                                        dropout=opts.dropout)
+
+    model.load_state_dict(checkpoint['model'],strict = False)
+    model.generator.load_state_dict(checkpoint['generator'])
+    return model

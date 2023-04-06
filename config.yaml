@@ -1,0 +1,23 @@
+[Datasets]
+train_csv : data/mammalian_200-1200_train_balanced.csv
+val_csv : data/mammalian_200-1200_val_nonredundant_80.csv
+test_csv : data/mammalian_200-1200_test_nonredundant_80.csv
+[Results]
+competitors_results : competitors_results.txt
+bioseq2seq_results : translation_scores.txt
+EDC_results : tmp.txt
+[Self-Attention]
+best_seq_self_attn : best_seq2seq.self_attn
+best_EDC_self_attn : best_EDC.self_attn
+[Encoder-Decoder Attention]
+best_BIO_EDA : {'model' : 'bioseq2seq', 'attr' : 'EDA','prefix' : 'experiments/output/bioseq2seq_4_test/enc_dec_attns_layer','suffix' : '.npz','layers' : [0,1]}
+best_EDC_EDA : {'model' : 'EDC', 'attr' : 'EDA','prefix' : 'experiments/output/EDC_large_1_test/enc_dec_attns_layer','suffix' : '.npz.rank0','layers' : [0,1,2,3,4,5,6,7,8,9,10,11]}
+[Gradients]
+best_BIO_inputXgrad_PC : 'experiments/output/bioseq2seq_4_test/truncated.PC.inputXgrad.rank_3.npz'
+best_EDC_inputXgrad_PC :  'experiments/output/EDC_large_1_test/truncated.PC.inputXgrad.rank_0.npz'
+best_BIO_inputXgrad_NC : 'experiments/output/bioseq2seq_4_test/truncated.NC.inputXgrad.npz'
+best_EDC_inputXgrad_NC :  'experiments/output/EDC_large_1_test/truncated.NC.inputXgrad.rank_0.npz'
+best_BIO_grad_PC : 'experiments/output/bioseq2seq_4_test/temp.PC.grad.rank_3.npz'
+best_EDC_grad_PC :  'experiments/output/EDC_large_1_test/truncated.PC.grad.rank_0.npz'
+best_BIO_grad_NC : 'experiments/output/bioseq2seq_4_test/temp.NC.grad.rank_3.npz'
+best_EDC_grad_NC :  'experiments/output/EDC_large_1_test/truncated.NC.grad.rank_0.npz'

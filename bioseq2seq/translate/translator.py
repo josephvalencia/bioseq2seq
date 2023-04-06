@@ -157,6 +157,7 @@ class Inference(object):
         copy_attn=False,
         global_scorer=None,
         out_file=None,
+        attn_file=None,
         report_align=False,
         report_score=True,
         logger=None,
@@ -220,6 +221,7 @@ class Inference(object):
                 "Coverage penalty requires an attentional decoder."
             )
         self.out_file = out_file
+        self.attn_file = attn_file
         self.report_align = report_align
         self.report_score = report_score
         self.logger = logger
@@ -500,7 +502,8 @@ class Inference(object):
             shuffle=False,
             repeat=False
         )
-        
+       
+        attn_kwargs = {}
         dataset_size = len(data_iter.dataset)
         desc = f"Progress GPU {self._gpu}"
         with tqdm(total=dataset_size,position=self._gpu,disable=False,desc=desc) as pbar:
@@ -520,7 +523,6 @@ class Inference(object):
                     if tgt is not None:
                         gold_score_total += trans.gold_score
                         gold_words_total += len(trans.gold_sent) + 1
-
                     transcript_name = ids[trans.index]
                     mod_freq = trans.freq_content 
                     #plot_frequency_heatmap(transcript_name,mod_freq)
@@ -552,8 +554,9 @@ class Inference(object):
 
                     if save_preds:
                         self.out_file.write("ID: {}\n".format(transcript_name))
+                        #print("ID: {}\n".format(transcript_name))
                         for pred,score in zip(n_best_preds,n_best_scores):
-                            self.out_file.write("PRED: {} SCORE: {}\n".format(pred,score))
+                            self.out_file.write("PRED: {} SCORE: {}\n".format(pred,torch.exp(score)))
                         self.out_file.write("\n")
                         self.out_file.flush()
 
@@ -568,17 +571,14 @@ class Inference(object):
                     if attn_debug:
                         preds = trans.pred_sents[0]
                         preds.append(DefaultTokens.EOS)
-                        attns = trans.attns[0].tolist()
+                        attns = trans.attns[0][0,0,:,:].tolist()
+                        attn_kwargs[transcript_name] =  trans.attns[0][0,:,0,:].detach().cpu().numpy()
                         if self.data_type == "text":
                             srcs = trans.src_raw
                         else:
                             srcs = [str(item) for item in range(len(attns[0]))]
                         output = report_matrix(srcs, preds, attns)
-                        if self.logger:
-                            self.logger.info(output)
-                        else:
-                            os.write(1, output.encode("utf-8"))
-
+                    
                     if align_debug:
                         tgts = trans.pred_sents[0]
                         align = trans.word_aligns[0].tolist()
@@ -592,7 +592,9 @@ class Inference(object):
                         else:
                             os.write(1, output.encode("utf-8"))
         end_time = time.time()
-
+        if self.attn_file:
+            np.savez_compressed(self.attn_file,**attn_kwargs) 
+        
         if self.report_score:
             msg = self._report_score(
                 "PRED", pred_score_total, pred_words_total
@@ -750,7 +752,8 @@ class Inference(object):
         src_vocabs,
         use_src_map,
         decode_strategy,
-        enc_cache = None
+        enc_cache = None,
+        class_logit=None
     ):
         results = {
             "predictions": None,
@@ -948,7 +951,6 @@ class Translator(Inference):
         # (3) Begin decoding step by step:
         for step in range(decode_strategy.max_length):
             decoder_input = decode_strategy.current_predictions.view(1, -1, 1)
-
             log_probs, attn = self._decode_and_generate(
                 decoder_input,
                 memory_bank,
@@ -959,7 +961,12 @@ class Translator(Inference):
                 step=step,
                 batch_offset=decode_strategy.batch_offset,
             )
-
+            
+            pc_token = self._tgt_vocab.stoi['<PC>']
+            nc_token = self._tgt_vocab.stoi['<NC>']
+            logit_score =  log_probs[:,pc_token] - log_probs[:,nc_token]
+            #print(f'step {step}, logit_score = {logit_score}')
+            
             decode_strategy.advance(log_probs, attn)
             any_finished = decode_strategy.is_finished.any()
             if any_finished:
@@ -968,7 +975,6 @@ class Translator(Inference):
                     break
 
             select_indices = decode_strategy.select_indices
-
             if any_finished:
                 # Reorder states.
                 if isinstance(memory_bank, tuple):

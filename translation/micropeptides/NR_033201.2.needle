@@ -1,0 +1,97 @@
+########################################
+# Program: needle
+# Rundate: Tue  4 Apr 2023 13:33:22
+# Commandline: needle
+#    -asequence translation/micropeptides/NR_033201.2_true_PROTEIN.fa
+#    -bsequence translation/micropeptides/NR_033201.2.micropeptides.fa
+#    -outfile translation/micropeptides/NR_033201.2.needle
+#    -gapopen 10
+#    -gapextend 0.5
+#    -brief
+# Align_format: srspair
+# Report_file: translation/micropeptides/NR_033201.2.needle
+########################################
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NR_033201.2
+# 2: NR_033201.2.peptide.2
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 83
+# Identity:      16/83 (19.3%)
+# Similarity:    18/83 (21.7%)
+# Gaps:          63/83 (75.9%)
+# Score: 67.5
+# 
+#
+#=======================================
+
+NR_033201.2        1 MPVLPGTQRYPHQRR------------------------------RFQAA     20
+                     |||||||||||||||                              :|:..
+NR_033201.2.p      1 MPVLPGTQRYPHQRRPGKLAPLRILLPDSFPSPPPILKFYLGRLYQFRTR     50
+
+NR_033201.2       21 GGGAESGKRGSEEAPGVAWSGSESGRDAATPAW     53
+                                                      
+NR_033201.2.p     50 ---------------------------------     50
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NR_033201.2
+# 2: NR_033201.2.peptide.3
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 53
+# Identity:      48/53 (90.6%)
+# Similarity:    48/53 (90.6%)
+# Gaps:           5/53 ( 9.4%)
+# Score: 250.0
+# 
+#
+#=======================================
+
+NR_033201.2        1 MPVLPGTQRYPHQRRRFQAAGGGAESGKRGSEEAPGVAWSGSESGRDAAT     50
+                     |||||||||||||||||||||||||||||||||||||||||||     ||
+NR_033201.2.p      1 MPVLPGTQRYPHQRRRFQAAGGGAESGKRGSEEAPGVAWSGSE-----AT     45
+
+NR_033201.2       51 PAW     53
+                     |||
+NR_033201.2.p     46 PAW     48
+
+
+#=======================================
+#
+# Aligned_sequences: 2
+# 1: NR_033201.2
+# 2: NR_033201.2.peptide.4
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 0.5
+#
+# Length: 56
+# Identity:       7/56 (12.5%)
+# Similarity:    10/56 (17.9%)
+# Gaps:          33/56 (58.9%)
+# Score: 16.0
+# 
+#
+#=======================================
+
+NR_033201.2        1 MPVLPGTQRYPHQRRRFQAAGGGAESGKRGSEEAPGVAWSG---SESGRD     47
+                                             ......|..||..:.|.   .::|||
+NR_033201.2.p      1 ------------------------PRPSASSSPAPPPSKSSKKLGQAGRD     26
+
+NR_033201.2       48 AATPAW     53
+                           
+NR_033201.2.p     26 ------     26
+
+
+#---------------------------------------
+#---------------------------------------

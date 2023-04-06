@@ -67,7 +67,7 @@ class TransformerDecoderLayer(nn.Module):
         output, dec_attns, context_attns = self._forward(*args, **kwargs)
         
         top_attn = context_attns
-        #top_attn = context_attns[:, 1, :, :].contiguous()
+        #top_attn = context_attns[:, 0, :, :].contiguous()
         
         attn_align = None
         if with_align:
@@ -101,7 +101,6 @@ class TransformerDecoderLayer(nn.Module):
 
         """
         dec_mask = None
-
         if step is None:
             tgt_len = tgt_pad_mask.size(-1)
             if not future:  # apply future_mask, result mask in (B, T, T)
@@ -120,7 +119,8 @@ class TransformerDecoderLayer(nn.Module):
                 dec_mask = tgt_pad_mask
         input_norm = self.layer_norm_1(inputs)
         
-        
+        #print(f'dec_mask = {dec_mask}, step = {step}, future = {future}')
+
         if isinstance(self.self_attn, MultiHeadedAttention):
             query, dec_attns = self.self_attn(input_norm, input_norm, input_norm,
                                       mask=dec_mask,
@@ -138,7 +138,7 @@ class TransformerDecoderLayer(nn.Module):
                                        mask=src_pad_mask,
                                        layer_cache=layer_cache,
                                        attn_type="context")
-        
+       
         output = self.feed_forward(self.drop(mid) + query)
 
         return output, dec_attns, context_attns
@@ -190,7 +190,7 @@ class TransformerDecoder(DecoderBase):
 
         # Decoder State
         self.state = {}
-
+        self.attn_save_layer = -1
         self.transformer_layers = nn.ModuleList(
             [TransformerDecoderLayer(d_model, heads, d_ff, dropout,
              attention_dropout, self_attn_type=self_attn_type,
@@ -229,7 +229,7 @@ class TransformerDecoder(DecoderBase):
     def detach_state(self):
         self.state["src"] = self.state["src"].detach()
 
-    def forward(self, tgt, memory_bank, step=None,grad_mode=False,attn_save_layer = -1, **kwargs):
+    def forward(self, tgt, memory_bank, step=None,grad_mode=False, **kwargs):
         """Decode, possibly stepwise."""
         if step == 0:
             self._init_cache(memory_bank)
@@ -249,7 +249,6 @@ class TransformerDecoder(DecoderBase):
         context_storage = []
 
         attn_aligns = []
-        
         for i, layer in enumerate(self.transformer_layers):
             layer_cache = self.state["cache"]["layer_{}".format(i)] \
                 if step is not None else None
@@ -269,8 +268,9 @@ class TransformerDecoder(DecoderBase):
         dec_outs = output.transpose(0, 1).contiguous()
         
         #attn = context_storage[-1].transpose(0,1).contiguous()
+        #print('alt attn inside decoder',attn.shape) 
         #attn =  torch.stack(context_storage).transpose(1,2).transpose(2,3).contiguous()
-        attn = torch.unsqueeze(context_storage[attn_save_layer].permute(1,2,0,3),dim=0)
+        attn = torch.unsqueeze(context_storage[self.attn_save_layer].permute(1,2,0,3),dim=0)
         
         attns = {"std": attn}
         if self._copy:
