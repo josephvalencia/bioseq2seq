@@ -2,10 +2,10 @@ import pandas as pd
 import sys
 import seaborn as sns
 import matplotlib.pyplot as plt
-from utils import setup_fonts,parse_config
+from utils import setup_fonts,parse_config, build_output_dir
 import numpy as np
 
-def run_checks_ISM(args,prefix):
+def run_checks_ISM(args,prefix,output_dir):
 
     bio = f"{args.best_BIO_DIR}/{prefix}.{args.reference_class}.{args.position}.ISM_mutation_scores.csv"
     edc = f"{args.best_EDC_DIR}/{prefix}.{args.reference_class}.{args.position}.ISM_mutation_scores.csv"
@@ -44,10 +44,11 @@ def run_checks_ISM(args,prefix):
     ax2.set_xlabel(r'Nonsense mutations first 50 codons $\Delta$S')
     sns.despine() 
     plt.tight_layout() 
-    plt.savefig('mutations_ism_sanity.svg')
+    plt.savefig(f'{output_dir}/mutations_ism_sanity.svg')
     plt.close()
+    print(f'saved {output_dir}/mutations_ism_sanity.svg')
 
-def run_checks_shuffled(args,prefix):
+def run_checks_shuffled(args,prefix,output_dir):
 
     storage = []
     for parent,model in zip([args.best_BIO_DIR,args.best_EDC_DIR],['bioseq2seq','EDC']):
@@ -62,13 +63,18 @@ def run_checks_shuffled(args,prefix):
         for tscript,logit in wildtype.items():
             if is_coding(tscript):
                 shuffle_ks = [2,1,2,1,3]
-                for shuffled,name,k in zip([dinuc_shuffled_5_prime,mononuc_shuffled_5_prime,dinuc_shuffled_3_prime,mononuc_shuffled_3_prime,shuffled_CDS],
-                                ['5\' ' +r'UTR nt shuffled $\Delta$S','5\' ' +r'UTR nt shuffled $\Delta$S','3\' '+ r'UTR nt shuffled $\Delta$S',
-                                '3\' '+ r'UTR nt shuffled $\Delta$S',r'CDS codon shuffled $\Delta$S'],
-                                shuffle_ks):
+                names = ['5\' ' +r'UTR nt shuffled $\Delta$S',
+                        '5\' ' +r'UTR nt shuffled $\Delta$S',
+                        '3\' '+ r'UTR nt shuffled $\Delta$S',
+                        '3\' '+ r'UTR nt shuffled $\Delta$S',
+                        r'CDS codon shuffled $\Delta$S']
+                datasets = [dinuc_shuffled_5_prime,
+                            mononuc_shuffled_5_prime,
+                            dinuc_shuffled_3_prime,
+                            mononuc_shuffled_3_prime,shuffled_CDS]
+                for shuffled,name,k in zip(datasets,names,shuffle_ks):
                     # find ids of shuffled equivalents
                     candidates = [x for x in shuffled.keys() if x.startswith(tscript)]
-                    
                     for c in candidates: 
                         logit_shuffled = shuffled[c]
                         diff = logit_shuffled - logit
@@ -80,8 +86,10 @@ def run_checks_shuffled(args,prefix):
                             storage.append(entry)
 
     df = pd.DataFrame(storage)
+    print(df) 
     order = ['bioseq2seq','EDC'] 
-    fig,axs = plt.subplots(3,1,figsize=(3.25,3),sharex=False) 
+    #fig,axs = plt.subplots(3,1,figsize=(3.25,3),sharex=False) 
+    fig,axs = plt.subplots(3,1,figsize=(3.75,3),sharex=True) 
     for ax, (label,group) in zip(axs.flat,df.groupby('label')):
         g = sns.violinplot(data=group,x='delta',y='k',ax=ax,hue='model',cut=0,hue_order=order,linewidth=1)
         g.legend_.remove()
@@ -94,15 +102,17 @@ def run_checks_shuffled(args,prefix):
     
     sns.despine()
     plt.tight_layout()
-    plt.savefig('mutations_shuffled_sanity.svg')
+    plt.savefig(f'{output_dir}/mutations_shuffled_sanity.svg')
     plt.close()
+    print(f'saved {output_dir}/mutations_shuffled_sanity.svg')
 
 if __name__ == "__main__":
 
     setup_fonts()
     args,unknown_args = parse_config()
     sns.set_style(style="whitegrid",rc={'font.family' : ['Helvetica']})
-    
+    output_dir = build_output_dir(args)
+
     prefix = "verified_test_RNA" 
-    run_checks_ISM(args,prefix)
-    run_checks_shuffled(args,prefix)
+    run_checks_ISM(args,prefix,output_dir)
+    run_checks_shuffled(args,prefix,output_dir)

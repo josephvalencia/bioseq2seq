@@ -1,6 +1,6 @@
 ########################################
 # Program: needle
-# Rundate: Mon  6 Mar 2023 21:36:10
+# Rundate: Tue  4 Apr 2023 13:33:22
 # Commandline: needle
 #    -asequence translation/micropeptides/NM_001348129.2_true_PROTEIN.fa
 #    -bsequence translation/micropeptides/NM_001348129.2.micropeptides.fa
@@ -22,10 +22,10 @@
 # Extend_penalty: 0.5
 #
 # Length: 68
-# Identity:      64/68 (94.1%)
-# Similarity:    64/68 (94.1%)
-# Gaps:           4/68 ( 5.9%)
-# Score: 360.0
+# Identity:      68/68 (100.0%)
+# Similarity:    68/68 (100.0%)
+# Gaps:           0/68 ( 0.0%)
+# Score: 384.0
 # 
 #
 #=======================================
@@ -34,8 +34,8 @@ NM_001348129.      1 MGDQPCASGRSTLPPGNAREAKPPKKRCLLAPRWDYPEGTPNGGSTTLPS     50
                      ||||||||||||||||||||||||||||||||||||||||||||||||||
 NM_001348129.      1 MGDQPCASGRSTLPPGNAREAKPPKKRCLLAPRWDYPEGTPNGGSTTLPS     50
 
-NM_001348129.     51 APPPASAGLKSHPP----     64
-                     ||||||||||||||    
+NM_001348129.     51 APPPASAGLKSHPPPPEK     68
+                     ||||||||||||||||||
 NM_001348129.     51 APPPASAGLKSHPPPPEK     68
 
 
@@ -48,11 +48,11 @@ NM_001348129.     51 APPPASAGLKSHPPPPEK     68
 # Gap_penalty: 10.0
 # Extend_penalty: 0.5
 #
-# Length: 67
-# Identity:      64/67 (95.5%)
-# Similarity:    64/67 (95.5%)
-# Gaps:           3/67 ( 4.5%)
-# Score: 360.0
+# Length: 68
+# Identity:      67/68 (98.5%)
+# Similarity:    67/68 (98.5%)
+# Gaps:           1/68 ( 1.5%)
+# Score: 367.0
 # 
 #
 #=======================================
@@ -61,9 +61,9 @@ NM_001348129.      1 MGDQPCASGRSTLPPGNAREAKPPKKRCLLAPRWDYPEGTPNGGSTTLPS     50
                      ||||||||||||||||||||||||||||||||||||||||||||||||||
 NM_001348129.      1 MGDQPCASGRSTLPPGNAREAKPPKKRCLLAPRWDYPEGTPNGGSTTLPS     50
 
-NM_001348129.     51 APPPASAGLKSHPP---     64
-                     ||||||||||||||   
-NM_001348129.     51 APPPASAGLKSHPPPEK     67
+NM_001348129.     51 APPPASAGLKSHPPPPEK     68
+                     |||||||||||| |||||
+NM_001348129.     51 APPPASAGLKSH-PPPEK     67
 
 
 #=======================================
@@ -76,10 +76,10 @@ NM_001348129.     51 APPPASAGLKSHPPPEK     67
 # Extend_penalty: 0.5
 #
 # Length: 68
-# Identity:      64/68 (94.1%)
-# Similarity:    64/68 (94.1%)
-# Gaps:           4/68 ( 5.9%)
-# Score: 360.0
+# Identity:      67/68 (98.5%)
+# Similarity:    67/68 (98.5%)
+# Gaps:           0/68 ( 0.0%)
+# Score: 376.0
 # 
 #
 #=======================================
@@ -88,8 +88,8 @@ NM_001348129.      1 MGDQPCASGRSTLPPGNAREAKPPKKRCLLAPRWDYPEGTPNGGSTTLPS     50
                      ||||||||||||||||||||||||||||||||||||||||||||||||||
 NM_001348129.      1 MGDQPCASGRSTLPPGNAREAKPPKKRCLLAPRWDYPEGTPNGGSTTLPS     50
 
-NM_001348129.     51 APPPASAGLKSHPP----     64
-                     ||||||||||||||    
+NM_001348129.     51 APPPASAGLKSHPPPPEK     68
+                     |||||||||||||||.||
 NM_001348129.     51 APPPASAGLKSHPPPQEK     68
 
 

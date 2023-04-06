@@ -1,5 +1,5 @@
 import logomaker
-from utils import parse_config, build_EDA_file_list, load_CDS, grad_simplex_correction, setup_fonts
+from utils import parse_config, load_CDS, build_output_dir, setup_fonts
 import random
 import numpy as np
 import pandas as pd
@@ -15,9 +15,9 @@ def plot(summary_df,signed_df,window,vlim,tallest,ref,window_name,tscript,save_d
     left,right = window 
     domain = list(range(-left,right))
     full_width = 8.5
-    width = full_width * len(domain) / 135
+    width = full_width * len(domain) / 135 # total number of sliced positions
     print('width',width) 
-    fig,axs = plt.subplots(2,2,figsize=(width,1.75),
+    fig,axs = plt.subplots(2,2,figsize=(width,1.35),
                          gridspec_kw={'height_ratios':[1.25,2],
                              'width_ratios': [35,1],
                              'wspace' : 0.05,
@@ -119,11 +119,13 @@ def plot_examples(save_dir,savefile,onehot_file,test_csv,attr_type,args):
             
             print(summary.shape) 
             # enforce minimum heights
-            small_negative_mask = summary < 0.1 * tallest
+            min_ratio = 0.15
+            pos_min_ratio = 0.10
+            small_negative_mask = summary < min_ratio * tallest
             # 10% of top height for pos. with small negative val as min 
-            summary = np.where(small_negative_mask,0.1*tallest,summary)
+            summary = np.where(small_negative_mask,min_ratio*tallest,summary)
             # 5% of top height for pos. with positive val as min (if all mutations are positive this pos. is not well conserved) 
-            summary = np.where(positive_mask,0.05*tallest,summary)
+            summary = np.where(positive_mask,pos_min_ratio*tallest,summary)
             summary = onehot * summary
             vlim = np.nanmax(np.abs(attr))
             print(f'tallest: val = {tallest:.3f}, loc = {tallest_loc}, vlim = {vlim:.3f}')
@@ -159,18 +161,11 @@ if __name__ == "__main__":
     
     args,unknown_args = parse_config() 
     setup_fonts() 
-    
+    output_dir = build_output_dir(args)
+
     test_file = os.path.join(args.data_dir,args.test_prefix+'.csv')
-    best_EDC_MDIG = os.path.join(args.best_EDC_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.MDIG.max_0.10.npz')
-    best_EDC_ISM = os.path.join(args.best_EDC_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.ISM.npz')
     best_BIO_ISM = os.path.join(args.best_BIO_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.ISM.npz')
-    best_EDC_grad = os.path.join(args.best_EDC_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.grad.npz')
-    best_EDC_onehot = os.path.join(args.best_EDC_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.onehot.npz')
     best_BIO_onehot = os.path.join(args.best_BIO_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.onehot.npz')
-    
-    #plot_examples(args.best_EDC_DIR,best_EDC_ISM,best_EDC_onehot,test_file,'ISM',args)
-    plot_examples(args.best_BIO_DIR,best_BIO_ISM,best_BIO_onehot,test_file,'ISM',args)
-    #plot_examples(args.best_EDC_DIR,best_EDC_MDIG,best_EDC_onehot,test_file,'MDIG',args)
-    #plot_examples(args.best_EDC_DIR,best_EDC_grad,best_EDC_onehot,test_file,'Taylor',args)
+    plot_examples(output_dir,best_BIO_ISM,best_BIO_onehot,test_file,'ISM',args)
 
 

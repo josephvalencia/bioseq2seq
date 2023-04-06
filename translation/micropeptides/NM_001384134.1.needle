@@ -1,6 +1,6 @@
 ########################################
 # Program: needle
-# Rundate: Mon  6 Mar 2023 21:36:09
+# Rundate: Tue  4 Apr 2023 13:33:22
 # Commandline: needle
 #    -asequence translation/micropeptides/NM_001384134.1_true_PROTEIN.fa
 #    -bsequence translation/micropeptides/NM_001384134.1.micropeptides.fa
@@ -22,16 +22,16 @@
 # Extend_penalty: 0.5
 #
 # Length: 56
-# Identity:      53/56 (94.6%)
-# Similarity:    55/56 (98.2%)
+# Identity:      56/56 (100.0%)
+# Similarity:    56/56 (100.0%)
 # Gaps:           0/56 ( 0.0%)
-# Score: 267.0
+# Score: 277.0
 # 
 #
 #=======================================
 
-NM_001384134.      1 MADVSERTLQVSVLVAFASGVVLGWQANRLRRRYLDWRKRRLQDKLATTQ     50
-                     ||||||||||:||||||||||:|||||||||||||||||||||||||.||
+NM_001384134.      1 MADVSERTLQLSVLVAFASGVLLGWQANRLRRRYLDWRKRRLQDKLAATQ     50
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
 NM_001384134.      1 MADVSERTLQLSVLVAFASGVLLGWQANRLRRRYLDWRKRRLQDKLAATQ     50
 
 NM_001384134.     51 KKLDLA     56
@@ -49,16 +49,16 @@ NM_001384134.     51 KKLDLA     56
 # Extend_penalty: 0.5
 #
 # Length: 80
-# Identity:      53/80 (66.2%)
-# Similarity:    55/80 (68.8%)
+# Identity:      56/80 (70.0%)
+# Similarity:    56/80 (70.0%)
 # Gaps:          24/80 (30.0%)
-# Score: 267.0
+# Score: 277.0
 # 
 #
 #=======================================
 
-NM_001384134.      1 MADVSERTLQVSVLVAFASGVVLGWQANRLRRRYLDWRKRRLQDKLATTQ     50
-                     ||||||||||:||||||||||:|||||||||||||||||||||||||.||
+NM_001384134.      1 MADVSERTLQLSVLVAFASGVLLGWQANRLRRRYLDWRKRRLQDKLAATQ     50
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
 NM_001384134.      1 MADVSERTLQLSVLVAFASGVLLGWQANRLRRRYLDWRKRRLQDKLAATQ     50
 
 NM_001384134.     51 KKLDLA------------------------     56
@@ -76,16 +76,16 @@ NM_001384134.     51 KKLDLAXDSAPSAPFCPPHGHLAMTSSCTL     80
 # Extend_penalty: 0.5
 #
 # Length: 80
-# Identity:      53/80 (66.2%)
-# Similarity:    55/80 (68.8%)
+# Identity:      56/80 (70.0%)
+# Similarity:    56/80 (70.0%)
 # Gaps:          24/80 (30.0%)
-# Score: 267.0
+# Score: 277.0
 # 
 #
 #=======================================
 
-NM_001384134.      1 MADVSERTLQVSVLVAFASGVVLGWQANRLRRRYLDWRKRRLQDKLATTQ     50
-                     ||||||||||:||||||||||:|||||||||||||||||||||||||.||
+NM_001384134.      1 MADVSERTLQLSVLVAFASGVLLGWQANRLRRRYLDWRKRRLQDKLAATQ     50
+                     ||||||||||||||||||||||||||||||||||||||||||||||||||
 NM_001384134.      1 MADVSERTLQLSVLVAFASGVLLGWQANRLRRRYLDWRKRRLQDKLAATQ     50
 
 NM_001384134.     51 KKLDLA------------------------     56
@@ -103,16 +103,16 @@ NM_001384134.     51 KKLDLAUDSAPSAPFCPPHGHLAMTSSCTL     80
 # Extend_penalty: 0.5
 #
 # Length: 56
-# Identity:      52/56 (92.9%)
-# Similarity:    55/56 (98.2%)
+# Identity:      55/56 (98.2%)
+# Similarity:    56/56 (100.0%)
 # Gaps:           0/56 ( 0.0%)
-# Score: 264.0
+# Score: 274.0
 # 
 #
 #=======================================
 
-NM_001384134.      1 MADVSERTLQVSVLVAFASGVVLGWQANRLRRRYLDWRKRRLQDKLATTQ     50
-                     :|||||||||:||||||||||:|||||||||||||||||||||||||.||
+NM_001384134.      1 MADVSERTLQLSVLVAFASGVLLGWQANRLRRRYLDWRKRRLQDKLAATQ     50
+                     :|||||||||||||||||||||||||||||||||||||||||||||||||
 NM_001384134.      1 LADVSERTLQLSVLVAFASGVLLGWQANRLRRRYLDWRKRRLQDKLAATQ     50
 
 NM_001384134.     51 KKLDLA     56

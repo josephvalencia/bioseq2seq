@@ -101,7 +101,6 @@ class TransformerDecoderLayer(nn.Module):
 
         """
         dec_mask = None
-
         if step is None:
             tgt_len = tgt_pad_mask.size(-1)
             if not future:  # apply future_mask, result mask in (B, T, T)

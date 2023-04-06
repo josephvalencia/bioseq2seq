@@ -93,6 +93,5 @@ if __name__ == "__main__":
     col_format = 'c'*len(for_latex.columns)
     table = for_latex.style.to_latex(column_format=f'|{col_format}|',hrules=True)
     print(table)
-    print(df)
     df.to_csv('competitors_test_results.csv',sep='\t',index=False)
 

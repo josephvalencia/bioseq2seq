@@ -5,17 +5,14 @@ import matplotlib
 #matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from utils import parse_config, load_CDS, setup_fonts
+from utils import parse_config, load_CDS, setup_fonts, build_output_dir
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
 from Bio.SeqUtils import seq3
 
-from scipy.stats import pearsonr,spearmanr
+from scipy.stats import pearsonr
 import numpy as np
-#import warnings
-#warnings.simplefilter(action='ignore', category=FutureWarning)
-# FutureWarning: Support for multi-dimensional indexing (e.g. `obj[:, None]`) is deprecated
 import pandas as pd
 import seaborn as sns
 
@@ -118,7 +115,7 @@ def build_or_load_score_change_file(df,ism_file,mut_file,metric='MDIG'):
     return summary
 
 
-def plot_mutations_by_aa(aa_original,df):
+def plot_mutations_by_aa(aa_original,df,metric,mut_dir):
 
     print(f'Plotting {aa_original}')
     df = df[df['delta'] != 0.0]
@@ -145,7 +142,7 @@ def plot_mutations_by_aa(aa_original,df):
     plt.ylabel(f'Mean $\Delta$S',fontsize=8)
     plt.xlabel('Fraction of CDS',fontsize=8) 
     sns.despine()
-    filename =  f'{aa_original}_mutation_progress.svg'
+    filename =  f'{mut_dir}/{aa_original}_{metric}_mutation_progress.svg'
     plt.tight_layout()
     plt.savefig(filename)
     print(f'Saved {filename}')
@@ -194,59 +191,80 @@ def build_codon_table(filename):
             raw_frequencies[result[0]] = result[1]
     return species,raw_frequencies
 
-def mutation_pipeline(summary,mut_dir):
+def build_means(df):
+
+    by_base = df.groupby('substitution')['delta']
+    means = by_base.mean().reset_index()
+    counts = by_base.count().reset_index()
+    print(counts) 
+    fields = [x.split('-') for x in means['substitution'].tolist()]
+    means['position'] = [int(x)-1 for x,y in fields]
+    means['base'] = [y for x,y in fields]
+    means = means.pivot(index='position',columns='base',values='delta') 
+    return means
+
+def codon_positions(synonymous,missense,mut_dir,metric):
+    
+    ''' plot by codon position and base '''
+
+    plt.figure(figsize=(3.5,2.25))
+    
+    print('Synonymous counts')
+    means_synon = build_means(synonymous)
+    # add missing 2nd positions and re-sort 
+    means_synon.loc[1] = [np.nan,np.nan,np.nan,np.nan]
+    means_synon = means_synon.sort_index() 
+    
+    print('Non-synonymous counts')
+    means_missense = build_means(missense)
+   
+    # synon
+    vmax = max(np.nanmax(np.abs(means_synon.to_numpy())),np.nanmax(np.abs(means_missense.to_numpy()))) 
+    g = sns.heatmap(data=means_synon,center=0,vmin=-vmax,vmax=vmax,square=True,cmap='RdBu_r')
+    plt.savefig(f'{mut_dir}/mean_{metric}_synonymous_codon_positions.svg')
+    print(f'saved {mut_dir}/mean_{metric}_synonymous_codon_positions.svg')
+    plt.close()
+    # non-synon 
+    g = sns.heatmap(data=means_missense,center=0,vmin=-vmax,vmax=vmax,square=True,cmap='RdBu_r')
+    plt.savefig(f'{mut_dir}/mean_{metric}_missense_codon_positions.svg')
+    print(f'saved {mut_dir}/mean_{metric}_missense_codon_positions.svg')
+    plt.close()
+
+def mutation_pipeline(summary,mut_dir,metric):
 
     sns.set_style(style="white",rc={'font.family' : ['Helvetica']})
-   
-    tai_df = pd.read_csv('human_TAI_Tuller.csv')
-    tai_dict = {x : y for x,y in zip(tai_df['Codon'],tai_df['Human'])} 
     
     summary['long_mutation'] = [f'{x}>{y}' for x,y in zip(summary['original'],summary['mutated'])]
     summary['mutation'] = ['>'+y.replace('T','U') for y in summary['mutated']]
     summary['baseline'] = [x.split('-')[1] for x in summary['substitution']]
     summary['percentile'] = calculate_fractions(summary['loc'].tolist(),summary['cds_length'].tolist()) 
+
+    # plot mean snonynmous by base and position
+    is_synonymous = (summary['aa_original'] == summary['aa_mutated']) & (summary['aa_original'] != '*') 
+    synonymous = summary[is_synonymous] 
+    synonymous = synonymous[synonymous['delta'] != 0.0]
+    
+    is_missense = (summary['aa_original'] != summary['aa_mutated']) & (summary['aa_original'] != '*') & (summary['aa_mutated'] != '*') 
+    missense = summary[is_missense] 
+    missense = missense[missense['delta'] != 0.0]
+    codon_positions(synonymous,missense,mut_dir,metric) 
     
     storage = []
     for aa_original,group in summary.groupby('aa_original'):
         if aa_original != '*': 
-            long_results = plot_mutations_by_aa(aa_original,group)
+            long_results = plot_mutations_by_aa(aa_original,group,metric,mut_dir)
             storage.append(long_results)
 
-    _,human_usage = build_codon_table('data/codon_usage_tables/homo_sapiens_codon_table.txt')
     long_differences = pd.concat(storage)
-    tai_deltas = []
-    usage_deltas = []
-    for long_mutation,mean in zip(long_differences['long_mutation'],long_differences['Mean']):
-        src,dest = tuple(long_mutation.split('>'))
-        delta_tai = tai_dict[dest] - tai_dict[src]
-        delta_usage = human_usage[dest] - human_usage[src]
-        usage_deltas.append(delta_usage) 
-        tai_deltas.append(delta_tai)
-    long_differences['delta_TAI'] = tai_deltas 
-    long_differences['delta_usage'] = usage_deltas 
-    print('DIFF')
-    print(long_differences)
+    long_differences.to_csv(f'{mut_dir}{metric}_codon_deltas.csv')
     
-    long_differences.to_csv('codon_deltas.csv')
-    s_deltas = long_differences['Mean']
-    pearson = pearsonr(s_deltas,tai_deltas)[0]
-    spearman = spearmanr(s_deltas,tai_deltas)[0]
-    g = sns.jointplot(data=long_differences,x='Mean',y='delta_TAI',kind='reg')
-    plt.xlabel(r'$\Delta$S synonymous mutation') 
-    plt.ylabel(r'$\Delta$tAI synonymous mutation') 
-    full = f'Pearson={pearson:.3f}\nSpearman={spearman:.3f}'
-    plt.text(0.05, 0.9,full,
-            transform=g.ax_joint.transAxes)
-    plt.savefig('delta_usage_regression.svg')
-    plt.close()
-
     # plot by percentile
     plt.figure(figsize=(2,2.5)) 
     by_frame = summary.groupby(['frame','baseline']).mean().reset_index()
     sns.barplot(data=by_frame,x='baseline',y='delta',hue='frame')
-    plt.ylabel('Mean MDIG')
+    plt.ylabel(f'Mean {metric}')
     plt.tight_layout() 
-    rel_filename = f'{mut_dir}_by_frame_baseline.svg'
+    rel_filename = f'{mut_dir}{metric}_by_frame_baseline.svg'
     plt.savefig(rel_filename)
     plt.close()
     
@@ -254,40 +272,27 @@ def mutation_pipeline_from_config():
      
     args,unknown_args = parse_config()
     setup_fonts() 
-    
+   
+    # setup raw attribution data from test set
     prefix = args.test_prefix.replace('test','test_RNA')
     test_file = os.path.join(args.data_dir,args.test_prefix+'.csv')
     df_test = pd.read_csv(test_file,sep='\t').set_index('ID')
-    #best_BIO_ISM = os.path.join(args.best_BIO_DIR,f'{prefix}.{args.reference_class}.{args.position}.ISM.npz')
-    best_BIO_ISM = os.path.join(args.best_BIO_DIR,f'{prefix}.{args.reference_class}.{args.position}.MDIG.max_0.50.npz')
-    print(best_BIO_ISM)
-    
-    ''' 
-    prefix = args.train_prefix.replace('train','train_RNA')
-    train_file = os.path.join(args.data_dir,args.train_prefix+'.csv')
-    df_train = pd.read_csv(train_file,sep='\t').set_index('ID')
-    best_BIO_MDIG = os.path.join(args.best_BIO_DIR,f'{prefix}.{args.reference_class}.{args.position}.MDIG.npz')
-    ''' 
-    
-    #best_BIO_MDIG = os.path.join(args.best_EDC_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.ISM.npz')
-    #best_BIO_GRAD = os.path.join(args.best_BIO_DIR,f'{prefix}.{args.reference_class}.{args.position}.grad.npz')
-    #best_BIO_ISM = os.path.join(args.best_BIO_DIR,f'{prefix}.{args.reference_class}.{args.position}.ISM.npz')
-    
-    # build output directory
-    config = args.c
-    config_prefix = config.split('.yaml')[0]
-    output_dir  =  f'results_{config_prefix}/'
-    mutation_dir  =  f'{output_dir}mut/'
-    if not os.path.isdir(output_dir):
-        os.mkdir(output_dir)
+    best_BIO_ISM = os.path.join(args.best_BIO_DIR,f'{prefix}.{args.reference_class}.{args.position}.ISM.npz')
+    best_BIO_MDIG = os.path.join(args.best_BIO_DIR,f'{prefix}.{args.reference_class}.{args.position}.MDIG.max_0.50.npz')
+   
+    output_dir = build_output_dir(args)
+    mutation_dir  =  f'{output_dir}/mut/'
     if not os.path.isdir(mutation_dir):
         os.mkdir(mutation_dir)
-   
+ 
+    # run for both ISM
     mut_file = best_BIO_ISM.replace('.npz','_mutation_scores.csv')
     mutation_df = build_or_load_score_change_file(df_test,best_BIO_ISM,mut_file,metric='ISM')
-    #mut_file = best_BIO_MDIG.replace('.npz','_mutation_scores.csv')
-    #mutation_df = build_or_load_score_change_file(df_train,best_BIO_MDIG,mut_file,metric='MDIG')
-    mutation_pipeline(mutation_df,mutation_dir)
+    mutation_pipeline(mutation_df,mutation_dir,'ISM')
+    # and MDIG 
+    mut_file = best_BIO_MDIG.replace('.npz','_mutation_scores.csv')
+    mutation_df = build_or_load_score_change_file(df_test,best_BIO_MDIG,mut_file,metric='MDIG')
+    mutation_pipeline(mutation_df,mutation_dir,'MDIG')
 
 if __name__ == "__main__":
 

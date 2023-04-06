@@ -1,9 +1,40 @@
 import torch
+import torch.nn.functional as F
 from functools import partial,reduce
 from typing import Union
 from captum.attr import configure_interpretable_embedding_layer, remove_interpretable_embedding_layer
-from approxISM.embedding import TensorToOneHot, OneHotToEmbedding 
-import torch.nn.functional as F
+
+class OneHotToEmbedding(torch.nn.Module):
+    '''Converts one-hot encoding into dense embedding'''    
+    
+    def __init__(self,embedding : torch.nn.Embedding):
+        super(OneHotToEmbedding,self).__init__()
+        self.embedding = embedding
+    
+    @property
+    def vocab_size(self):
+        return self.embedding.weight.shape[0]
+    
+    @property
+    def out_dim(self):
+        return self.embedding.weight.shape[1]
+    
+    def forward(self,one_hot_indexes):
+        return F.linear(one_hot_indexes,self.embedding.weight.T) 
+    
+class TensorToOneHot(torch.nn.Module):
+    '''Converts Tensor index into intermediate one-hot encoding'''    
+    def __init__(self,embedding : torch.nn.Embedding):
+        super(TensorToOneHot,self).__init__()
+        self.embedding = embedding
+
+    @property
+    def vocab_size(self):
+        return self.embedding.weight.shape[0]
+
+    def forward(self,indexes):
+        one_hot_indexes = F.one_hot(indexes,self.vocab_size).type(torch.float).requires_grad_(True)
+        return one_hot_indexes
 
 class PredictionWrapper(torch.nn.Module):
     
@@ -20,14 +51,14 @@ class PredictionWrapper(torch.nn.Module):
 
         self.model.decoder.init_state(src,memory_bank,enc_states)
         memory_lengths = src_lens
-       
+        
         for i,dec_input in enumerate(decoder_inputs):
             scores, attn = self.decode_and_generate(
                 dec_input,
                 memory_bank,
                 memory_lengths=memory_lengths,
                 step=i)
-            #print(i,torch.argmax(torch.nn.functional.softmax(scores)))
+
         return scores
 
     def run_encoder(self,src,src_lengths,batch_size):
@@ -40,7 +71,7 @@ class PredictionWrapper(torch.nn.Module):
         return src, enc_states, memory_bank, src_lengths,enc_cache
 
     def decode_and_generate(self,decoder_in, memory_bank, memory_lengths, step=None):
-
+        
         dec_out, dec_attn = self.model.decoder(decoder_in,
                                             memory_bank,
                                             memory_lengths=memory_lengths,
@@ -50,6 +81,7 @@ class PredictionWrapper(torch.nn.Module):
             attn = dec_attn["std"]
         else:
             attn = None
+        
         #print(f'dec_out before squeeze = {dec_out.shape}')    
         #scores = self.model.generator(dec_out.squeeze(0),softmax=self.softmax)
         scores = self.model.generator(dec_out,softmax=self.softmax)
@@ -71,7 +103,7 @@ class Attribution:
         self.nc_token = self.tgt_vocab['<NC>']
         self.src_vocab = vocab["src"].base_field.vocab
         self.predictor = PredictionWrapper(self.model,self.softmax)
-
+    
     def decoder_input(self,batch_size,prefix=None):
         
         if prefix is None:
@@ -135,6 +167,15 @@ class Attribution:
        
         return outputs, probs
 
+    def translation_loss(self,src,tgt,src_lengths):
+    
+        src = src.transpose(0,1)
+        print(f'src ={src.shape},tgt={tgt.shape}, src_lengths= {src_lengths}')
+        outputs, enc_attns, attns = self.model(
+            src, tgt, src_lengths, bptt=False,
+            with_align=False)
+        print('OUTPUTS',outputs.shape)
+    
     def run(self,savefile,val_iterator,target_pos,baseline,transcript_names):
         self.run_fn(savefile,val_iterator,target_pos,baseline,transcript_names)
     

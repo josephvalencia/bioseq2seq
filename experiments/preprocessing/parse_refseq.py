@@ -45,21 +45,6 @@ def get_lncRNA_ID(prefix):
                 lnc.add(fields[11])
     return lnc
 
-def parse_SARSCov2(genome):
-
-    entries = []
-    
-    with open(genome,'r') as inFile:
-        for rec in SeqIO.parse(inFile,"fasta"):
-            entries.append((rec.id,rec.seq))
-
-    with open("../Fa/SARSCov2_test.csv",'w') as outFile:
-        header = "ID\tRNA\tProtein\tType\tCDS\n"
-        outFile.write(header)
-        for id,seq in entries:
-            line = "{}\t{}\t?\t<PC>\t-1\n".format(id,seq)
-            outFile.write(line)
-
 def refseq_RNA(prefix,mRNA,lncRNA,cds,prot2rna,table):
 
     rna_fasta = prefix+"rna.fna.gz"
@@ -135,11 +120,4 @@ if __name__ == "__main__":
                         "chimp" : "pan_troglodytes/GCF_002880755.1_Clint_PTRv2_",
                         "rat" : "rattus_rattus/GCF_011064425.1_Rrattus_CSIRO_v1_",
                         "orangutan" : "pongo_abelii/GCF_002880775.1_Susie_PABv2_"}
-
-    zebrafish = {'zebrafish': 'danio_rerio/GCF_000002035.6_GRCz11_'}
-    
     build_dataset(mammalian,'mammalian_refseq.csv')
-    #build_dataset(zebrafish,'zebrafish_refseq.csv')
-
-    #covid_genome_path = "/nfs0/BB/Hendrix_Lab/CoV/FASTA/SARSCoV2_genome.fasta"
-    #parse_SARSCov2(covid_genome_path)

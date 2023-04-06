@@ -8,6 +8,7 @@ from scipy.stats import chisquare, ks_2samp, mannwhitneyu
 from os import listdir
 from os.path import isfile, join, isdir
 import seaborn as sns
+from utils import parse_config,build_output_dir
 
 def findPositionProbability(position_x, base):
     '''Calculate the Position probablity of a base in codon'''
@@ -410,9 +411,16 @@ if __name__ == "__main__":
     test_file = 'data/mammalian_200-1200_test_nonredundant_80.csv'
     gt_df = build_ground_truth(test_file)
     
-    bio_models ='experiments/scripts/top1_bioseq2seq_models.txt'
-    EDC_models ='experiments/scripts/top1_EDC-large_models.txt'
-    EDC_eq_models ='experiments/scripts/top1_EDC-small_models.txt'
+    args,unknown_args = parse_config()
+    output_dir = build_output_dir(args)
+    
+    bio_models = args.all_BIO_replicates
+    EDC_models = args.all_EDC_replicates
+    EDC_eq_models = args.all_EDC_small_replicates
+
+    #bio_models ='experiments/scripts/top1_bioseq2seq_models.txt'
+    #EDC_models ='experiments/scripts/top1_EDC-large_models.txt'
+    #EDC_eq_models ='experiments/scripts/top1_EDC-small_models.txt'
     
     parent = 'experiments/output'
     all_models = get_model_names(bio_models)+get_model_names(EDC_models) +get_model_names(EDC_eq_models)

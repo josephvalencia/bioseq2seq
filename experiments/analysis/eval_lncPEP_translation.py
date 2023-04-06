@@ -1,4 +1,5 @@
 import sys,re,os
+import math
 import subprocess
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -12,10 +13,15 @@ from utils import getLongestORF, getFirstORF, parse_config,setup_fonts
 def parse_needle_results(entry,save_dir):
 
     match_tscript = re.search('ID: (.*)',entry[0])
+    match_pred = re.search('PRED: (<PC>|<NC>)',entry[1])
+    match_score = re.search('PRED: <PC>(.*) SCORE: (.*)',' '.join(entry))
     is_noncoding = lambda x : x.startswith('NR') or x.startswith('XR')
+    coding_prob = float(match_score.group(2)) if match_score is not None else 0.0
+    coding_prob = round(coding_prob *100,2)
 
-    if match_tscript:
+    if match_tscript and match_pred:
         tscript = match_tscript.group(1)
+        pred_coding = match_pred.group(1) == '<PC>'
         needle_file = f'{save_dir}/{tscript}.needle'
         if os.path.exists(needle_file): 
             with open(needle_file,'r') as inFile:
@@ -25,9 +31,17 @@ def parse_needle_results(entry,save_dir):
             id_matches = re.findall(identity_pattern,data)
             name_matches = re.findall(name_pattern,data)
             scores = [(y,int(x[-2]),float(x[-1])) for x,y in zip(id_matches,name_matches)]
+            first_found = None 
+            for x in sorted(scores,key = lambda x : x[0]):
+                print(x) 
+                if x[2] >= 90:
+                    first_found = x[0] 
+                    break
             scores = sorted(scores,key = lambda x : x[1],reverse=True) 
             scores = sorted(scores,key = lambda x : x[2],reverse=True) 
-            return scores[0]
+            return pred_coding,first_found,scores[0]
+    else:
+        return None
 
 def align_peptides(entry,save_dir,test_df):
 
@@ -70,7 +84,7 @@ def parse(filename,testfile,mode='getorf'):
         os.mkdir(save_dir) 
    
     test_df = pd.read_csv(testfile,sep='\t').set_index('ID')
-    id_label =  'align_id'
+    test_df['true_peptide_len'] = [len(x) for x in test_df['Protein'].tolist()]
     with open(filename) as inFile:
         lines = inFile.readlines()
         storage = []
@@ -79,36 +93,91 @@ def parse(filename,testfile,mode='getorf'):
             if mode == 'align': 
                 align_peptides(entry,save_dir,test_df)
             elif mode == 'parse':
-                result = parse_needle_results(entry,save_dir)
-                if result: 
-                    entry = {'peptide' : result[0], 'Peptide length': result[1], id_label : result[2]}
+                parsed = parse_needle_results(entry,save_dir)
+                if parsed:
+                    coding_pred,first_found,result = parsed
+                    entry = {'peptide' : result[0], 'Peptide length': result[1],
+                            'best_align_id' : result[2],'bioseq2seq_pred' : coding_pred,'bioseq2seq_first' :first_found}
                     storage.append(entry)
             else:
                 raise ValueError("mode must be \'align\' or \'parse\'")
        
     if mode == 'parse':
-        df = pd.DataFrame(storage)
         
+        # check overlap of lncPEP with training data according to ID 
+        id_list = []
+        with open('validated_lncPEP_ids.txt','r') as outFile:
+            id_list = [x.rstrip().split('.')[0] for x in outFile.readlines()]
+        df = pd.read_csv('data/mammalian_200-1200_train_balanced.csv',sep="\t")
+        overlap = df.loc[df['ID'].str.startswith(tuple(id_list))]
+        id_match = set(overlap['ID'].tolist())
+       
+        # check overlap of lncPEP with training data according to CD-hit
+        cdhit_nonredundant = []
+        for record in SeqIO.parse('possible_hits','fasta'):
+            cdhit_nonredundant.append(record.id)
+        
+        samba_results = pd.read_csv('rnasamba_new.tsv',sep='\t')
+        samba_results['ID'] = [x.split(' ')[0] for x in samba_results['sequence_name']]
+        samba_results = samba_results.set_index('ID') 
+        df = pd.DataFrame(storage)
         longest = []
-        for x in test_df['RNA'].tolist():
+        lens = [] 
+        samba = [] 
+        for tscript,x in zip(test_df.index.tolist(),test_df['RNA'].tolist()):
             s,e = getLongestORF(x)
             translated = Seq(x[s:e]).translate()
             longest.append(str(translated)[:-1])
-        
+            lens.append(len(x))
+            pred = samba_results.loc[tscript,'classification']
+            mark = pred == 'coding'
+            samba.append(mark) 
+       
+        test_df['rnasamba_pred'] = samba
         test_df['longest_ORF_translation'] = longest 
-        test_df['peptide_is_longest'] = test_df['Protein'] == test_df['longest_ORF_translation'] 
+        test_df['tscript_len'] = lens 
+        test_df['peptide_is_longest'] = test_df['Protein'] == test_df['longest_ORF_translation']
+        
         test_df = test_df.reset_index()
-        test_df = test_df[['ID','Protein','peptide_is_longest']]
+        print(test_df[['ID','Protein','longest_ORF_translation','peptide_is_longest']])
+        test_df = test_df[['ID','Protein','peptide_is_longest','true_peptide_len','tscript_len','rnasamba_pred']]
         df['ID'] = [x.split('.peptide')[0] for x in df['peptide']] 
+        df['best_beam'] = [x.split('.peptide.')[1] for x in df['peptide']] 
+        df['first_beam'] = [x.split('.peptide.')[1] if x is not None else '9999' for x in df['bioseq2seq_first']] 
+        # add  needle alignment results 
         combined = test_df.merge(df,on='ID')
-        print(combined)
+        
+        in_training_set = (combined['ID'].isin(id_match)) | (~combined['ID'].isin(cdhit_nonredundant)) 
+        unique = combined.loc[~in_training_set]
+        similar = combined.loc[in_training_set]
+        print('in training set') 
+        print_latex_table(similar)
+        print('not in training set') 
+        print_latex_table(unique)
+
+def print_latex_table(df): 
+
+    '''
+    df = df[['ID','tscript_len','true_peptide_len','peptide_is_longest','rnasamba_pred',
+        'bioseq2seq_pred','first_beam','best_beam','best_align_id']] 
+    df = df.sort_values(by=['best_beam','true_peptide_len'],ascending=[True,False])
+    '''
+
+    df = df[['ID','tscript_len','true_peptide_len','peptide_is_longest','rnasamba_pred','bioseq2seq_pred','first_beam']] 
+    df = df.sort_values(by=['first_beam','true_peptide_len'],ascending=[True,False])
+    table = df.to_latex(index=False,column_format='l'*len(df.columns))
+    table = re.sub("&(\s*)","& ",table)
+    table = table.replace('True',r'\cmark')
+    table = table.replace('False',r'\xmark')
+    table = table.replace('9999',r'\xmark')
+    print(table)
 
 if __name__ == "__main__":
 
     args,unknown_args = parse_config()
     setup_fonts() 
     test_file = os.path.join(args.data_dir,'lnc_PEP.csv')
-    best_preds = os.path.join('translation',f'lnc_PEP_RNAs_preds_with_translations.txt')
+    best_preds = os.path.join('translation',f'lnc_PEP_RNA_preds.txt')
     
     if 'parse' in unknown_args:
         mode = 'parse'

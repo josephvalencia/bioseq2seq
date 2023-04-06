@@ -34,13 +34,15 @@ class CNNEncoder(EncoderBase):
             emb = emb.contiguous()
         else:
             emb = emb.transpose(0, 1).contiguous()
-        print('CNN',emb) 
+        
         emb_reshape = emb.view(emb.size(0) * emb.size(1), -1)
         emb_remap = self.linear(emb_reshape)
         emb_remap = emb_remap.view(emb.size(0), emb.size(1), -1)
         emb_remap = shape_transform(emb_remap)
         out = self.cnn(emb_remap)
 
+        #return emb_remap.squeeze(3).permute(2,0,1).contiguous(), \
+        #    out.squeeze(3).permute(2,0,1).contiguous(), lengths, None
         return emb_remap.squeeze(3).transpose(0, 1).contiguous(), \
             out.squeeze(3).transpose(0, 1).contiguous(), lengths, None
 

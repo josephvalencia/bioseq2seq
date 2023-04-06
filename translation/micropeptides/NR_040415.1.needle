@@ -1,6 +1,6 @@
 ########################################
 # Program: needle
-# Rundate: Mon  6 Mar 2023 21:36:09
+# Rundate: Tue  4 Apr 2023 13:33:22
 # Commandline: needle
 #    -asequence translation/micropeptides/NR_040415.1_true_PROTEIN.fa
 #    -bsequence translation/micropeptides/NR_040415.1.micropeptides.fa

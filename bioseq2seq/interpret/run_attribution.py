@@ -7,11 +7,9 @@ import numpy as np
 import os
 import warnings
 import copy
-from scipy import stats , signal
 
 from embedding import SynonymousShuffleExpectedGradients, GradientAttribution, EmbeddingMDIG, EmbeddingIG
 from onehot import OneHotSalience, OneHotIntegratedGradients, OneHotMDIG, OneHotExpectedGradients
-from sampler import DiscreteLangevinSampler
 from ism import InSilicoMutagenesis, LogitsOnly
 
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -22,66 +20,6 @@ from bioseq2seq.inputters.corpus import maybe_fastafile_open
 import bioseq2seq.bin.transforms as xfm
 from argparse import Namespace
 
-from analysis.average_attentions import plot_power_spectrum
-import matplotlib.pyplot as plt
-
-def plot_frequency_heatmap(tscript_name,attr,tgt_class,metric):
-
-    periods = [18,9,6,5,4,3,2]
-    tick_locs = [1.0 / p for p in periods]
-   
-    fft_window = 250
-    # lower right NC spectrogram
-    plt.subplot(212)
-    Pxx, freqs, bins, im = plt.specgram(attr.ravel(),Fs=1.0,NFFT=fft_window,noverlap=fft_window/2,cmap='plasma',detrend = 'mean')
-    bins = [int(x) for x in bins]
-    plt.xlabel("Window center (nt.)")
-    plt.ylabel("Period (nt.)")
-    plt.colorbar(im).set_label('Attribution Power')
-    plt.yticks(tick_locs,periods)
-    plt.xticks(bins,bins)
-
-    bins = [0]+bins+[attr.size]
-    # upper left PC line plot
-    plt.subplot(211)
-    plt.plot(attr.ravel(),linewidth=1.0)
-    plt.ylabel('Attribution')
-    plt.xticks(bins,bins)
-    
-    '''
-    plt.subplot(312)
-    # set parameters for drawing gene
-    exon_start = 50-.5
-    exon_stop = 200+.5
-    y = 0
-
-    # draw gene
-    plt.axhline(y, color='k', linewidth=1)
-    plt.plot([exon_start, exon_stop],[y, y], color='k', linewidth=7.5, solid_capstyle='butt')
-    ''' 
-    
-    plt.tight_layout() 
-    plt.savefig(f'ps_examples/{tscript_name}_{tgt_class}_{metric}_spectrogram.svg')
-    plt.close()
-
-def print_pairwise_corrs(batch_attributions,steps):
-    
-    copy1 = batch_attributions[-2]
-    copy2 = batch_attributions[-1]
-    
-    dist = np.linalg.norm(copy2 - copy1,ord='fro') / np.linalg.norm(copy2,ord='fro')
-    print('% Distance between last two trials (Frobenius norm)',dist)
-    
-    stacked = np.stack(batch_attributions,axis=0)
-    M = stacked.sum(axis=-1)
-    cov = M @ M.T
-    diag_term = np.linalg.inv(np.sqrt(np.diag(np.diag(cov))))
-    pearson_corr = diag_term @ cov @ diag_term
-   
-    df = pd.DataFrame(pearson_corr,columns = steps,index=steps)
-    print('pairwise Pearson corr by n_steps')
-    print(df.round(3))
-
 def add_synonymous_shuffled_to_vocab(num_copies,vocab_fields):
 
     for i in range(num_copies):
@@ -89,15 +27,6 @@ def add_synonymous_shuffled_to_vocab(num_copies,vocab_fields):
         seq_name = f'src_shuffled_{i}'
         shuffled_field.fields = [(seq_name,shuffled_field.base_field)] 
         vocab_fields[seq_name] = shuffled_field 
-
-def add_point_mutations_to_vocab(vocab_fields):
-
-    for base in ['A','G','C','T']: 
-        for loc in range(-12,60):
-            seq_name = f'src_{loc}->{base}'
-            shuffled_field = copy.deepcopy(vocab_fields['src'])
-            shuffled_field.fields = [(seq_name,shuffled_field.base_field)] 
-            vocab_fields[seq_name] = shuffled_field 
 
 def parse_args():
 
@@ -177,7 +106,6 @@ def run_helper(rank,args,model,vocab,use_splits=False):
     if tgt_class == "STOP":
         tgt_class = "</s>"
     
-    print(args.name)
     pathname = os.path.split(args.name)
     
     if pathname[0] == '':
@@ -204,10 +132,7 @@ def run_helper(rank,args,model,vocab,use_splits=False):
         shuffle_options = Namespace(num_copies=args.sample_size,mutation_prob=args.mutation_prob)
         xforms = {'add_synonymous_mutations' : xfm.SynonymousCopies(opts=shuffle_options)}
         add_synonymous_shuffled_to_vocab(args.sample_size,vocab_fields)
-    if args.attribution_mode == 'ISM':
-        #xforms = {'add_point_mutations' : xfm.GenPointMutations(opts={})}
-        #add_point_mutations_to_vocab(vocab_fields)
-        pass
+    
     print(f'INFERENCE MODE {args.inference_mode}')
     valid_iter = iterator_from_fasta(src=args.input,
                                     tgt=args.tgt_input,
@@ -255,11 +180,6 @@ def run_helper(rank,args,model,vocab,use_splits=False):
     elif args.attribution_mode == 'logit': 
         print(f'Running LogitsOnly wrt. {tgt_class}')
         attributor = LogitsOnly(model,device,vocab,tgt_class, \
-                                            softmax=apply_softmax,sample_size=args.sample_size,minibatch_size=args.minibatch_size,
-                                            times_input=False,smoothgrad=False)
-    elif args.attribution_mode == 'langevin':
-        print(f'Running Discrete Langevin wrt. {tgt_class}')
-        attributor = DiscreteLangevinSampler(model,device,vocab,tgt_class, \
                                             softmax=apply_softmax,sample_size=args.sample_size,minibatch_size=args.minibatch_size,
                                             times_input=False,smoothgrad=False)
     elif args.attribution_mode == 'MDIG-embed':

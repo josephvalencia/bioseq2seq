@@ -142,7 +142,6 @@ def plot_path_probability(trajectory,grid,tscript):
     plt.savefig(f'{tscript}_prob_trajectory.svg')
     plt.close()
 
-
 class OneHotMDIG(OneHotGradientAttribution):
 
     def run(self,savefile,val_iterator,target_pos,baseline,transcript_names,max_alpha=0.50):

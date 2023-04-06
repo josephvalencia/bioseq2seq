@@ -370,7 +370,6 @@ class Trainer(object):
                         src, tgt, src_lengths, bptt=bptt,
                         with_align=self.with_align)
                     bptt = True
-                    
                     # 3. Compute loss.
                     loss, batch_stats = self.train_loss(
                         batch,
@@ -380,7 +379,7 @@ class Trainer(object):
                         shard_size=self.shard_size,
                         trunc_start=j,
                         trunc_size=trunc_size)
-
+                    print(f'j={j}, outputs= {outputs.shape}, loss = {loss}, trunc_size={trunc_size}, shard_size={self.shard_size}, normalization = {normalization}')
                 try:
                     if loss is not None:
                         self.optim.backward(loss)

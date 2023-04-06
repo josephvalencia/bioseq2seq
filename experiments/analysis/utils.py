@@ -37,8 +37,6 @@ def parse_config():
     p.add('--data_dir',help='data directory' )
     p.add('--val_prefix',help='validation dataset (.csv)')
     p.add('--train_prefix',help='train dataset (.csv)')
-    p.add('--competitors_results',help='competitors results (.csv)')
-    p.add('--bioseq2seq_results',help='bioseq2seq results (.csv)')
     p.add('--best_BIO_DIR',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
     p.add('--best_EDC_DIR',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
     p.add('--best_BIO_chkpt',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
@@ -57,6 +55,18 @@ def grad_simplex_correction(input_grad):
     input_grad -= input_grad.mean(axis=-1,keepdims=True)
     return input_grad
 
+def build_output_dir(args):
+
+    # build output directory
+    config = args.c
+    config_prefix = config.split('.yaml')[0]
+    output_dir  =  f'results_{config_prefix}'
+    
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+        print(f'created output directory {output_dir}')
+    return output_dir 
+
 def build_EDA_file_list(args,parent):
     
     file_list = [f'{parent}EDA_layer{l}.npz' for l in range(args['n_layers'])] 
@@ -71,6 +81,7 @@ def get_CDS_loc(cds,rna):
         clean = lambda x : x[1:] if x.startswith("<") or x.startswith(">") else x
         splits = [clean(x) for x in splits]
         start,end = tuple([int(x) for x in splits])
+        alt_start,alt_end = getLongestORF(rna)
     # impute longest ORF as CDS for lncRNA
     else:
         start,end = getLongestORF(rna)

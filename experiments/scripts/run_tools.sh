@@ -16,7 +16,7 @@ cd $BIOHOME/bioseq2seq/experiments/tools/CPC2-beta
 export CPC_HOME="$PWD"
 python2 bin/CPC2.py -i $test_set -o test_cpc2_mammalian.txt
 
-cd $biohome/bioseq2seq/experiments/
+cd $BIOHOME/bioseq2seq/experiments/
 # cpat
 # split our train set into balanced sets between coding and noncoding
 # build necessary tables

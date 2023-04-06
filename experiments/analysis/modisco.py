@@ -2,7 +2,7 @@ import subprocess
 import numpy as np
 import os, sys, re
 import pandas as pd
-
+import modisco
         
 def getLongestORF(mRNA):
     ORF_start = -1
@@ -30,11 +30,11 @@ def pad_to_max_len(array,max_len):
 
 def save_transposed(parent,attr_type,mode='FULL'):
   
-    #jdf = pd.read_csv("data/mammalian_200-1200_train_balanced.csv",sep='\t').set_index('ID')
-    df = pd.read_csv("data/mammalian_200-1200_test_nonredundant_80.csv",sep='\t').set_index('ID')
+    df = pd.read_csv("data/mammalian_200-1200_train_balanced.csv",sep='\t').set_index('ID')
+    #df = pd.read_csv("data/mammalian_200-1200_test_nonredundant_80.csv",sep='\t').set_index('ID')
     onehot_file = np.load(f"{parent}.onehot.npz")
     attribution_file = np.load(f"{parent}.{attr_type}.npz")
-    logits_file = np.load(f"{parent}.logit.npz")
+    logits_file = np.load(f"{parent}.wildtype_logit.npz")
      
     attr_storage = []
     onehot_storage = []
@@ -95,6 +95,31 @@ def cleanup(tempfile):
     else:
         print(f'Refusing to delete {tempfile}') 
 
+def original_modisco():
+
+    tfm_results = modisco.tfmodisco_workflow.workflow.TfModiscoWorkflow(
+                                    sliding_window_size=8,
+                                    flank_size=8,
+                                    min_metacluster_size=20,
+                                    target_seqlet_fdr=0.1,
+                                    max_seqlets_per_metacluster=mspmc, # don't put constrain on this
+                                    seqlets_to_patterns_factory=
+                                    modisco.tfmodisco_workflow.seqlets_to_patterns.TfModiscoSeqletsToPatternsFactory(
+                                    n_cores=16, # use 16 cores
+                                    trim_to_window_size=30,
+                                    # min_num_to_trim_to=15, #added later
+                                    initial_flank_to_add=10,
+                                    kmer_len=8, num_gaps=3,
+                                    num_mismatches=2,
+                                    final_min_cluster_size=30))
+                                    (task_names=["task"], #list(target_importance.keys()),
+                                    contrib_scores={"task": [x[idxs] for (x,idxs) in zip(seqs * scores,locations)]}, #target_importance,
+                                    hypothetical_contribs={"task": [x[idxs] for (x,idxs) in zip(scores,locations)]}, #target_hypothetical,
+                                    revcomp=False,
+                                    one_hot=[x[idxs] for (x,idxs) in zip(seqs,locations)]) #seqs)
+
+
+
 def discover(parent,attr_type,mode):
    
     temp_onehot = f'{parent}.onehot.{mode}.modisco.npz'
@@ -103,7 +128,7 @@ def discover(parent,attr_type,mode):
         save_transposed(parent,attr_type,mode)
     
     result_name = f'{parent}.{attr_type}.{mode}.modisco_results.h5'
-    cmd = ['modisco','motifs','-s',temp_onehot,'-a',temp_attr,'-n', '20000','-o',result_name,'-v']
+    cmd = ['modisco','motifs','-s',temp_onehot,'-a',temp_attr,'-n', '2000','-o',result_name,'-v']
     print(' '.join(cmd))
     subprocess.run(cmd)  
     #cleanup(temp_onehot)

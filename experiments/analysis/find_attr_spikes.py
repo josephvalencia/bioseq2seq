@@ -1,6 +1,5 @@
 import sys,random
 import os,re
-
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -17,7 +16,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
 
-from utils import parse_config, build_EDA_file_list, getLongestORF, get_CDS_loc
+from utils import parse_config, build_EDA_file_list, getLongestORF, get_CDS_loc, build_output_dir
 
 def select_index(array,mode='argmax',excluded=None,smoothed=False):
   
@@ -112,47 +111,68 @@ def get_codon_map():
                 'GGT':'G', 'GGC':'G', 'GGA':'G', 'GGG':'G',}
     return codonMap
 
-def dist(codon1,codon2):
+def diff(codon1,codon2):
     
-    diff = 0
-    for c1,c2 in zip(codon1,codon2):
+    locs = []
+    for i,(c1,c2) in enumerate(zip(codon1,codon2)):
         if c1 != c2:
-            diff +=1
-    return diff
+            locs.append(i)
+    return locs
 
-def mask_UTR(array,seq):
+def mask_frame_independent(array,seq,mask_level=3):
     
     mask = np.zeros_like(array)
     codonMap = get_codon_map()
 
-    stops =  ['TAG','TGA','TAA']
-    close_to_stop = [] 
-    for codon in codonMap.keys():
-        for stop in stops:
-            if dist(codon,stop) == 1:
-                close_to_stop.append(codon)
+    # always mask stops
+    nuc_to_j = {'A' : 0, 'C' : 1, 'G' : 2, 'T' : 3}
+    stop_codons  =  ['TAG','TGA','TAA']
+    banned_codons = stop_codons 
+    close_to_stop = defaultdict(list) 
+
+    # UGG observed to dominate like a stop
+    if mask_level == 2: 
+        codons.append('TGG')
+    # mask anything a point mutation away from a stop 
+    if mask_level == 3:
+        for codon in codonMap.keys():
+            for stop in stop_codons:
+                diffs = diff(codon,stop)
+                if len(diffs) == 1 and codon not in stop_codons:
+                    loc = diffs[0]
+                    close_to_stop[codon].append((stop,loc,nuc_to_j[stop[loc]]))
+        banned_codons += close_to_stop.keys()
     
-    for startMatch in re.finditer('ATG',seq):
-        mask[startMatch.start():startMatch.end(),:] = 1
-    for stop in stops:    
-        for stopMatch in re.finditer(stop,seq):
-            mask[stopMatch.start():stopMatch.end(),:] = 1
+    # always mask starts
+    banned_codons.append('ATG')
     
+    for codon in banned_codons:    
+        for match in re.finditer(codon,seq):
+            if codon in close_to_stop:
+                for stop,loc,j in close_to_stop[codon]: 
+                    i = match.start() + loc
+                    mask[i,j] = 1
+            else: 
+                mask[match.start():match.end(),:] = 1
+
     return mask 
 
-def mask_CDS(array,seq):
+def maskORF(array,seq):
 
     codon_map = get_codon_map()
     legal_chars = {'A','C','G','T'}
     allowed = lambda codon : all([x in legal_chars for x in codon])
-    # traverse CDS
+   
+    # initialize mask
     mask = [] 
     start_mask = np.ones(shape=(3,4))
     endpoint = len(seq) - 3 if len(seq) % 3 == 0 else 3 * (len(seq) // 3)
     remainder = len(seq) - endpoint
     stop_mask = np.ones(shape=(remainder,4))
     mask.append(start_mask) 
-    for i in range(3,len(seq)-3,3):
+   
+    # traverse ORF
+    for i in range(3,endpoint,3):
         codon = seq[i:i+3]
         if allowed(codon):
             codon_storage = [] 
@@ -174,6 +194,10 @@ def mask_CDS(array,seq):
     
     mask.append(stop_mask)
     mask = np.concatenate(mask,axis=0)
+
+    # illegalize all common codons regardless of frame
+    untargeted_mask = mask_frame_independent(array,seq)
+    mask = np.logical_or(mask,untargeted_mask).astype(int)
     return mask
 
 def mask_locations(array,seq,region):
@@ -181,14 +205,18 @@ def mask_locations(array,seq,region):
     mask = np.zeros_like(array)
 
     if region == '5-prime' or region == '3-prime':
-        mask = mask_UTR(array,seq) 
+        mask = mask_frame_independent(array,seq) 
     elif region == 'CDS':
-        mask = mask_CDS(array,seq)
+        mask = mask_frame_independent(array,seq)
     else:
         pass
+    
+    nonzero = np.count_nonzero(mask)
+    detailed = np.count_nonzero(mask,axis=1)
+    #print(f'masked = {nonzero}/{mask.size} = {nonzero/mask.size:.3f}')
     return mask
 
-def top_indices(saved_file,df,groups,metrics,mode="attn",head_idx=0,reduction_mode='PC',region="full"):
+def top_indices(saved_file,df,groups,metrics,mode="attn",head_idx=0,reduction_mode='PC',region="full",apply_mask=False):
     
     negative_storage = []
     positive_storage = []
@@ -207,8 +235,6 @@ def top_indices(saved_file,df,groups,metrics,mode="attn",head_idx=0,reduction_mo
             array = array - onehot_file[tscript] * array
             array = array[:,2:6]
 
-        #if mode in ['MDIG','ISM','grad']:
-        #    array = reduce_over_mutations(array,mode=reduction_mode)
         name = tscript + "_" + mode
         coding = tscript.startswith('XM') or tscript.startswith('NM') 
         start,end = get_CDS_loc(df.loc[tscript,'CDS'],df.loc[tscript,'RNA'])
@@ -219,14 +245,15 @@ def top_indices(saved_file,df,groups,metrics,mode="attn",head_idx=0,reduction_mo
             continue
         
         subarray,subseq = functional_region
+        unreduced = subarray
         
-        apply_mask = True
         mask = None
         if apply_mask:
             mask = mask_locations(subarray,subseq,region)
+            unreduced = np.where(mask,0.0,unreduced)
         if mode in ['MDIG','ISM','grad']:
             subarray = reduce_over_mutations(subarray,mode=reduction_mode,mask=mask)
-        
+
         both_storage = [positive_storage,negative_storage]
 
         for i,(g,m,dataset) in enumerate(zip(groups,metrics,both_storage)): 
@@ -238,16 +265,16 @@ def top_indices(saved_file,df,groups,metrics,mode="attn",head_idx=0,reduction_mo
                     excluded = positive_storage[-1][1]
                     selected = select_index(subarray,mode=m,excluded=excluded)
                     adjusted = adjust_indices_by_region(selected,start,end,region)
-                    max_in_window = max(subarray[selected-10:selected+11])
+                    max_in_window =  np.max(subarray[selected-10:selected+11].tolist())
                     argmax_in_window = np.argmax(subarray[selected-10:selected+11])
-                    result = (tscript,adjusted,max_in_window,argmax_in_window,start,end)
+                    result = (tscript,adjusted,max_in_window,argmax_in_window,start,end,len(seq),unreduced_scores)
                 # otherwise restricted only by mode
                 else:
                     selected = select_index(subarray,mode=m) 
                     adjusted = adjust_indices_by_region(selected,start,end,region)
-                    max_in_window = max(subarray[selected-10:selected+11])
+                    max_in_window = np.max(subarray[selected-10:selected+11].tolist())
                     argmax_in_window = np.argmax(subarray[selected-10:selected+11])
-                    result = (tscript,adjusted,max_in_window,argmax_in_window,start,end)
+                    result = (tscript,adjusted,max_in_window,argmax_in_window,start,end,len(seq))
             
             # None type means length minimums were not passed so skip
             if result is not None:
@@ -259,9 +286,9 @@ def indices_to_substrings(index_list,motif_fasta,df,region):
     
     storage = []
     sequences = []
-    maxes = [] 
+    
     # ingest top k indexes from attribution/attention
-    for tscript,idx,score,offset,s,e in index_list:
+    for tscript,idx,score,offset,s,e,l in index_list:
         seq = df.loc[tscript,'RNA']
         # enforce uniform window
         left_bound = 10
@@ -269,18 +296,16 @@ def indices_to_substrings(index_list,motif_fasta,df,region):
         start = idx-left_bound
         end = idx+right_bound+1
         substr = seq[start:end]
-        description = f"{region},score={score:.3f},offset={offset},loc[{start+1}:{end+1}], ORF[{s}:{e}]"
+        description = f"offset={offset},loc[{start}:{end}],ORF[{s}:{e}],tscript_len={l}"
         record = SeqRecord(Seq(substr),
                                 id=f'{tscript}-kmer',
                                 description=description)
         sequences.append(record)
-        maxes.append(score)
 
-    mean = sum(maxes) / len(maxes)
     with open(motif_fasta,'w') as outFile:
         SeqIO.write(sequences, outFile, "fasta")
 
-def run_attributions(saved_file,df,parent_dir,groups,metrics,mode="attn",layer_idx=0,head_idx=0,reduction='PC',region="full"):
+def run_attributions(saved_file,df,parent_dir,groups,metrics,mode="attn",layer_idx=0,head_idx=0,reduction='PC',region="full",mask=False):
 
     if mode == "attn":
         attr_name = f'EDA_layer{layer_idx}head{head_idx}'
@@ -297,10 +322,9 @@ def run_attributions(saved_file,df,parent_dir,groups,metrics,mode="attn",layer_i
     positive_motifs_file = prefix+"positive_motifs.fa"
     negative_motifs_file = prefix +"negative_motifs.fa"
     hist_file = prefix+"pos_hist.svg"
-    positive_indices, negative_indices = top_indices(saved_file,df,groups,metrics,mode=mode,head_idx=head_idx,reduction_mode=reduction,region=region)
+    positive_indices, negative_indices = top_indices(saved_file,df,groups,metrics,mode=mode,head_idx=head_idx,reduction_mode=reduction,region=region,apply_mask=mask)
     indices_to_substrings(positive_indices,positive_motifs_file,df,region)
     indices_to_substrings(negative_indices,negative_motifs_file,df,region)
-    plot_positional_bias(positive_indices,negative_indices,df,hist_file,groups,metrics)
     cmd = 'streme -p {}positive_motifs.fa -n {}negative_motifs.fa -oc {}streme_out -rna -minw 3 -maxw 9 -pvt 1e-2 -patience 3' 
     print(cmd.format(*[prefix]*3))
 
@@ -310,34 +334,7 @@ def tuple_list_to_df(indices):
     starts = [x[1] for x in indices]
     return pd.DataFrame({'ID' : tscripts, 'start' : starts})
 
-def plot_positional_bias(positive_indices,negative_indices,df_data,hist_file,groups,metrics):
-
-    storage = []
-    pos_name = f'{groups[0]}-{metrics[0]}' 
-    neg_name = f'{groups[1]}-{metrics[1]}' 
-    pos = tuple_list_to_df(positive_indices)
-    neg = tuple_list_to_df(negative_indices)
-    pos['class'] = len(pos)*[pos_name]
-    neg['class'] = len(neg)*[neg_name]
-    df_attr = pd.concat([pos,neg])
-    df_data['cds_start'] = [get_CDS_loc(cds,seq)[0] for cds,seq in zip(df_data['CDS'].values.tolist(),df_data['RNA'].values.tolist())]
-    df = pd.merge(df_attr,df_data,on='ID')
-    df['rel_start'] = df['start'] - df['cds_start']-1
-    df = df.drop(columns=df.columns.difference(['class','rel_start']))
-    
-    bins = np.arange(-750,1200,10)
-    g = sns.displot(data=df,x='rel_start',col='class',kind='hist',hue_order=[pos_name,neg_name],stat='density',bins=bins,element='step')
-    axes = g.axes.flatten()
-    axes[0].set_title("")
-    axes[0].set_xlabel("Position of max attr val rel. start")
-    axes[0].set_ylabel("Density")
-    axes[1].set_title("")
-    axes[1].set_xlabel("Position of min attr val rel. to start longest ORF")
-    axes[1].set_ylabel("")
-    plt.savefig(hist_file)
-    plt.close()
-
-def run(attributions,df,attr_dir,g,m,mode,reduction,region):
+def run(attributions,df,attr_dir,g,m,mode,reduction,region,mask):
 
     # reduction defines how L x 4 mutations are reduced to L x 1 importances, see reduce_over_mutations()
     # g[0] and g[1] are transcript type for pos and neg sets
@@ -351,7 +348,7 @@ def run(attributions,df,attr_dir,g,m,mode,reduction,region):
     best_BIO_dir = f'{attr_dir}/best_seq2seq_{region}_{trial_name}'
     if not os.path.isdir(best_BIO_dir):
         os.mkdir(best_BIO_dir)
-    run_attributions(attributions,df,best_BIO_dir,g,m,mode,reduction=reduction,region=region)
+    run_attributions(attributions,df,best_BIO_dir,g,m,mode,reduction=reduction,region=region,mask=mask)
 
 def attribution_loci_pipeline(): 
 
@@ -367,13 +364,13 @@ def attribution_loci_pipeline():
     best_BIO_EDA = build_EDA_file_list(args.best_BIO_EDA,args.best_BIO_DIR)
     best_EDC_EDA = build_EDA_file_list(args.best_EDC_EDA,args.best_EDC_DIR)
 
-    # build output directory
-    config = args.c
-    config_prefix = config.split('.yaml')[0]
-    output_dir  =  f'results_{config_prefix}'
-    attr_dir  =  f'{output_dir}/attr'
-    if not os.path.isdir(output_dir):
-        os.mkdir(output_dir)
+    output_dir = build_output_dir(args)
+    mask = '--mask' in unknown_args
+    if mask:
+        attr_dir = f'{output_dir}/attr_masked'
+    else: 
+        attr_dir = f'{output_dir}/attr_unmasked'
+
     # make subdir for attribution loci results  
     if not os.path.isdir(attr_dir):
         os.mkdir(attr_dir)
@@ -382,8 +379,7 @@ def attribution_loci_pipeline():
     best_BIO_EDA = build_EDA_file_list(args.best_BIO_EDA,args.best_BIO_DIR)
     best_EDC_EDA = build_EDA_file_list(args.best_EDC_EDA,args.best_EDC_DIR)
     
-    mode = 'ISM-test'
-    
+    mode = 'MDIG-train' if '--mdig' in unknown_args else 'ISM-test'
     if mode == 'ISM-test': 
         prefix = args.test_prefix.replace('test','test_RNA')
     elif mode == 'MDIG-train': 
@@ -399,17 +395,16 @@ def attribution_loci_pipeline():
     same_selection_methods = ['argmax','random']
     cross_selection_methods = ['argmax','argmax']
     reduction_methods = ['PC','NC']
-    #regions = ['5-prime','CDS','3-prime','full']
     regions = ['5-prime','CDS','3-prime']
-
+    
     for i,g in enumerate(groups):
         for reduction in reduction_methods:
             for region in regions:
                 m = same_selection_methods if i>1 else cross_selection_methods
                 if mode == 'ISM-test': 
-                    run(best_BIO_ISM,df_test,attr_dir,g,m,'ISM',reduction=reduction,region=region)
+                    run(best_BIO_ISM,df_test,attr_dir,g,m,'ISM',reduction=reduction,region=region,mask=mask)
                 elif mode == 'MDIG-train': 
-                    run(best_BIO_mdig,df_train,attr_dir,g,m,'MDIG',reduction=reduction,region=region)
+                    run(best_BIO_mdig,df_train,attr_dir,g,m,'MDIG',reduction=reduction,region=region,mask=mask)
    
     # now do the random-only search
     groups = [['PC','NC'],['NC','PC']]
@@ -418,9 +413,9 @@ def attribution_loci_pipeline():
     for g in groups:
         for region in regions:
             if mode == 'ISM-test': 
-                run(best_BIO_ISM,df_test,attr_dir,g,selection_methods,'ISM',reduction=reduction,region=region)
+                run(best_BIO_ISM,df_test,attr_dir,g,selection_methods,'ISM',reduction=reduction,region=region,mask=mask)
             elif mode == 'MDIG-train': 
-                run(best_BIO_mdig,df_train,attr_dir,g,selection_methods,'MDIG',reduction=reduction,region=region)
+                run(best_BIO_mdig,df_train,attr_dir,g,selection_methods,'MDIG',reduction=reduction,region=region,mask=mask)
 
 if __name__ == "__main__":
     

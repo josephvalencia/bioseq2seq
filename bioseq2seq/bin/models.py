@@ -41,7 +41,6 @@ def make_cnn_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_dim=
                                     word_vocab_size = n_output_classes,
                                     word_padding_idx = 1,
                                     position_encoding = True)
-
     encoder_stack = CNNEncoder(num_layers = n_enc,
                                        hidden_size = model_dim,
                                        cnn_kernel_width = encoder_kernel_size,

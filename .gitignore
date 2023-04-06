@@ -1,4 +1,5 @@
 # repo-specific stuff
+#.gitignore
 .*
 *.log
 *.preds
@@ -29,13 +30,17 @@
 *.attr
 *.pt
 *.failures
+*.needle
 \#*#
 .DS_Store
 data/
 /OLD/
+/misc/
 /design/
 /results_config/
 /results_PC.1/
+/wandb/
+/translation/
 /checkpoints/
 /experiments/wandb/
 experiments/competitor_results/

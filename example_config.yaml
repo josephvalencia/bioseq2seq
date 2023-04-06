@@ -1,0 +1,20 @@
+[Datasets]
+data_dir : data/
+train_prefix : mammalian_200-1200_train_balanced
+val_prefix : mammalian_200-1200_val_nonredundant_80
+test_prefix : mammalian_200-1200_test_nonredundant_80
+[Best Models]
+best_BIO_DIR : experiments/output/bioseq2seq_4_Jun25_07-51-41_step_10500/
+best_EDC_DIR : experiments/output/EDC_1_Jun27_08-35-05_step_6000/
+best_BIO_chkpt : experiments/checkpoints/coding_noncoding/bioseq2seq_4_Jun25_07-51-41/_step_10500.pt
+best_EDC_chkpt : experiments/checkpoints/coding_noncoding/EDC_1_Jun27_08-35-05/_step_6000.pt
+all_BIO_replicates : experiments/scripts/top1_bioseq2seq_models.txt
+all_EDC_replicates : experiments/scripts/top1_EDC-large_models.txt
+all_EDC_small_replicates : experiments/scripts/top1_EDC-small_models.txt
+[Encoder-Decoder Attention]
+best_BIO_EDA : {'model':'bioseq2seq','attr' : 'EDA','n_layers' : 2}
+best_EDC_EDA : {'model':'EDC','attr' : 'EDA','n_layers' : 16}
+[Attributions]
+reference_class : PC
+position : 1
+

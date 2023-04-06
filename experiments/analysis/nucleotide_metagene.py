@@ -300,7 +300,6 @@ def plot_power_spectrum(consensus,output_dir,name,model,attr_type,units='freq',l
 def run_consensus_pipeline(consensus,domain,output_dir,labels,name,model,coding,attr_type,heatmap=False):
     
     plot_line(domain,consensus,output_dir,name,model,attr_type,coding,plot_type='line',labels=labels)
-    #plot_line_unrolled(domain,consensus,output_dir,name,model,attr_type,plot_type='line',labels=labels)
     plot_power_spectrum(consensus,output_dir,name,model,attr_type=attr_type,labels=labels)
 
 def build_all(args):
@@ -316,18 +315,6 @@ def build_all(args):
     best_BIO_EDA = build_EDA_file_list(args.best_BIO_EDA,args.best_BIO_DIR)
     best_EDC_EDA = build_EDA_file_list(args.best_EDC_EDA,args.best_EDC_DIR)
    
-    '''
-    best_BIO_grad_PC = args.best_BIO_grad_PC
-    best_EDC_grad_PC = args.best_EDC_grad_PC
-    best_BIO_grad_NC = args.best_BIO_grad_NC
-    best_EDC_grad_NC = args.best_EDC_grad_NC
-    
-    best_BIO_inputXgrad_PC = args.best_BIO_inputXgrad_PC
-    best_EDC_inputXgrad_PC = args.best_EDC_inputXgrad_PC
-    best_BIO_inputXgrad_NC = args.best_BIO_inputXgrad_NC
-    best_EDC_inputXgrad_NC = args.best_EDC_inputXgrad_NC
-    '''
-
     # build output directory
     config = args.c
     config_prefix = config.split('.yaml')[0]
@@ -337,32 +324,10 @@ def build_all(args):
         os.mkdir(output_dir)
    
     # build EDA consensus, both coding and noncoding
-    #build_consensus_EDA(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,coding=True)
-    #build_consensus_EDA(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,coding=False)
+    build_consensus_EDA(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,coding=True)
+    build_consensus_EDA(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,coding=False)
     build_consensus_EDA(test_cds,output_dir,'best_EDC_test',best_EDC_EDA,coding=True)
     build_consensus_EDA(test_cds,output_dir,'best_EDC_test',best_EDC_EDA,coding=False)
-    
-    '''
-    #build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test_tgt=PC',best_BIO_grad_PC,coding=True)
-    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test_tgt=PC_',best_BIO_grad_PC,coding=False)
-    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test_PC_tgt=PC',best_EDC_grad_PC,coding=True)
-    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test_tgt=PC',best_EDC_grad_PC,coding=False)
-
-    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test_tgt=NC',best_BIO_grad_NC,coding=False)
-    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test_tgt=NC',best_BIO_grad_NC,coding=True)
-    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test_tgt=NC',best_EDC_grad_NC,coding=True)
-    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test_tgt=NC',best_EDC_grad_NC,coding=False)
-    
-    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test',best_BIO_inputXgrad_PC,coding=False)
-    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test',best_BIO_inputXgrad_PC,coding=True)
-    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test',best_BIO_inputXgrad_NC,coding=False)
-    build_consensus_multi_IG(test_cds,output_dir,'best_seq2seq_test',best_BIO_inputXgrad_NC,coding=True)
-    
-    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test',best_EDC_inputXgrad_PC,coding=True)
-    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test',best_EDC_inputXgrad_PC,coding=False)
-    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test',best_EDC_inputXgrad_NC,coding=True)
-    build_consensus_multi_IG(test_cds,output_dir,'best_EDC_test',best_EDC_inputXgrad_NC,coding=False)
-    '''
 
 if __name__ == "__main__":
     
