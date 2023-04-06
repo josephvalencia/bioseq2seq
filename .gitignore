@@ -25,6 +25,7 @@
 *.fa
 *.svg
 *.txt
+!requirements.txt
 *.hdf5
 *.attr
 *.failures
