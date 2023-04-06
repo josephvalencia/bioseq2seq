@@ -13,27 +13,24 @@ Use Ray Tune to tune hyperparameters for bioseq2seq and EDC using the BOHB algor
 export WANDB_KEY=<your_key>
 bash experiments/scripts/tune_all.sh
 ```
-
 ### Model training 
-Train multiple replicates (4) for best bioseq2seq and EDC hyperparams, as well as EDC equivalent. The driver script run.sh uses GNU Parallel to execute multiple commands from a text file in parallel. First, source `experiments/scripts/templates.sh`, which profides many commands for the remaining steps. 
+Train multiple replicates (4) for best bioseq2seq and EDC hyperparams, as well as EDC equivalent. The driver script `experiments/scripts/run.sh` uses [GNU Parallel](https://www.gnu.org/software/parallel/) to execute multiple commands from a text file in parallel. First, source `experiments/scripts/templates.sh`, which profides many commands for the remaining steps. 
 
 ```
 source experiments/scripts/templates.sh
 bash experiments/scripts/run.sh experiments/scripts/train_all_replicates.txt
 ```
-### Inference and evaluation 
+### Inference and feature attributions on various datasets 
 ```
-bash experiments/scripts/replicates_predict.sh
+bash test_and_attribution.sh
 ```
 ### Comparisons with alternative software 
 ```
 bash experiments/scripts/run_tools.sh
 ```
-### Attribution calculation 
+### Analysis and figure reproduction pipeline
+This script produces all figure panels using Matplotlib. A .yaml configuration file controls the pipeline, with both an example and a generic template provided.
 ```
-./scripts/replicates_attribute.sh
-```
-### Analysis pipeline
-```
-./scripts/analysis_pipeline.sh
+export CONFIG="example_config.yaml"
+bash figs_and_analysis.sh
 ```
