@@ -1,120 +1,125 @@
-import sys
+import os
+import argparse
 
 def bio_train(models):
-    
     for i,m in enumerate(models):
         outname = m.split('.pt')[0].replace('/','')
         cmd = f'$TRAIN_BIO --name bioseq2seq_{i+1} --random_seed {m}'
         print(cmd)
 
 def edc_train(models):
-    
     for i,m in enumerate(models):
         outname = m.split('.pt')[0].replace('/','')
         cmd = f'$TRAIN_EDC --name EDC_{i+1} --random_seed {m}'
         print(cmd)
 
 def edc_small_train(models):
-    
     for i,m in enumerate(models):
         outname = m.split('.pt')[0].replace('/','')
         cmd = f'$TRAIN_EDC_EQ --name EDC_eq_{i+1} --random_seed {m}'
         print(cmd)
 
-def bio_grad(models):
-    
-    for i,m in enumerate(models):
-        outname = m.split('.pt')[0].replace('/','')
-        cmd = f'$GRAD_TEST_BIO --checkpoint ${{CHKPT_DIR}}/{m} --name ${{OUT_DIR}}/{outname}/ --tgt_class PC --tgt_pos 1'
-        print(cmd)
+def bio_pred_with_attn(models,outfile):
+    with open(outfile,'w') as outFile:
+        for j in range(2):
+            for i,m in enumerate(models): 
+                outname = m.split('.pt')[0].replace('/','')
+                cmd = f'$PRED_TEST_BIO_CLASS --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/ --attn_save_layer {j}'
+                outFile.write(cmd+'\n')
+    print(f'wrote {outfile} with {len(models)*2} commands') 
+    os.remove(outfile)
 
-def EDC_grad(models):
-    
-    for i,m in enumerate(models): 
-        outname = m.split('.pt')[0].replace('/','')
-        cmd = f'$GRAD_TEST_EDC --checkpoint ${{CHKPT_DIR}}/{m} --name ${{OUT_DIR}}/{outname}/'
-        print(cmd)
+def edc_pred_with_attn(models,outfile):
+    with open(outfile,'w') as outFile:
+        for j in range(16):
+            for i,m in enumerate(models):
+                outname = m.split('.pt')[0].replace('/','')
+                cmd = f'$PRED_TEST_EDC --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/ --attn_save_layer {j}'
+                outFile.write(cmd+'\n')
+    print(f'wrote {outfile} with {len(models)*16} commands') 
+    os.remove(outfile)
 
-def bio_pred(models):
-    
-    for j in range(2):
+def bio_pred(models,outfile):
+    with open(outfile,'w') as outFile:
         for i,m in enumerate(models): 
             outname = m.split('.pt')[0].replace('/','')
-            cmd = f'$PRED_TEST_BIO_CLASS --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/ --attn_save_layer {j}'
-            print(cmd)
+            cmd = f'$PRED_TEST_BIO_CLASS --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/'
+            outFile.write(cmd+'\n')
+    print(f'wrote {outfile} with {len(models)} commands') 
+    os.remove(outfile)
 
-def bio_full_pred(models):
-    
-    for i,m in enumerate(models): 
-        outname = m.split('.pt')[0].replace('/','')
-        cmd = f'$PRED_TEST_BIO --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/'
-        print(cmd)
-        
-def EDC_pred(models):
-    
-    for j in range(16):
+def bio_full_pred(models,outfile):
+    with open(outfile,'w') as outFile:
+        for i,m in enumerate(models): 
+            outname = m.split('.pt')[0].replace('/','')
+            cmd = f'$PRED_TEST_BIO --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/'
+            outFile.write(cmd+'\n')
+    print(f'wrote {outfile} with {len(models)} commands') 
+    os.remove(outfile)
+
+def edc_pred(models,outfile):
+    with open(outfile,'w') as outFile:
         for i,m in enumerate(models):
             outname = m.split('.pt')[0].replace('/','')
-            cmd = f'$PRED_TEST_EDC --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/ --attn_save_layer {j}'
-            print(cmd)
+            cmd = f'$PRED_TEST_EDC --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/'
+            outFile.write(cmd+'\n')
+    os.remove(outfile)
 
-def bio_designed_pred(models):
+def attr(models,inf_mode,attr_mode,dataset,outfile):
+    with open(outfile,'w') as outFile:
+        for i,m in enumerate(models): 
+            outname = m.split('.pt')[0].replace('/','')
+            cmd = f'$ATTR_{dataset}_{inf_mode} --checkpoint ${{CHKPT_DIR}}/{m} --name ${{OUT_DIR}}/{outname}/ --attribution_mode {attr_mode} --tgt_class PC --tgt_pos 1 --max_alpha 1.0'
+            if attr_mode == 'MDIG':
+                cmd += ' --sample_size 32 --max_alpha 1.0'
+            elif attr_mode == 'IG':
+                cmd += ' --sample_size 128'
+            outFile.write(cmd+'\n')
+    print(f'wrote {outfile} with {len(models)} commands')
+    os.remove(outfile)
+
+def build_all_pred_scripts(bio_rep_file,edc_rep_file,edc_small_rep_file):
+
+    # ingest model replicate .pt files
+    with open(bio_rep_file) as inFile: 
+        bio_replicates = [m.strip() for m in inFile.readlines()]
+    with open(edc_rep_file) as inFile: 
+        edc_replicates = [m.strip() for m in inFile.readlines()]
+    with open(edc_small_rep_file) as inFile: 
+        edc_small_replicates = [m.strip() for m in inFile.readlines()]
+
+    # regular test set predictions
+    bio_full_pred(bio_replicates,'pred_bioseq2seq.txt')
+    bio_pred(bio_replicates,'pred_class_bioseq2seq.txt')
+    edc_pred(edc_replicates,'pred_EDC.txt')
+    edc_pred(edc_small_replicates,'pred_EDC_small.txt')
+
+    # test set preds with encoder-decoder attention
+    bio_pred_with_attn(bio_replicates,'pred_with_attn_bioseq2seq.txt')
+    edc_pred_with_attn(edc_replicates,'pred_with_attn_EDC.txt')
+
+    # verified validation set attributions
+    dataset = 'VAL_VERIFIED'
+    for attr_mode in ['MDIG','IG','grad','ISM']:
+        for inf_mode in ['BIO','EDC']:
+            filename = f'{attr_mode}_{dataset.lower()}_{inf_mode}.txt' 
+            attr(bio_replicates,inf_mode,attr_mode,dataset,filename)
+
+    # verified test set attributions
+    attr(bio_replicates,'BIO','ISM','TEST_VERIFED','ISM_test_verified_bioseq2seq.txt')
+    attr(edc_replicates,'EDC','ISM','TEST_VERIFED','ISM_test_verified_EDC.txt') 
+    attr(bio_replicates,'BIO','MDIG','TEST_VERIFED','MDIG_test_verified_bioseq2seq.txt')
+    attr(edc_replicates,'EDC','MDIG','TEST_VERIFED','MDIG_test_verified_EDC.txt') 
     
-    for i,m in enumerate(models): 
-        outname = m.split('.pt')[0].replace('/','')
-        cmd = f'$PRED_DESIGNED_BIO_NC --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/'
-        print(cmd)
-        
-def EDC_designed_pred(models):
-    
-    for i,m in enumerate(models):
-        outname = m.split('.pt')[0].replace('/','')
-        cmd = f'$PRED_DESIGNED_EDC_NC --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/ '
-        print(cmd)
-
-def bio_attr(models,mode,dataset):
-  
-    sample_size = None
-    if mode == 'MDIG':
-        sample_size = 32
-    elif mode == 'IG':
-        sample_size = 128
-    elif mode == 'EG':
-        sample_size = 512
-
-
-    for i,m in enumerate(models): 
-        outname = m.split('.pt')[0].replace('/','')
-        cmd = f'$ATTR_{dataset}_BIO --checkpoint ${{CHKPT_DIR}}/{m} --name ${{OUT_DIR}}/{outname}/ --attribution_mode {mode} --tgt_class PC --tgt_pos 1 --max_alpha 1.0'
-        if sample_size:
-            cmd += f' --sample_size {sample_size}'
-        print(cmd)
-
-def EDC_attr(models,mode,dataset):
-    
-    sample_size = None
-    if mode == 'MDIG':
-        sample_size = 32
-    elif mode == 'IG':
-        sample_size = 128
-    elif mode == 'EG':
-        sample_size = 512
-
-    for i,m in enumerate(models): 
-        outname = m.split('.pt')[0].replace('/','')
-        cmd = f'$ATTR_{dataset}_VERIFIED_EDC --checkpoint ${{CHKPT_DIR}}/{m} --name ${{OUT_DIR}}/{outname}/ --attribution_mode {mode} --tgt_class PC --tgt_pos 1'
-        if sample_size:
-            cmd += f' --sample_size {sample_size}'
-        print(cmd)
-    pass
+    # bioseq2seq attributions only on larger datsets
+    attr(bio_replicates,'BIO','MDIG','TEST_FULL','MDIG_test_full_bioseq2seq.txt') 
 
 if __name__ == "__main__":
     
-    models_file = sys.argv[1]
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--bio_rep_file',type=str,required=True)
+    parser.add_argument('--edc_rep_file',type=str,required=True)
+    parser.add_argument('--edc_small_rep_file',type=str,required=True)
+    args = parser.parse_args()
     
-    with open(models_file) as inFile: 
-        models = [m.strip() for m in inFile.readlines()]
-    
-    #EDC_pred(models)
-    bio_attr(models,'ISM','TEST')
-    #EDC_attr(models,'ISM','VAL')
+    build_all_pred_scripts(args.bio_rep_file,args.edc_rep_file,args.edc_small_rep_file)

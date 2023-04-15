@@ -31,7 +31,6 @@ def cnn_config():
 def mixer_config():
     ''' hyperparameters for GFNet+Transformer architecture''' 
     
-    #config = {"filter_size" : tune.choice([50,100,500])}
     config = {"window_size" : tune.choice([100,150,200,250,300,350,400]),
               "lambd_L1" : tune.qloguniform(1e-3,1.0,1e-3)}
     return config
@@ -72,14 +71,12 @@ if __name__ == "__main__":
                     "window_size" : 200,
                     "lambd_L1" : 0.5}
 
-    #bohb_search = TuneBOHB(points_to_evaluate=[seed_config])
-    bohb_search = TuneBOHB()
+    bohb_search = TuneBOHB(points_to_evaluate=[seed_config])
 
     name = f"final_BOHB_search_{cmd_args.mode}_{cmd_args.model_type}"
     train_wrapper = tune.with_parameters(train_protein_coding_potential,cmd_args=cmd_args)
     
-    #wandb_callback = WandbLoggerCallback(project=f"{cmd_args.mode}-{cmd_args.model_type} Hyperparam Search",\
-    wandb_callback = WandbLoggerCallback(project=f"testrun",\
+    wandb_callback = WandbLoggerCallback(project=f"{cmd_args.mode}-{cmd_args.model_type} Hyperparam Search",\
                     api_key=os.environ["WANDB_KEY"],log_config=False)
     
     total_time_allowed = 7*24*60*60 # 7 days in seconds 

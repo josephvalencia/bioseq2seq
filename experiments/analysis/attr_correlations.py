@@ -81,7 +81,7 @@ def similarity_scores(a,b,corr_mode):
 def plot_metrics(df,savefile,corr_mode,height,xlabel=None,y='Mutation method',order=None,show_legend=False):
    
 
-    f,(ax1,ax2) = plt.subplots(1,2,figsize=(7.5,height)) 
+    f,(ax1,ax2) = plt.subplots(1,2,figsize=(6.5,height)) 
     g = sns.violinplot(data=df,y=y,x=corr_mode,hue='Model',ax=ax1,cut=0,order=order,hue_order=['bioseq2seq','EDC'])
     if show_legend: 
         sns.move_legend(g,loc="upper right",bbox_to_anchor=(0.0,1.0),ncol=1)

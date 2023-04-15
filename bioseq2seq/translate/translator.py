@@ -58,15 +58,16 @@ def plot_frequency_heatmap(tscript_name,mod_freq):
     tick_locs =[approximate_index(p,mod_freq.shape[1]) for p in periods]
     
     for i in range(mod_freq.shape[0]):
+        if not (i == 0 or i == mod_freq.shape[0]-1):
+            continue
         test_freq = mod_freq[i,:,:]
         nonzero = torch.count_nonzero(test_freq)
-        print(test_freq)
-        print(nonzero / torch.numel(test_freq))
         g = sns.heatmap(data=test_freq.cpu().numpy(),cmap="viridis")
         g.set_ylabel("Period (nt.)")
         g.set_yticks(tick_locs)
         g.set_yticklabels(periods)
-        plt.savefig(f'frequency_content/{tscript_name}_freq_layer{i}.svg')
+        plt.savefig(f'{tscript_name}_freq_layer{i}.svg')
+        print(f'saved {tscript_name}_freq_layer{i}.svg')
         plt.close()
 
 def max_tok_len(new, count, sofar):
@@ -511,7 +512,7 @@ class Inference(object):
                 src_tokens = batch.src[0]
                 is_pad = torch.eq(src_tokens,1)
                 num_padding_tokens = torch.count_nonzero(is_pad,dim=0)
-                
+                print(batch.src[0].shape) 
                 batch_data = self.translate_batch(batch, data.src_vocabs, attn_debug)
                 translations = xlation_builder.from_batch(batch_data)
                 pbar.update(len(translations))

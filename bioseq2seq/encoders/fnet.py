@@ -131,12 +131,13 @@ class LocalFilterEncoderLayer(FourierEncoderLayer):
         s_0,s_1,s_2,s_3 = spect.shape
         spect = spect.reshape(-1,s_2,s_3) 
         # elementwise multiplication
+        mod_freq = spect.reshape(s_0,s_1,s_2,s_3).permute(0,3,2,1)
+        enc_cache['mod_freq'] = torch.sqrt(mod_freq.detach().abs().pow(2).sum(dim=1)) 
         x = spect * self.global_filter
         # restore shape
         x = x.reshape(s_0,s_1,s_2,s_3)
         x = self.complex_softshrink(x)
         x = x.permute(0,3,2,1)
-        enc_cache['mod_freq'] = x.detach().abs().pow(2)[:,31,:,:] #.sum(dim=1) 
 
         # inverse FFT 
         mixed_tokens = self.inv_stft(x,seq_len).transpose(1,2)
