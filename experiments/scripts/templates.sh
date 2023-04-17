@@ -1,15 +1,14 @@
-export BIOHOME=/home/bb/valejose/valejose
-export PYTHONPATH=$BIOHOME/bioseq2seq
-export test_rna="$BIOHOME/bioseq2seq/data/mammalian_200-1200_test_RNA_nonredundant_80.fa"
-export test_prot="$BIOHOME/bioseq2seq/data/mammalian_200-1200_test_PROTEIN_nonredundant_80.fa"
-export val_rna="$BIOHOME/bioseq2seq/data/mammalian_200-1200_val_RNA_nonredundant_80.fa"
-export val_prot="$BIOHOME/bioseq2seq/data/mammalian_200-1200_val_PROTEIN_nonredundant_80.fa"
-export verified_test_rna="$BIOHOME/bioseq2seq/data/verified_test_RNA.fa"
-export verified_test_prot="$BIOHOME/bioseq2seq/data/verified_test_PROTEIN.fa"
+export CHKPT_DIR="experiments/checkpoints"
+export OUT_DIR="experiments/output"
+export test_rna="data/mammalian_200-1200_test_RNA_nonredundant_80.fa"
+export test_prot="data/mammalian_200-1200_test_PROTEIN_nonredundant_80.fa"
+export val_rna="data/mammalian_200-1200_val_RNA_nonredundant_80.fa"
+export val_prot="data/mammalian_200-1200_val_PROTEIN_nonredundant_80.fa"
+export verified_test_rna="data/verified_test_RNA.fa"
+export verified_test_prot="data/verified_test_PROTEIN.fa"
 export verified_val_rna="data/verified_val_RNA.fa"
 export verified_val_prot="data/verified_val_PROTEIN.fa"
 
-#export train="python $PYTHONPATH/bioseq2seq/bin/train_single_model.py --train_src $PYTHONPATH/data/mammalian_200-1200_train_RNA_balanced.fa --train_tgt $PYTHONPATH/data/mammalian_200-1200_train_PROTEIN_balanced.fa --val_src $PYTHONPATH/data/mammalian_200-1200_val_RNA_nonredundant_80.fa --val_tgt $PYTHONPATH/data/mammalian_200-1200_val_PROTEIN_nonredundant_80.fa --num_gpus 1 --save-directory $PYTHONPATH/checkpoints/coding_noncoding/ --accum_steps 8 --max_tokens 9000 --report-every 500 --max-epochs 20000 --patience 5 --lr 1.0"
 export train="python bioseq2seq/bin/train_single_model.py \
 --train_src data/mammalian_200-1200_train_RNA_balanced.fa \
 --train_tgt data/mammalian_200-1200_train_PROTEIN_balanced.fa \
@@ -34,15 +33,15 @@ export TRAIN_EDC_EQ="$train --mode EDC \
 --model_dim 64 --dropout 0.2 --model_type LFNet \
 --window_size 250 --lambd_L1 0.004 --lr_warmup_steps 2000"
 
-export PRED_TEST_BIO="python $PYTHONPATH/bioseq2seq/bin/translate_new.py \
+export PRED_TEST_BIO="python bioseq2seq/bin/translate.py \
 --input $test_rna --mode bioseq2seq  --num_gpus 1 --beam_size 4
 --n_best 4 --max_decode_len 400 --max_tokens 1200" 
 
-export PRED_TEST_BIO_CLASS="python $PYTHONPATH/bioseq2seq/bin/translate_new.py \
+export PRED_TEST_BIO_CLASS="python bioseq2seq/bin/translate.py \
 --input $test_rna --mode bioseq2seq  --num_gpus 1 --beam_size 4 \
 --n_best 4 --max_decode_len 1 --max_tokens 1200 --save_EDA" 
 
-export PRED_TEST_EDC="python $PYTHONPATH/bioseq2seq/bin/translate_new.py \
+export PRED_TEST_EDC="python bioseq2seq/bin/translate.py \
 --input $test_rna --mode EDC --num_gpus 1 --beam_size 4 \
 --n_best 4 --max_tokens 1200 --save_EDA" 
 
@@ -50,14 +49,14 @@ export ATTR_VAL_VERIFIED_BIO="python bioseq2seq/interpret/run_attribution.py \
 --input $verified_val_rna --tgt_input $verified_val_prot --inference_mode bioseq2seq \
 --num_gpus 1 --max_tokens 300"
 
-export ATTR_VAL_VERIFIED_EDC="python $PYTHONPATH/bioseq2seq/interpret/run_attribution.py \
+export ATTR_VAL_VERIFIED_EDC="python bioseq2seq/interpret/run_attribution.py \
 --input $verified_val_rna --tgt_input $verified_val_prot --inference_mode EDC --num_gpus 1 --max_tokens 300"
 
-export ATTR_TEST_VERIFIED_BIO="python $PYTHONPATH/bioseq2seq/interpret/run_attribution.py \
+export ATTR_TEST_VERIFIED_BIO="python bioseq2seq/interpret/run_attribution.py \
 --input $verified_test_rna --tgt_input $verified_test_prot --inference_mode bioseq2seq --num_gpus 1 --max_tokens 300"
 
-export ATTR_TEST_VERIFIED_EDC="python $PYTHONPATH/bioseq2seq/interpret/run_attribution.py \
+export ATTR_TEST_VERIFIED_EDC="python bioseq2seq/interpret/run_attribution.py \
 --input $verified_test_rna --tgt_input $verified_test_prot --inference_mode EDC --num_gpus 1 --max_tokens 300"
 
-export ATTR_TEST_FULL_BIO="python $PYTHONPATH/bioseq2seq/interpret/run_attribution.py \
+export ATTR_TEST_FULL_BIO="python bioseq2seq/interpret/run_attribution.py \
 --input $test_rna --tgt_input $test_prot --inference_mode bioseq2seq --num_gpus 1 --max_tokens 300"

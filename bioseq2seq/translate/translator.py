@@ -512,7 +512,6 @@ class Inference(object):
                 src_tokens = batch.src[0]
                 is_pad = torch.eq(src_tokens,1)
                 num_padding_tokens = torch.count_nonzero(is_pad,dim=0)
-                print(batch.src[0].shape) 
                 batch_data = self.translate_batch(batch, data.src_vocabs, attn_debug)
                 translations = xlation_builder.from_batch(batch_data)
                 pbar.update(len(translations))

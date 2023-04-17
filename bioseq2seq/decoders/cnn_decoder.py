@@ -4,7 +4,7 @@
 import torch
 import torch.nn as nn
 
-from bioseq2seq.modules import ConvMultiStepAttention, GlobalAttention
+from bioseq2seq.modules import ConvMultiStepAttention
 from bioseq2seq.utils.cnn_factory import shape_transform, GatedConv
 from bioseq2seq.decoders.decoder import DecoderBase
 

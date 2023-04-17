@@ -27,17 +27,17 @@ python -m pip install -r requirements.txt
 We provide pretrained PyTorch weights for our best model `best_bioseq2seq_mammalian_200-1200.pt` and our testing set
 `mammalian_200-1200_test_RNA_nonredundant_80.fasta`, as described in the manuscript. To obtain a prediction
 ```
-python bioseq2seq/bin/translate_new.py --checkpoint best_bioseq2seq_mammalian_200-1200.pt --input mammalian_200-1200_test_RNA_nonredundant_80.fasta --num_gpus 1 
+python bioseq2seq/bin/translate.py --checkpoint best_bioseq2seq_mammalian_200-1200.pt --input mammalian_200-1200_test_RNA_nonredundant_80.fasta --num_gpus 1 
 ```
 To output peptide predictions for mRNAs
 ```
-python bioseq2seq/bin/translate_new.py --checkpoint best_bioseq2seq_mammalian_200-1200.pt --input mammalian_200-1200_test_RNA_nonredundant_80.fasta --mode bioseq2seq --num_gpus 1 --beam_size 4 --n_best 4 --max_tokens 1200 --max_decode_len 400
+python bioseq2seq/bin/translate.py --checkpoint best_bioseq2seq_mammalian_200-1200.pt --input mammalian_200-1200_test_RNA_nonredundant_80.fasta --mode bioseq2seq --num_gpus 1 --beam_size 4 --n_best 4 --max_tokens 1200 --max_decode_len 400
 ```
 This will produce four prediction hypotheses, ranked in descending order of score.
 
 For further usage options, see
 ```
-python bioseq2seq/bin/translate_new.py --help
+python bioseq2seq/bin/translate.py --help
 ```
 ## Paper experiments
 

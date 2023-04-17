@@ -31,6 +31,7 @@
 *.attr
 *.failures
 *.needle
+/translation/
 \#*#
 .DS_Store
 data/

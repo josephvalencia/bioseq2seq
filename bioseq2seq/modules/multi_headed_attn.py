@@ -2,9 +2,6 @@
 import math
 import torch
 import torch.nn as nn
-#import torchsparseattn as sparse
-from .sparse_activations import Sparsemax ,Fusedmax
-
 from bioseq2seq.utils.misc import generate_relative_positions_matrix,\
                             relative_matmul
 # from bioseq2seq.utils.misc import aeq
@@ -67,8 +64,6 @@ class MultiHeadedAttention(nn.Module):
                                       head_count * self.dim_per_head)
         
         self.softmax = nn.Softmax(dim=-1)
-        #self.softmax = Fusedmax(alpha=0.01)
-        #self.softmax = Sparsemax()
 
         self.dropout = nn.Dropout(dropout)
         self.final_linear = nn.Linear(model_dim, model_dim)

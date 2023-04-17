@@ -69,7 +69,7 @@ def run_helper(rank,model,vocab,args):
     if not os.path.isdir(args.output_name):
         os.mkdir(args.output_name)
     
-    input_filename = os.path.split(args.input)[-1].replace('.fa','').replace('.fasta','')
+    input_filename = os.path.split(args.input)[-1].replace('.fasta','').replace('.fa','')
     outfile = open(f'{args.output_name}/{input_filename}_preds.txt','w')
     attnfile = None
 
