@@ -1,0 +1,4 @@
+$ATTR_TEST_VERIFED_EDC --checkpoint ${CHKPT_DIR}/EDC_1_Jun27_08-35-05/_step_6000.pt --name ${OUT_DIR}/EDC_1_Jun27_08-35-05_step_6000/ --attribution_mode ISM --tgt_class PC --tgt_pos 1
+$ATTR_TEST_VERIFED_EDC --checkpoint ${CHKPT_DIR}/EDC_2_Jun27_08-35-05/_step_4500.pt --name ${OUT_DIR}/EDC_2_Jun27_08-35-05_step_4500/ --attribution_mode ISM --tgt_class PC --tgt_pos 1
+$ATTR_TEST_VERIFED_EDC --checkpoint ${CHKPT_DIR}/EDC_3_Jun27_08-35-05/_step_2000.pt --name ${OUT_DIR}/EDC_3_Jun27_08-35-05_step_2000/ --attribution_mode ISM --tgt_class PC --tgt_pos 1
+$ATTR_TEST_VERIFED_EDC --checkpoint ${CHKPT_DIR}/EDC_4_Jun27_08-35-05/_step_3000.pt --name ${OUT_DIR}/EDC_4_Jun27_08-35-05_step_3000/ --attribution_mode ISM --tgt_class PC --tgt_pos 1

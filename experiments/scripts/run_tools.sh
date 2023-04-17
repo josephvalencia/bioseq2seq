@@ -1,9 +1,9 @@
 # test pre-trained rnasamba
+source venv/bin/activate
 source templates.sh
-source $BIOHOME/bioseq2seq/venv/bin/activate
-full_train_set="$BIOHOME/bioseq2seq/data/mammalian_200-1200_train_RNA_balanced.fa"
-pc_train_set="$BIOHOME/bioseq2seq/data/mammalian_200-1200_train_PC_RNA.fa"
-nc_train_set="$BIOHOME/bioseq2seq/data/mammalian_200-1200_train_NC_RNA.fa"
+full_train_set="data/mammalian_200-1200_train_RNA_balanced.fa"
+pc_train_set="data/mammalian_200-1200_train_PC_RNA.fa"
+nc_train_set="data/mammalian_200-1200_train_NC_RNA.fa"
 # re-train rnasamba on our data and test
 for i in 1 2 3 4 5
 do
@@ -12,11 +12,11 @@ rnasamba classify test_rnasamba_mammalian_${i}.tsv $test_set rnasamba_${i}.hdf5
 done
 
 # run CPC2,  must use python2
-cd $BIOHOME/bioseq2seq/experiments/tools/CPC2-beta
+cd bioseq2seq/experiments/tools/CPC2-beta
 export CPC_HOME="$PWD"
 python2 bin/CPC2.py -i $test_set -o test_cpc2_mammalian.txt
 
-cd $BIOHOME/bioseq2seq/experiments/
+cd bioseq2seq/experiments/
 # cpat
 # split our train set into balanced sets between coding and noncoding
 # build necessary tables

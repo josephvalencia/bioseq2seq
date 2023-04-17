@@ -1,4 +1,0 @@
-$ATTR_VAL_VERIFIED_BIO --checkpoint ${CHKPT_DIR}/bioseq2seq_1_Jun25_07-51-41/_step_8500.pt --name ${OUT_DIR}/bioseq2seq_1_Jun25_07-51-41_step_8500/ --attribution_mode grad --tgt_class PC --tgt_pos 1
-$ATTR_VAL_VERIFIED_BIO --checkpoint ${CHKPT_DIR}/bioseq2seq_2_Jun25_07-51-41/_step_10000.pt --name ${OUT_DIR}/bioseq2seq_2_Jun25_07-51-41_step_10000/ --attribution_mode grad --tgt_class PC --tgt_pos 1
-$ATTR_VAL_VERIFIED_BIO --checkpoint ${CHKPT_DIR}/bioseq2seq_3_Jun25_07-51-41/_step_17000.pt --name ${OUT_DIR}/bioseq2seq_3_Jun25_07-51-41_step_17000/ --attribution_mode grad --tgt_class PC --tgt_pos 1
-$ATTR_VAL_VERIFIED_BIO --checkpoint ${CHKPT_DIR}/bioseq2seq_4_Jun25_07-51-41/_step_10500.pt --name ${OUT_DIR}/bioseq2seq_4_Jun25_07-51-41_step_10500/ --attribution_mode grad --tgt_class PC --tgt_pos 1

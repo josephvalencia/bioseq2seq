@@ -59,10 +59,6 @@ def balance_class_and_length(df,max_len):
     N = len(pc_ids)
     print(f'len(pc_ids) = {N} , len(nc_ids) = {len(nc_ids)}, diff = {len(pc)-N}')
     
-    #residual_pc = pc[~pc['ID'].isin(pc_ids)]
-    #fake_lnc = generate_shuffled_seqs(residual_pc)
-    #df = pd.concat([df,fake_lnc])
-    
     balanced_ids = pc_ids+nc_ids
     df = df.set_index('ID')
     df = df.loc[balanced_ids]
@@ -127,16 +123,6 @@ def arrange(df):
         seqs.append((n,r))
     
     return dataset,seqs
-
-
-def longer_mammalian(combined_file):
-
-    #data = pd.read_csv(combined_file,sep="\t")
-    # 1000-2000 nt
-    #longer = filter_by_length(data,2000,min_len=1000)
-    #longer.to_csv('mammalian_1k-2k.csv',sep='\t',index=False)
-    #to_fasta(longer,'mammalian_1k-2k_RNA.fa')
-    reduce_redundancy('data/mammalian_1k_train_RNA.fa','data/mammalian_1k-2k')
     
 def to_fasta(df,name,column='RNA'):
 
@@ -213,10 +199,5 @@ def reduce_redundancy(train_fa,eval_prefix):
 
 if __name__ == "__main__":
    
-    #mammalian_file = 'data/old/mammalian_refseq.csv' 
     mammalian_file = 'mammalian_refseq.csv' 
-    zebrafish_file = 'data/zebrafish_refseq.csv' 
-    
     mammalian_partitions(mammalian_file,int(sys.argv[1])) 
-    #longer_mammalian(mammalian_file)
-    #short_zebrafish(zebrafish_file)

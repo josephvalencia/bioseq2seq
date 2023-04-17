@@ -27,7 +27,6 @@ def bio_pred_with_attn(models,outfile):
                 cmd = f'$PRED_TEST_BIO_CLASS --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/ --attn_save_layer {j}'
                 outFile.write(cmd+'\n')
     print(f'wrote {outfile} with {len(models)*2} commands') 
-    os.remove(outfile)
 
 def edc_pred_with_attn(models,outfile):
     with open(outfile,'w') as outFile:
@@ -37,7 +36,6 @@ def edc_pred_with_attn(models,outfile):
                 cmd = f'$PRED_TEST_EDC --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/ --attn_save_layer {j}'
                 outFile.write(cmd+'\n')
     print(f'wrote {outfile} with {len(models)*16} commands') 
-    os.remove(outfile)
 
 def bio_pred(models,outfile):
     with open(outfile,'w') as outFile:
@@ -46,7 +44,6 @@ def bio_pred(models,outfile):
             cmd = f'$PRED_TEST_BIO_CLASS --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/'
             outFile.write(cmd+'\n')
     print(f'wrote {outfile} with {len(models)} commands') 
-    os.remove(outfile)
 
 def bio_full_pred(models,outfile):
     with open(outfile,'w') as outFile:
@@ -55,7 +52,6 @@ def bio_full_pred(models,outfile):
             cmd = f'$PRED_TEST_BIO --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/'
             outFile.write(cmd+'\n')
     print(f'wrote {outfile} with {len(models)} commands') 
-    os.remove(outfile)
 
 def edc_pred(models,outfile):
     with open(outfile,'w') as outFile:
@@ -63,20 +59,29 @@ def edc_pred(models,outfile):
             outname = m.split('.pt')[0].replace('/','')
             cmd = f'$PRED_TEST_EDC --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/'
             outFile.write(cmd+'\n')
-    os.remove(outfile)
+    print(f'wrote {outfile} with {len(models)} commands') 
 
-def attr(models,inf_mode,attr_mode,dataset,outfile):
+def attr(models,inf_mode,attr_mode,dataset,outfile,alpha=0.5):
     with open(outfile,'w') as outFile:
         for i,m in enumerate(models): 
             outname = m.split('.pt')[0].replace('/','')
-            cmd = f'$ATTR_{dataset}_{inf_mode} --checkpoint ${{CHKPT_DIR}}/{m} --name ${{OUT_DIR}}/{outname}/ --attribution_mode {attr_mode} --tgt_class PC --tgt_pos 1 --max_alpha 1.0'
+            cmd = f'$ATTR_{dataset}_{inf_mode} --checkpoint ${{CHKPT_DIR}}/{m} --name ${{OUT_DIR}}/{outname}/ --attribution_mode {attr_mode} --tgt_class PC --tgt_pos 1'
             if attr_mode == 'MDIG':
-                cmd += ' --sample_size 32 --max_alpha 1.0'
+                cmd += f' --sample_size 32 --max_alpha {alpha}'
             elif attr_mode == 'IG':
                 cmd += ' --sample_size 128'
             outFile.write(cmd+'\n')
     print(f'wrote {outfile} with {len(models)} commands')
-    os.remove(outfile)
+
+def mdig_val_attr(models,inf_mode,attr_mode,dataset,outfile):
+    with open(outfile,'w') as outFile:
+        for a in [0.1,0.25,0.5,0.75,1.0]: 
+            for i,m in enumerate(models): 
+                outname = m.split('.pt')[0].replace('/','')
+                cmd = f'$ATTR_{dataset}_{inf_mode} --checkpoint ${{CHKPT_DIR}}/{m} --name ${{OUT_DIR}}/{outname}/ --attribution_mode {attr_mode} --tgt_class PC --tgt_pos 1'
+                cmd += f' --sample_size 32 --max_alpha {a}'
+                outFile.write(cmd+'\n')
+    print(f'wrote {outfile} with {len(models)*5} commands')
 
 def build_all_pred_scripts(bio_rep_file,edc_rep_file,edc_small_rep_file):
 
@@ -102,17 +107,25 @@ def build_all_pred_scripts(bio_rep_file,edc_rep_file,edc_small_rep_file):
     dataset = 'VAL_VERIFIED'
     for attr_mode in ['MDIG','IG','grad','ISM']:
         for inf_mode in ['BIO','EDC']:
-            filename = f'{attr_mode}_{dataset.lower()}_{inf_mode}.txt' 
-            attr(bio_replicates,inf_mode,attr_mode,dataset,filename)
-
+            suffix = 'bioseq2seq' if inf_mode == 'BIO' else inf_mode 
+            prefix = 'uniform_ig' if attr_mode == 'IG' else attr_mode.lower()
+            filename = f'{prefix}_{dataset.lower()}_{suffix}.txt'
+            replicates = bio_replicates if inf_mode == 'BIO' else edc_replicates
+            if attr_mode == 'MDIG':
+                mdig_val_attr(replicates,inf_mode,attr_mode,dataset,filename)
+            else: 
+                attr(replicates,inf_mode,attr_mode,dataset,filename)
+        
     # verified test set attributions
-    attr(bio_replicates,'BIO','ISM','TEST_VERIFED','ISM_test_verified_bioseq2seq.txt')
-    attr(edc_replicates,'EDC','ISM','TEST_VERIFED','ISM_test_verified_EDC.txt') 
-    attr(bio_replicates,'BIO','MDIG','TEST_VERIFED','MDIG_test_verified_bioseq2seq.txt')
-    attr(edc_replicates,'EDC','MDIG','TEST_VERIFED','MDIG_test_verified_EDC.txt') 
+    attr(bio_replicates,'BIO','ISM','TEST_VERIFED','ism_test_verified_bioseq2seq.txt')
+    attr(edc_replicates,'EDC','ISM','TEST_VERIFED','ism_test_verified_EDC.txt') 
+    attr(bio_replicates,'BIO','grad','TEST_VERIFED','grad_test_verified_bioseq2seq.txt')
+    attr(edc_replicates,'EDC','grad','TEST_VERIFED','grad_test_verified_EDC.txt') 
+    attr(bio_replicates,'BIO','MDIG','TEST_VERIFED','mdig_test_verified_bioseq2seq.txt',alpha=0.5)
+    attr(edc_replicates,'EDC','MDIG','TEST_VERIFED','mdig_test_verified_EDC.txt',alpha=0.1) 
     
     # bioseq2seq attributions only on larger datsets
-    attr(bio_replicates,'BIO','MDIG','TEST_FULL','MDIG_test_full_bioseq2seq.txt') 
+    attr(bio_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq.txt',alpha=0.5) 
 
 if __name__ == "__main__":
     

@@ -6,7 +6,7 @@ Here we provide instructions and code for reproducing our paper results. Follow 
 Download pretrained models and input data from our [OSF](https://osf.io/xaeqg/) project and copy `data/` to [data/](data/) and `checkpoints/` to [experiments/checkpoints/](experiments/checkpoints/)
 
 Source [experiments/scripts/templates.sh](scripts/templates.sh) to set up necessary commands. 
-The driver script [experiments/scripts/run.sh](scripts/run.sh) uses [GNU Parallel](https://www.gnu.org/software/parallel/) to execute multiple (4) independent GPU processes in parallel based on plaintext command files. Change   `-j <n>` if you have a different number of GPU devices. Then obtain all predictions and attributions on various datasets. 
+The driver script [experiments/scripts/run.sh](scripts/run.sh) uses [GNU Parallel](https://www.gnu.org/software/parallel/) to execute multiple (4) independent GPU processes in parallel based on plaintext command files. Change `-j <n>` if you have a different number of GPU devices. Then obtain all predictions and attributions on various datasets. 
 
 ```
 export $dir="experiments/scripts"
@@ -17,12 +17,13 @@ Install [CPAT](https://cpat.readthedocs.io/en/latest/#installation), [CPC2](http
 ```
 bash $dir/run_tools.sh
 ```
-Produce all figure panels using Matplotlib/Seaborn. A `.yaml` configuration file controls the pipeline
+Produce all figure panels using Matplotlib/Seaborn. A `.yaml` configuration file controls the pipeline. Additional dependencies are the [EMBOSS](https://emboss.sourceforge.net/download/) package and [MEME](https://meme-suite.org/meme/doc/download.html) suite.
 ```
 export CONFIG="example_config.yaml"
 bash figs_and_analysis.sh
 ```
 Most plots will save in `.svg` format to `example_config_results/` but some will save under `experiments/output/`, with file names logged to the terminal.
+
 ## Tuning and training new models from scratch
 ### Data preprocessing
 Copy `refseq/` from OSF to [refseq/](refseq/). Build a combined mammalian dataset from the raw RefSeq files. Obtain train/test/val split with evaluation sequences limited to a maximum of 80% seq. identity with the train set and maximum length of 1200 nt.
@@ -41,7 +42,7 @@ Then, train multiple replicates (4) from best best bioseq2seq and EDC hyperparam
 
 ```
 source $dir/templates.sh
-bash $dir/run.sh $dir/train_all_replicates.txt
+bash $dir/run.sh $dir/txt/train_all_replicates.txt
 ```
 ### Finding best models and building inference scripts
 Training wil save `.tfevents` TensorBoard files in one directory and `.pt` PyTorch model checkpoints in another directory, with both prefixed by their creation time. To find the best-performing models

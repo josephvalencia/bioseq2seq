@@ -12,16 +12,16 @@ Install `bioseq2seq` from source:
 ```bash
 git clone https://github.com/josephvalencia/bioseq2seq.git
 cd bioseq2seq
-./install.sh
 ```
-This codebase requires Python 3.6 or higher. To set up and activate virtual environment
+This codebase requires Python 3.8 or higher. To set up and activate virtual environment
 ```
 python3 -m venv venv
 source venv/bin/activate
 ```
-All dependencies for single-model training and inference are included in [requirements.txt](requirements.txt). Use pip to install them.
+All dependencies for single-model training and inference are included in [requirements.txt](requirements.txt). Use pip to install them then install the project locally.
 ```
 python -m pip install -r requirements.txt
+./install.sh
 ```
 ## Basic usage
 We provide pretrained PyTorch weights for our best model `best_bioseq2seq_mammalian_200-1200.pt` and our testing set

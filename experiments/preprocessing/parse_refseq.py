@@ -111,7 +111,7 @@ def build_dataset(species_names,filename):
 
 if __name__ == "__main__":
 
-    parent = "../Fa/refseq/"
+    parent = "refseq/"
 
     mammalian = {"gorilla":"gorilla_gorilla/GCF_008122165.1_Kamilah_GGO_v0_",
                         "cow" : "bos_taurus/GCF_002263795.1_ARS-UCD1.2_",
