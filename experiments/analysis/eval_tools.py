@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.metrics import f1_score, roc_auc_score, precision_recall_fscore_support,confusion_matrix,matthews_corrcoef, accuracy_score
+from sklearn.metrics import precision_recall_fscore_support,confusion_matrix,matthews_corrcoef, accuracy_score
 import sys
 
 def eval_cpc2(results_file,dataset):

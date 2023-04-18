@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 export dir="experiments/scripts"
 source $dir/templates.sh
 
@@ -18,12 +19,16 @@ bash $dir/run.sh $dir/txt/ism_val_verified_bioseq2seq.txt
 bash $dir/run.sh $dir/txt/ism_val_verified_EDC.txt
 bash $dir/run.sh $dir/txt/uniform_ig_val_verified_bioseq2seq.txt
 bash $dir/run.sh $dir/txt/uniform_ig_val_verified_EDC.txt
-bash $dir/run.sh $dir/txt/grads_val_verified_bioseq2seq.txt
-bash $dir/run.sh $dir/txt/grads_val_verified_EDC.txt
+bash $dir/run.sh $dir/txt/grad_val_verified_bioseq2seq.txt
+bash $dir/run.sh $dir/txt/grad_val_verified_EDC.txt
 
 # verified test set attributions
 bash $dir/run.sh $dir/txt/mdig_test_verified_bioseq2seq.txt
 bash $dir/run.sh $dir/txt/mdig_test_verified_EDC.txt
+bash $dir/run.sh $dir/txt/ism_test_verified_bioseq2seq.txt
+bash $dir/run.sh $dir/txt/ism_test_verified_EDC.txt
+bash $dir/run.sh $dir/txt/grad_test_verified_bioseq2seq.txt
+bash $dir/run.sh $dir/txt/grad_test_verified_EDC.txt
 
 # bioseq2seq attributions only on larger datsets
 bash $dir/run.sh $dir/txt/mdig_full_test_bioseq2seq.txt

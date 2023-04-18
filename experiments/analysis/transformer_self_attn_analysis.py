@@ -1,15 +1,10 @@
-import os,sys
-import torch
+import sys
 import seaborn as sns
 import pandas as pd
 import numpy as np
 import json
-import pprint
-import logomaker
-import configargparse
-from tqdm import tqdm
 from matplotlib import pyplot as plt
-from collections import Counter, defaultdict
+from collections import Counter
 from matplotlib.backends.backend_pdf import PdfPages
 
 def plot_entropy(entropy,tscript_name,head_name):

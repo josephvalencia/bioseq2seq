@@ -1,14 +1,10 @@
-import sys,random
-import os,re,time
+import os,re
 from tqdm import tqdm
 import matplotlib
 #matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from utils import parse_config, load_CDS, setup_fonts, build_output_dir
-from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq
-from Bio import SeqIO
+from utils import parse_config, setup_fonts, build_output_dir
 from Bio.SeqUtils import seq3
 
 from scipy.stats import pearsonr

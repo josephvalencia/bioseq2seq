@@ -1,13 +1,11 @@
-import sys,random
+import random
 import os,re
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
 
 from scipy.signal import convolve
 from collections import defaultdict
@@ -16,7 +14,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
 
-from utils import parse_config, build_EDA_file_list, getLongestORF, get_CDS_loc, build_output_dir
+from utils import parse_config, build_EDA_file_list, get_CDS_loc, build_output_dir
 
 def select_index(array,mode='argmax',excluded=None,smoothed=False):
   
@@ -132,7 +130,7 @@ def mask_frame_independent(array,seq,mask_level=3):
 
     # UGG observed to dominate like a stop
     if mask_level == 2: 
-        codons.append('TGG')
+        banned_codons.append('TGG')
     # mask anything a point mutation away from a stop 
     if mask_level == 3:
         for codon in codonMap.keys():
@@ -267,7 +265,7 @@ def top_indices(saved_file,df,groups,metrics,mode="attn",head_idx=0,reduction_mo
                     adjusted = adjust_indices_by_region(selected,start,end,region)
                     max_in_window =  np.max(subarray[selected-10:selected+11].tolist())
                     argmax_in_window = np.argmax(subarray[selected-10:selected+11])
-                    result = (tscript,adjusted,max_in_window,argmax_in_window,start,end,len(seq),unreduced_scores)
+                    result = (tscript,adjusted,max_in_window,argmax_in_window,start,end)
                 # otherwise restricted only by mode
                 else:
                     selected = select_index(subarray,mode=m) 

@@ -1,5 +1,4 @@
 import pandas as pd
-import sys
 import seaborn as sns
 import matplotlib.pyplot as plt
 from utils import setup_fonts,parse_config, build_output_dir

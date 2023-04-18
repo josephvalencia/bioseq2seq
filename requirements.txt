@@ -12,4 +12,9 @@ seaborn==0.12.2
 torch==1.11.0
 torchaudio==0.11.0
 torchtext==0.4.0
+wandb==0.12.10
 tqdm==4.64.0
+tensorboard==2.8.0
+tensorboard-data-server==0.6.1
+tensorboard-plugin-wit==1.8.1
+hpbandster==0.7.4

@@ -1,5 +1,3 @@
-import pandas as pd
-import sys
 from bioseq2seq.bin.transforms import CodonTable
 import math
 from Bio.SeqUtils.CodonUsage import CodonAdaptationIndex

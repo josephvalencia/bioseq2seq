@@ -1,12 +1,8 @@
-import logomaker
 import os
-import sys
 import pandas as pd
 import numpy as np
 import seaborn as sns
-import matplotlib
 import matplotlib.pyplot as plt
-import re,random
 from scipy import signal
 from utils import parse_config,build_EDA_file_list,load_CDS,ScalarFormatterClass,setup_fonts
 
@@ -104,6 +100,7 @@ def build_consensus_multi_IG(cds_storage,output_dir,prefix,grad_file,coding=True
     compute_heatmap = True 
     labels = [str(x) for x in range(8)]
     run_consensus_pipeline(consensus,domain,output_dir,labels,name,model,attr_type=attr_type,heatmap=compute_heatmap)
+'''
 
 def plot_line_unrolled(domain,consensus,output_dir,name,model,attr_type,plot_type='line',plt_std_error=False,labels=None):
    
@@ -157,6 +154,7 @@ def plot_line_unrolled(domain,consensus,output_dir,name,model,attr_type,plot_typ
     plt.savefig(plt_filename)
     plt.close()
 
+'''
 def plot_line(domain,consensus,output_dir,name,model,attr_type,coding,plot_type='line',plt_std_error=False,labels=None):
    
     fig = plt.figure(figsize=(5.5,2.25))

@@ -1,14 +1,9 @@
-import sys,re,os
-import math
-import subprocess
+import re,os
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-from utils import getLongestORF, getFirstORF, parse_config,setup_fonts
+from utils import getLongestORF, parse_config,setup_fonts
 
 def parse_needle_results(entry,save_dir):
 

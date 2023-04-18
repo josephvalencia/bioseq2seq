@@ -1,18 +1,13 @@
 import torch
 import numpy as np
-import sys,os
-from utils import parse_config,build_EDA_file_list,load_CDS
-from scipy.spatial.distance import cosine
+import os
+from utils import parse_config,load_CDS
 from scipy.stats import pearsonr,kendalltau,spearmanr
-from math import copysign
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 from itertools import combinations
-from os import listdir
-from os.path import isfile, join, exists
-import re
-import glob
+from os.path import  exists
 from utils import parse_config, setup_fonts, build_output_dir
 
 def calc_correlations(file_a,file_b,model_type,corr_mode,metric):
@@ -139,7 +134,7 @@ def calculate_metrics(ism_file,metric_file_dict,onehot_file,test_cds,model_type,
         if mrna_zoom:
             window_start = -18
             window_end = 60
-            if is_coding(tscript) and s>= max(0,-window_start) and s+window_end < onehot.shape[0]:
+            if is_coding(tscript) and s>= max(0,-window_start) and s+window_end < onehot_file[tscript].shape[0]:
                 domain = list(range(window_start,window_end))
                 cds_ism = ism[s+window_start:s+window_end,:]
                 for metric,metric_file in metric_file_dict.items():  

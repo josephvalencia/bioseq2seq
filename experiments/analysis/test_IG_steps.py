@@ -1,8 +1,7 @@
 import numpy as np
 from scipy.stats import pearsonr
-from scipy.spatial.distance import cosine
 import torch
-import sys,re,os
+import re,os
 import itertools
 
 def metrics(a,b):

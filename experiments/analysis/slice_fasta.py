@@ -1,5 +1,5 @@
 from Bio import SeqIO
-import sys,re
+import sys
 from random import sample, shuffle
 
 def parse(fname,outname,only_verified=True,n=None):

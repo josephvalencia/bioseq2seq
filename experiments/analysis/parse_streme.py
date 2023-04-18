@@ -1,17 +1,15 @@
 import xml.etree.ElementTree as ET
-import re, os, sys
+import re, os
 import pandas as pd
 import logomaker
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import subprocess
-from Bio.motifs.matrix import PositionSpecificScoringMatrix as PSSM, PositionWeightMatrix as PWM
+from Bio.motifs.matrix import PositionWeightMatrix as PWM
 from Bio import SeqIO
-from Bio.Seq import Seq
-from scipy.cluster.hierarchy import fcluster, linkage, dendrogram
+from scipy.cluster.hierarchy import fcluster, linkage
 from utils import parse_config, build_output_dir
-from functools import partial
 from collections import Counter
 
 def parse_xml(xml_file,trial,trial_type,head,region):

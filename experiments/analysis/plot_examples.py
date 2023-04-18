@@ -1,13 +1,10 @@
 import logomaker
 from utils import parse_config, load_CDS, build_output_dir, setup_fonts
-import random
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-import sys,os
+import os
 
 def plot(summary_df,signed_df,window,vlim,tallest,ref,window_name,tscript,save_dir,class_type,target_pos,attr,axis=None):
 

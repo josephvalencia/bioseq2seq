@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from utils import parse_config, build_EDA_file_list, getLongestORF, get_CDS_start
+from utils import parse_config, build_EDA_file_list
 
 if __name__ == "__main__":
 

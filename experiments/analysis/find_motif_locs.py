@@ -2,10 +2,8 @@ import pandas as pd
 import sys,re
 import matplotlib.pyplot as plt
 import seaborn as sns
-from bioseq2seq.bin.batcher import train_test_val_split
 import numpy as np
 from Bio import motifs
-from Bio.Seq import Seq
 
 def find_motif_locations(fimo_output,by='start',stat='count'):
 

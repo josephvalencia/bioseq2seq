@@ -1,13 +1,10 @@
 #from bioseq2seq.evaluate.evaluator import Evaluator
-import os,sys,re
+import os,re
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
-from sklearn.metrics import classification_report, f1_score, matthews_corrcoef, recall_score, precision_score, confusion_matrix
+from sklearn.metrics import  f1_score, matthews_corrcoef, recall_score, precision_score, confusion_matrix
 from scipy.stats import chisquare, ks_2samp, mannwhitneyu
-from os import listdir
-from os.path import isfile, join, isdir
-import seaborn as sns
+from os.path import join
 from utils import parse_config,build_output_dir
 
 def findPositionProbability(position_x, base):
@@ -342,7 +339,6 @@ def evaluate(pred_file,ground_truth_df,error_analysis):
     tn, fp, fn, tp = confusion_matrix(gt, preds).ravel()
     specificity = safe_divide(tn,tn+fp)
     f1 = f1_score(gt,preds)
-    #print(f'accuracy = {accuracy}, MCC = {mcc}, F1 = {f1}')
     name = pred_file.split('.')[0]
     return {'trial' : name , 'accuracy' : accuracy, 'F1' : f1 ,'recall' : recall, 'precision' : precision,'specificity' : specificity, 'MCC' : mcc}
 
@@ -418,10 +414,6 @@ if __name__ == "__main__":
     EDC_models = args.all_EDC_replicates
     EDC_eq_models = args.all_EDC_small_replicates
 
-    #bio_models ='experiments/scripts/top1_bioseq2seq_models.txt'
-    #EDC_models ='experiments/scripts/top1_EDC-large_models.txt'
-    #EDC_eq_models ='experiments/scripts/top1_EDC-small_models.txt'
-    
     parent = 'experiments/output'
     all_models = get_model_names(bio_models)+get_model_names(EDC_models) +get_model_names(EDC_eq_models)
     all_results = []

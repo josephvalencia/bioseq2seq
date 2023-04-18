@@ -1,15 +1,10 @@
-import logomaker
 import os
-import sys
 import pandas as pd
 import numpy as np
 import seaborn as sns
-import matplotlib
 import matplotlib.pyplot as plt
-import re,random
 from utils import parse_config,build_EDA_file_list,load_CDS,setup_fonts, ScalarFormatterClass, build_output_dir
 import math
-import matplotlib.ticker as mtick
 from scipy.stats import pearsonr
 from itertools import combinations
 
@@ -181,9 +176,6 @@ def plot_line_EDA(total_pc,total_nc,output_dir,name,n_bins,attr_type='EDA'):
     plt.savefig(plt_filename)
     plt.close()
 
-def run_consensus_pipeline(consensus,domain,output_dir,labels,name,model,attr_type,heatmap=False):
-
-    plot_line(domain,consensus,output_dir,name,model,attr_type,plot_type='line',labels=labels)
 
 def load_all_replicates(models):
     model_list = []
