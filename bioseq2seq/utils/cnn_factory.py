@@ -18,20 +18,19 @@ class GatedConv(nn.Module):
 
     def __init__(self, input_size, width=3, dropout=0.2, nopad=False,dilation=1):
         super(GatedConv, self).__init__()
-        
-        self.conv = bioseq2seq.modules.WeightNormConv2d(
-            input_size, 2 * input_size, kernel_size=(width, 1), stride=(1, 1),dilation=dilation,
-            padding=(width // 2 * (1 - nopad), 0))
-         
-        ''' 
-        padding = dilation * (width //2) * (1-nopad)
+        '''
         self.conv = nn.Conv2d(
             input_size, 2 * input_size, kernel_size=(width, 1), stride=(1, 1),
-            dilation=dilation,padding=(padding, 0))
+            dilation=dilation,padding='same')
+        '''
+        self.conv = bioseq2seq.modules.WeightNormConv2d(
+            input_size, 2 * input_size, kernel_size=(width, 1), stride=(1, 1),dilation=dilation,
+            padding='same')
+        padding = dilation * (width //2) * (1-nopad)
+        
         fan_in, fan_out = init._calculate_fan_in_and_fan_out(self.conv.weight)
         gain = (4 * (1 - dropout)/fan_in)**0.5
         
-        '''        
         init.xavier_uniform_(self.conv.weight, gain=(4 * (1 - dropout))**0.5)
         self.dropout = nn.Dropout(dropout)
 

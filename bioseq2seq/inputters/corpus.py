@@ -59,7 +59,7 @@ class DatasetAdapter(object):
 
     valid_field_name = (
         'src', 'tgt', 'indices','src_map', 'src_ex_vocab', 'alignment',
-        'align')
+        'align','start')
 
     def __init__(self, fields, is_train):
         self.fields_dict = self._valid_fields(fields)
@@ -95,7 +95,6 @@ class DatasetAdapter(object):
         maybe_example['tgt'] = {"tgt": ' '.join(maybe_example['tgt'])}
         if 'align' in maybe_example:
             maybe_example['align'] = ' '.join(maybe_example['align'])
-
         return maybe_example
 
     def _maybe_add_dynamic_dict(self, example, fields):
@@ -116,7 +115,6 @@ class DatasetAdapter(object):
                     maybe_example, self.fields_dict)
                 ex_fields = {k: [(k, v)] for k, v in self.fields_dict.items()
                              if k in example}
-                #print(f"example={example},ex_fields={ex_fields}")
                 ex = TorchtextExample.fromdict(example, ex_fields)
                 examples.append(ex)
         return examples
@@ -150,7 +148,56 @@ class ParallelFastaCorpus(ParallelCorpus):
 
     def __init__(self, name, src, tgt, align=None, src_feats=None):
         
-        super(ParallelFastaCorpus, self).__init__(name,src,tgt,align=None,src_feats=None)
+        super(ParallelFastaCorpus, self).__init__(name,src,tgt,align=None,src_feats=src_feats)
+   
+    def maybe_add_whitespace(self,x):
+        
+        if x != "[NONE]":
+            return ' '.join([c for c in str(x)])
+        else:
+            return str(x)
+
+    def load(self, offset=0, stride=1):
+        """
+        Load file and iterate by lines.
+        `offset` and `stride` allow to iterate only on every
+        `stride` example, starting from `offset`.
+        """
+        
+        with maybe_fastafile_open(self.src) as fs,\
+                maybe_fastafile_open(self.tgt) as ft,\
+                exfile_open(self.src_feats, mode='rb') as starts:
+            for i, (sline, tline,start) in \
+                    enumerate(zip(fs, ft, starts)):
+                if (i % stride) == offset:
+                    
+                    sline = self.maybe_add_whitespace(sline.seq)
+                   
+                    if tline is not None:
+                        tline = self.maybe_add_whitespace(tline.seq)
+                    else:
+                        tline = '[NONE]'
+
+                    # 'src_original' and 'tgt_original' store the
+                    # original line before tokenization. These
+                    # fields are used later on in the feature
+                    # transforms.
+                    example = {
+                        'src': sline,
+                        'tgt': tline,
+                        'src_original': sline,
+                        'tgt_original': tline
+                    }
+                    
+                    if self.src_feats:
+                        example["start"] = start.decode("utf-8").strip()
+                    yield example
+
+class ParallelFastaCorpusStart(ParallelCorpus):
+
+    def __init__(self, name, src, tgt, align=None, src_feats=None):
+        
+        super(ParallelFastaCorpusStart, self).__init__(name,src,tgt,align=None,src_feats=None)
    
     def maybe_add_whitespace(self,x):
         

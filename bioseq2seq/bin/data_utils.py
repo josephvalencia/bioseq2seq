@@ -52,14 +52,13 @@ def build_standard_vocab(src_vocab_path=None,tgt_vocab_path=None):
                                         vocab_size_multiple,
                                         src_vocab_size, src_words_min_frequency,
                                         tgt_vocab_size, tgt_words_min_frequency)
-
     return vocab_fields
 
-def iterator_from_fasta(src,tgt,vocab_fields,mode,is_train,max_tokens,external_transforms=None,rank=0,world_size=1):
+def iterator_from_fasta(src,tgt,vocab_fields,mode,is_train,max_tokens,external_transforms=None,rank=0,world_size=1,starts=None):
 
     # build the ParallelCorpus
     corpus_name = "train" if is_train else "valid"
-    corpus = ParallelFastaCorpus("train",src,tgt,mode)
+    corpus = ParallelFastaCorpus("train",src,tgt,mode,src_feats=starts)
     print('Corpus made!') 
     transforms = {"attach_class_label" : xfm.AttachClassLabel(opts=None),'omit_peptide' : xfm.OmitPeptide(opts=None)}
     

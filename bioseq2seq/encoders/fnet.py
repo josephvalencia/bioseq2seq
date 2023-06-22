@@ -224,13 +224,14 @@ class FourierEncoder(EncoderBase):
 
     def forward(self, src, lengths=None, attn_debug = True,grad_mode=False):
         """See :func:`EncoderBase.forward()`"""
-        
         emb = self.embeddings(src,grad_mode=grad_mode)
         if grad_mode:
             out = emb.contiguous()
         else:
             out = emb.transpose(0,1).contiguous()
-        
+       
+        #print(emb.squeeze())
+        #quit()
         mask = ~sequence_mask(lengths).unsqueeze(-1)
         freq_data = []
         space_data = []

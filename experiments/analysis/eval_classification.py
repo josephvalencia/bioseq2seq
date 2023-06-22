@@ -3,9 +3,15 @@ import os,re
 import numpy as np
 import pandas as pd
 from sklearn.metrics import  f1_score, matthews_corrcoef, recall_score, precision_score, confusion_matrix
-from scipy.stats import chisquare, ks_2samp, mannwhitneyu
+from scipy.stats import chisquare, ks_2samp, mannwhitneyu,pearsonr
 from os.path import join
 from utils import parse_config,build_output_dir
+import seaborn as sns
+from sklearn import datasets, linear_model
+from sklearn.linear_model import LinearRegression
+import statsmodels.api as sm
+from scipy import stats
+import matplotlib.pyplot as plt
 
 def findPositionProbability(position_x, base):
     '''Calculate the Position probablity of a base in codon'''
@@ -301,6 +307,104 @@ def analysis_pipeline(groupA_df,groupB_df,names,test='KS'):
         stat,p = mannwhitneyu(groupA_cds_cov,groupB_cds_cov)
     print(f'CDS coverage {names[0]} ({groupA_cds_cov_mean:.2f}+-{groupA_cds_cov_std:.2f}) vs {names[1]} ({groupB_cds_cov_mean:.2f}+-{groupB_cds_cov_std:.2f}) ({stat_name}) p={p:.2e}')
 
+def bin_fn(score):
+    if score >=0 and score < 20:
+        return 20
+    elif score >= 20 and score < 40:
+        return 40
+    elif score >= 40 and score < 60:
+        return 60
+    elif score >= 60 and score < 80:
+        return 80
+    elif score >= 80 and score <= 100:
+        return 100
+
+def alt_bin_fn(score):
+    if score >= 0 and score < 10:
+        return 10
+    elif score >= 10 and score < 20:
+        return 20
+    elif score >= 20 and score < 30:
+        return 30
+    elif score >= 30 and score < 40:
+        return 40
+    elif score >= 40 and score < 50:
+        return 50
+    elif score >= 50 and score < 60:
+        return 60
+    elif score >= 60 and score < 70:
+        return 70
+    elif score >= 70 and score < 80:
+        return 80
+    elif score >= 80 and score < 90:
+        return 90
+    elif score >= 90 and score <= 100:
+        return 100
+    
+def coarse_bin_fn(score):
+    if score >=0 and score <= 40:
+        return '[0-40]'
+    elif score > 40 and score <= 60:
+        return '(40-60]'        
+    elif score > 60 and score <= 80:
+        return '(60-80]'
+    elif score > 80 and score <= 100:
+        return '(80-100)'
+
+def evaluate_by_homology(pred_file,ground_truth_df,error_analysis):
+
+    storage = []
+    with open(pred_file,"r") as inFile:
+        lines = inFile.read().split("\n")
+        for i in range(0,len(lines)-6,6):
+            entry = parse_predictions(lines[i:i+6])
+            storage.append(entry)
+    df = pd.DataFrame(storage)
+    homology = pd.read_csv("test_maximal_homology.csv")
+    print(homology.describe())
+    df = df.merge(homology,on='ID') 
+    df = df.merge(ground_truth_df,on='ID')
+    df['bin'] = df['score'].apply(coarse_bin_fn)
+    results = []    
+    for bin,sub_df in df.groupby(['bin']): 
+        def subset_stats(sub_df,bin):
+            preds = sub_df['pred_class'].to_numpy() 
+            gt = sub_df['Type'].to_numpy()
+            tscripts = sub_df['ID'].to_numpy()
+            pos_preds = preds == '<PC>'
+            pos_gt = gt == '<PC>'
+            accuracy = (preds == gt).sum() / len(sub_df)
+            preds = pos_preds.astype(int)
+            gt = pos_gt.astype(int)
+            mcc = matthews_corrcoef(gt,preds)
+            recall = recall_score(gt,preds)
+            precision = precision_score(gt,preds)
+            tn, fp, fn, tp = confusion_matrix(gt, preds).ravel()
+            specificity = safe_divide(tn,tn+fp)
+            f1 = f1_score(gt,preds)
+            name = pred_file.split('.')[0]
+            support = len(sub_df)
+            entry = {'trial' : name,'bin' : bin , 'support' : support, 'accuracy' : accuracy, 'F1' : f1 ,'recall' : recall, 'precision' : precision,'specificity' : specificity, 'MCC' : mcc}
+            return entry
+        entry = subset_stats(sub_df,bin) 
+        results.append(entry)
+    lesser = subset_stats(df[df['score'] <= 80],'<=80')
+    greater = subset_stats(df[df['score'] > 80],'>80')
+    results.append(lesser)
+    results.append(greater) 
+    results_df = pd.DataFrame(results)
+    '''
+    summary_metric ='MCC' 
+    X = results_df['bin'].to_numpy()
+    Y = results_df[summary_metric].to_numpy() 
+    corr = pearsonr(X,Y) 
+    X2 = sm.add_constant(X)
+    est = sm.OLS(Y, X2)
+    est2 = est.fit()
+    print(est2.summary())
+    '''
+    return results_df
+
 def evaluate(pred_file,ground_truth_df,error_analysis):
 
     storage = []
@@ -400,6 +504,18 @@ def get_model_names(filename):
         model_list += [x.rstrip().replace('/','').replace('.pt','') for x in inFile.readlines()]
     return model_list
 
+def latex_table(results_df):
+    
+    by_type_mean = results_df.groupby(results_df['trial'].str.extract('(\w*)_\d_')[0]).mean()
+    by_type_std = results_df.groupby(results_df['trial'].str.extract('(\w*)_\d_')[0]).std()
+    for_latex_mean = by_type_mean.applymap('{:.3f}'.format)
+    for_latex_std = by_type_std.applymap('{:.3f}'.format)
+    for_latex = for_latex_mean.add(' $\pm$ ').add(for_latex_std)
+    col_format = 'c'*len(for_latex.columns)
+    table = for_latex.style.to_latex(column_format=f'|{col_format}|',hrules=True)
+    print(table)
+
+
 if __name__ == "__main__":
 
     all_model_performances = []
@@ -417,26 +533,29 @@ if __name__ == "__main__":
     parent = 'experiments/output'
     all_models = get_model_names(bio_models)+get_model_names(EDC_models) +get_model_names(EDC_eq_models)
     all_results = []
+    binned_results = []
     for f in all_models:
         fname = join(parent,f,'mammalian_200-1200_test_RNA_nonredundant_80_preds.txt')
         if os.path.exists(fname):
             print(f'parsing {fname}')
             results = evaluate(fname,gt_df,error_analysis=False)
+            results_by_bin = evaluate_by_homology(fname,gt_df,error_analysis=False)
             model = 'EDC' if results['trial'].startswith('EDC') else 'bioseq2seq'
             model = 'EDC-small' if results['trial'].startswith('EDC_small') else model
             results['model'] = model
             all_results.append(results)
+            binned_results.append(results_by_bin)
         else:
             print(f'{fname} does not exist')
-    
+
+    binned_results = pd.concat(binned_results)
+    short_string = binned_results['trial'].str.extract('(\w*)_\d_')[0]
+    binned_results['model'] = short_string
+    print(binned_results) 
+    binned_results.to_csv('our_models_homology_binning.csv',index=False)
+
     results_df = pd.DataFrame(all_results)
-    results_df.to_csv('classification_performance.csv',sep='\t') 
-    by_type_mean = results_df.groupby(results_df['trial'].str.extract('(\w*)_\d_')[0]).mean()
-    by_type_std = results_df.groupby(results_df['trial'].str.extract('(\w*)_\d_')[0]).std()
-    for_latex_mean = by_type_mean.applymap('{:.3f}'.format)
-    for_latex_std = by_type_std.applymap('{:.3f}'.format)
-    for_latex = for_latex_mean.add(' $\pm$ ').add(for_latex_std)
-    col_format = 'c'*len(for_latex.columns)
-    table = for_latex.style.to_latex(column_format=f'|{col_format}|',hrules=True)
-    print(table)
+    results_df.to_csv('classification_performance.csv',sep='\t')
+    print(latex_table(results_df))
+
     

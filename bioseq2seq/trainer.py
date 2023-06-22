@@ -319,7 +319,13 @@ class Trainer(object):
                                                  with_align=self.with_align)
 
                     # Compute loss.
-                    _, batch_stats = self.valid_loss(batch, outputs, attns)
+                    translate = True
+                    if translate: 
+                        _, batch_stats = self.valid_loss(batch, outputs, attns)
+                    else:
+                        _, batch_stats = self.simple_loss_compute(self.train_loss,
+                            outputs,
+                            batch)
 
                 # Update statistics.
                 stats.update(batch_stats)
@@ -333,6 +339,19 @@ class Trainer(object):
 
         return stats
 
+    def simple_loss_compute(self, loss_compute, outputs, batch):
+        # cannot shard with pointer objective
+        pointer_attn = loss_compute.generator(outputs)
+        pred = pointer_attn.argmax(dim=0)
+        loss = loss_compute.criterion(pointer_attn.transpose(0,1),batch.start)
+        num_correct = pred.eq(batch.start).sum().item()
+        batch_stats = bioseq2seq.utils.Statistics(loss.sum().item(),
+                                                    n_correct=num_correct,
+                                                    n_words=batch.batch_size, 
+                                                    n_batches=batch.batch_size,
+                                                    n_correct_class=num_correct)
+        return loss,batch_stats
+    
     def _gradient_accumulation(self, true_batches, normalization, total_stats,
                                report_stats):
         if self.accum_count > 1:
@@ -365,20 +384,25 @@ class Trainer(object):
                 with torch.cuda.amp.autocast(enabled=self.optim.amp):
                     is_pad = torch.eq(src,1)
                     num_padding_tokens = torch.count_nonzero(is_pad,dim=0)
-                    
                     outputs, enc_attns, attns = self.model(
                         src, tgt, src_lengths, bptt=bptt,
                         with_align=self.with_align)
                     bptt = True
                     # 3. Compute loss.
-                    loss, batch_stats = self.train_loss(
-                        batch,
-                        outputs,
-                        attns,
-                        normalization=normalization,
-                        shard_size=self.shard_size,
-                        trunc_start=j,
-                        trunc_size=trunc_size)
+                    translate = True 
+                    if translate: 
+                        loss, batch_stats = self.train_loss(
+                            batch,
+                            outputs,
+                            attns,
+                            normalization=normalization,
+                            shard_size=self.shard_size,
+                            trunc_start=j,
+                            trunc_size=trunc_size)
+                    else:
+                        loss, batch_stats = self.simple_loss_compute(self.train_loss,
+                            outputs,
+                            batch)
                 try:
                     if loss is not None:
                         self.optim.backward(loss)

@@ -7,8 +7,10 @@ from bioseq2seq.modules.embeddings import Embeddings, PositionalEncoding, \
     VecEmbedding
 from bioseq2seq.modules.weight_norm import WeightNormConv2d
 from bioseq2seq.modules.average_attn import AverageAttention
+from bioseq2seq.modules.answer_pointer import PointerGenerator, PadDecoder
 
 __all__ = ["Elementwise", "context_gate_factory", "ContextGate",
             "ConvMultiStepAttention",
            "MultiHeadedAttention", "Embeddings", "PositionalEncoding",
-           "WeightNormConv2d","AverageAttention", "VecEmbedding"]
+           "WeightNormConv2d","AverageAttention", "VecEmbedding",
+           "PointerGenerator", "PadDecoder"]

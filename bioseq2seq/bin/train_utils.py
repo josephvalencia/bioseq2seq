@@ -26,7 +26,7 @@ from bioseq2seq.utils.loss import NMTLossCompute
 
 #from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition
 from bioseq2seq.bin.data_utils import iterator_from_fasta, build_standard_vocab, IterOnDevice, test_effective_batch_size
-from bioseq2seq.bin.models import make_cnn_seq2seq, make_transformer_seq2seq, make_hybrid_seq2seq, Generator
+from bioseq2seq.bin.models import make_cnn_seq2seq,make_cnn_transformer_seq2seq, make_transformer_seq2seq, make_hybrid_seq2seq, Generator,make_lfnet_cnn_seq2seq
 
 def parse_train_args():
     """Parse required and optional command-line arguments.""" 
@@ -62,6 +62,8 @@ def parse_train_args():
     parser.add_argument("--window_size",type=int,default = 200,help="Size of STFNet windows")
     parser.add_argument("--lambd_L1",type=float,default = 0.5,help="Sparsity threshold")
     parser.add_argument("--random_seed",type=int,default = 65,help="Seed")
+    parser.add_argument("--encoder_kernel_size",type=int,default = 3,help="Size of CNN encoder kernel")
+    parser.add_argument("--encoder_dilation_factor",type=int,default = 1,help="Dilation factor of CNN encoder kernel")
 
     # optional flags
     parser.add_argument("--checkpoint", "--c", help = "Name of .pt model to initialize training")
@@ -111,7 +113,30 @@ def restore_model_from_args(args,vocab):
                                 n_output_classes,
                                 n_enc=args.n_enc_layers,
                                 n_dec=args.n_dec_layers,
-                                model_dim=args.model_dim)
+                                model_dim=args.model_dim,
+                                encoder_kernel_size=args.encoder_kernel_size,
+                                decoder_kernel_size=args.decoder_kernel_size,
+                                encoder_dilation_factor=args.encoder_dilation_factor,
+                                decoder_dilation_factor=args.decoder_dilation_factor)
+    elif args.model_type == 'CNN-Transformer':
+        model = make_cnn_transformer_seq2seq(n_input_classes,
+                                n_output_classes,
+                                n_enc=args.n_enc_layers,
+                                n_dec=args.n_dec_layers,
+                                model_dim=args.model_dim,
+                                encoder_kernel_size=args.encoder_kernel_size,
+                                encoder_dilation_factor=args.encoder_dilation_factor,
+                                max_rel_pos=args.max_rel_pos)
+    elif args.model_type == 'LFNet-CNN':
+        model = make_lfnet_cnn_seq2seq(n_input_classes,
+                                        n_output_classes,
+                                        n_enc=args.n_enc_layers,
+                                        n_dec=args.n_dec_layers,
+                                        model_dim=args.model_dim,
+                                        window_size=args.window_size,
+                                        lambd_L1=args.lambd_L1,
+                                        dropout=args.dropout,
+                                        decoder_kernel_size=args.decoder_kernel_size)
     else:
         model = make_hybrid_seq2seq(n_input_classes,
                                     n_output_classes,
@@ -147,11 +172,33 @@ def build_model_from_args(args,vocab=None):
                                             dropout=args.dropout)
     elif args.model_type == 'CNN':
         seq2seq = make_cnn_seq2seq(n_input_classes,
-                                    n_output_classes,
-                                    n_enc=args.n_enc_layers,
-                                    n_dec=args.n_dec_layers,
-                                    model_dim=args.model_dim,
-                                    dropout=args.dropout)
+                                n_output_classes,
+                                n_enc=args.n_enc_layers,
+                                n_dec=args.n_dec_layers,
+                                model_dim=args.model_dim,
+                                encoder_kernel_size=args.encoder_kernel_size,
+                                decoder_kernel_size=args.decoder_kernel_size,
+                                encoder_dilation_factor=args.encoder_dilation_factor,
+                                decoder_dilation_factor=args.decoder_dilation_factor)
+    elif args.model_type == 'CNN-Transformer':
+        seq2seq = make_cnn_transformer_seq2seq(n_input_classes,
+                                n_output_classes,
+                                n_enc=args.n_enc_layers,
+                                n_dec=args.n_dec_layers,
+                                model_dim=args.model_dim,
+                                encoder_kernel_size=args.encoder_kernel_size,
+                                encoder_dilation_factor=args.encoder_dilation_factor,
+                                max_rel_pos=args.max_rel_pos)
+    elif args.model_type == 'LFNet-CNN':
+        seq2seq = make_lfnet_cnn_seq2seq(n_input_classes,
+                                        n_output_classes,
+                                        n_enc=args.n_enc_layers,
+                                        n_dec=args.n_dec_layers,
+                                        model_dim=args.model_dim,
+                                        window_size=args.window_size,
+                                        lambd_L1=args.lambd_L1,
+                                        dropout=args.dropout,
+                                        decoder_kernel_size=args.decoder_kernel_size)
     else:
         seq2seq = make_hybrid_seq2seq(n_input_classes,
                                         n_output_classes,
@@ -246,7 +293,8 @@ def train_helper(rank,args,seq2seq,tune=False):
    
     gpu = rank if args.num_gpus > 0 else -1
     world_size = args.num_gpus if args.num_gpus > 0 else 1
-
+    starts_file = args.train_src.replace("RNA_balanced.fa","balanced_starts.txt")
+    print('STARTS',starts_file)
     train_iter = iterator_from_fasta(src=args.train_src,
                                     tgt=args.train_tgt,
                                     vocab_fields=vocab_fields,
@@ -254,9 +302,11 @@ def train_helper(rank,args,seq2seq,tune=False):
                                     is_train=True,
                                     max_tokens=args.max_tokens,
                                     rank=rank,
-                                    world_size=world_size) 
+                                    world_size=world_size,
+                                    starts=starts_file) 
     train_iter = IterOnDevice(train_iter,gpu)
-
+    starts_file = args.val_src.replace("RNA_nonredundant_80.fa","nonredundant_80_starts.txt")
+    print('STARTS',starts_file)
     valid_iter = iterator_from_fasta(src=args.val_src,
                                     tgt=args.val_tgt,
                                     vocab_fields=vocab_fields,
@@ -264,19 +314,21 @@ def train_helper(rank,args,seq2seq,tune=False):
                                     is_train=False,
                                     max_tokens=args.max_tokens,
                                     rank=rank,
-                                    world_size=world_size) 
+                                    world_size=world_size,
+                                    starts=starts_file) 
     valid_iter = IterOnDevice(valid_iter,gpu)
-    
     weights = None
+    
     # maybe apply differential weighting for classification tokens
     if args.class_weight > 1:
-        tgt_vocab = train_iterator.fields['tgt'].vocab.itos
-        weight_fn = lambda x : class_weight if x == "<PC>" or x == "<NC>" else 1 
+        tgt_vocab = train_iter.fields['tgt'].vocab.itos
+        weight_fn = lambda x : args.class_weight if x == "<PC>" or x == "<NC>" else 1 
         weights = [weight_fn(c) for c in tgt_vocab]
         weights = torch.Tensor(weights).to(device) 
 
     # computes position-wise NLLoss
     criterion = torch.nn.NLLLoss(weight=weights,ignore_index=1,reduction='sum')
+    #criterion = torch.nn.NLLLoss(weight=weights,ignore_index=1,reduction=None)
     train_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
     val_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
 
@@ -306,8 +358,11 @@ def train_helper(rank,args,seq2seq,tune=False):
         time = datetime.now().strftime('%b%d_%H-%M-%S')
         save_path = f'{args.save_directory}{args.name}_{time}/'
         if not os.path.isdir(save_path):
-            logger.info(f"Building directory {save_path}")
-            os.mkdir(save_path)
+            try:
+                os.mkdir(save_path)
+                logger.info(f"Built directory {save_path}")
+            except FileExistsError:
+                logger.info(f"Directory {save_path} already exists, skipping creation")
         # controls saving model checkpoints
         saver = ModelSaver(base_path=save_path,
                            model=seq2seq,

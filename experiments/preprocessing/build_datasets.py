@@ -49,7 +49,6 @@ def balance_class_and_length(df,max_len):
     pc = df[df['Type'] == '<PC>']
     nc = df[df['Type'] == '<NC>']
     print(f'# pc unbalanced = {len(pc)}, # nc unbalanced = {len(nc)}')
-    quit()
     dataset_nc, seqs_nc = arrange(nc)
     dataset_pc, seqs_pc = arrange(pc)
     nc_keys = [len(seq) for name, seq in seqs_nc]

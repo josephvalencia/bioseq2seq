@@ -118,9 +118,7 @@ class TransformerDecoderLayer(nn.Module):
             else:  # only mask padding, result mask in (B, 1, T)
                 dec_mask = tgt_pad_mask
         input_norm = self.layer_norm_1(inputs)
-        
-        #print(f'dec_mask = {dec_mask}, step = {step}, future = {future}')
-
+        #print(f'dec_mask = {dec_mask}, step = {step}') 
         if isinstance(self.self_attn, MultiHeadedAttention):
             query, dec_attns = self.self_attn(input_norm, input_norm, input_norm,
                                       mask=dec_mask,
@@ -131,14 +129,12 @@ class TransformerDecoderLayer(nn.Module):
                                       layer_cache=layer_cache, step=step)
 
         query = self.drop(query) + inputs
-
         query_norm = self.layer_norm_2(query)
 
         mid, context_attns = self.context_attn(memory_bank, memory_bank, query_norm,
                                        mask=src_pad_mask,
                                        layer_cache=layer_cache,
                                        attn_type="context")
-       
         output = self.feed_forward(self.drop(mid) + query)
 
         return output, dec_attns, context_attns
@@ -233,7 +229,6 @@ class TransformerDecoder(DecoderBase):
         """Decode, possibly stepwise."""
         if step == 0:
             self._init_cache(memory_bank)
-       
         tgt_words = tgt[:, :, 0].transpose(0, 1)
         emb = self.embeddings(tgt, step=step,grad_mode=grad_mode)
         assert emb.dim() == 3  # len x batch x embedding_dim

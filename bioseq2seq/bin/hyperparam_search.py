@@ -24,8 +24,17 @@ def base_config():
 def cnn_config():
     ''' hyperparameters for CNN+CNN architecture''' 
     
-    config = {"dilation_multipler" : tune.choice([1,2]),
-            "kernel_size" : tune.choice([3,6])}
+    config = {"encoder_dilation_factor" : tune.choice([1,2]),
+            "encoder_kernel_size" : tune.choice([3,6,9]),
+            "decoder_dilation_factor" : tune.choice([1,2]),
+            "decoder_kernel_size" : tune.choice([3,6,9])}
+    return config
+
+def cnn_transformer_config():
+    ''' hyperparameters for CNN+CNN architecture''' 
+    
+    config = {"encoder_dilation_factor" : tune.choice([1,2]),
+            "encoder_kernel_size" : tune.choice([3,6,9])}
     return config
 
 def mixer_config():
@@ -33,6 +42,15 @@ def mixer_config():
     
     config = {"window_size" : tune.choice([100,150,200,250,300,350,400]),
               "lambd_L1" : tune.qloguniform(1e-3,1.0,1e-3)}
+    return config
+
+def lfnet_cnn_config():
+    ''' hyperparameters for GFNet+Transformer architecture''' 
+    
+    config = {"window_size" : tune.choice([100,150,200,250,300,350,400]),
+              "lambd_L1" : tune.qloguniform(1e-3,1.0,1e-3),
+              "decoder_dilation_factor" : tune.choice([1,2]),
+                "decoder_kernel_size" : tune.choice([3,6,9])}
     return config
 
 def train_protein_coding_potential(config,cmd_args):
@@ -48,7 +66,9 @@ if __name__ == "__main__":
 
     cmd_args = parse_train_args()
     config = base_config()
-    model_config = cnn_config() if cmd_args.model_type == "CNN" else mixer_config() 
+    #model_config = cnn_config() if cmd_args.model_type == "CNN" else mixer_config() 
+    model_config = cnn_transformer_config() if cmd_args.model_type == "CNN-Transformer" else mixer_config() 
+    #model_config = lfnet_cnn_config() if cmd_args.model_type == "LFNet-CNN" else mixer_config() 
     config.update(model_config)
    
     metric = "valid_class_accuracy"
@@ -71,13 +91,15 @@ if __name__ == "__main__":
                     "window_size" : 200,
                     "lambd_L1" : 0.5}
 
-    bohb_search = TuneBOHB(points_to_evaluate=[seed_config])
+    #bohb_search = TuneBOHB(points_to_evaluate=[seed_config])
+    bohb_search = TuneBOHB()
 
     #name = f"final_BOHB_search_{cmd_args.mode}_{cmd_args.model_type}"
-    name = f"temp_BOHB_search_{cmd_args.mode}_{cmd_args.model_type}"
+    #name = f"BOHB_search_ORF_detector_{cmd_args.model_type}"
+    name = f"new_BOHB_search_{cmd_args.mode}_{cmd_args.model_type}"
     train_wrapper = tune.with_parameters(train_protein_coding_potential,cmd_args=cmd_args)
     
-    wandb_callback = WandbLoggerCallback(project=f"temp-{cmd_args.mode}-{cmd_args.model_type} Hyperparam Search",\
+    wandb_callback = WandbLoggerCallback(project=f"ORF-{cmd_args.mode}-{cmd_args.model_type} Hyperparam Search",\
                     api_key=os.environ["WANDB_KEY"],log_config=False)
     
     total_time_allowed = 7*24*60*60 # 7 days in seconds 

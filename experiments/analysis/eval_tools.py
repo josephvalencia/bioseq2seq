@@ -19,7 +19,9 @@ def eval_rnasamba(results_file,dataset):
     gt = []
     predictions = []
     pred_probs = []
-
+    
+    alt_df = pd.read_csv(results_file,sep='\t')
+    print(alt_df)
     with open(results_file) as inFile:
         for l in inFile.readlines()[1:]:
             fields = l.split()
@@ -31,7 +33,6 @@ def eval_rnasamba(results_file,dataset):
             gt.append(true_class)
             predictions.append(pred_class)
             pred_probs.append(pred_prob)
-    
     return calculate_metrics('rnasamba',dataset,gt,predictions)
 
 def eval_cpat(results_file,no_orfs_file,dataset):

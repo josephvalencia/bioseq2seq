@@ -137,7 +137,6 @@ class LossComputeBase(nn.Module):
     def _unbottle(self, _v, batch_size):
         return _v.view(-1, batch_size, _v.size(1))
 
-
 class LabelSmoothingLoss(nn.Module):
     """
     With label smoothing,
@@ -206,17 +205,14 @@ class CommonLossCompute(LossComputeBase):
         gtruth = target.view(-1)
 
         #isolate PC/NC label for F1 calculation
-        #print(target)
         gt_class = target[0,:]
         pad_tgt_size, batch_size, _ = batch.tgt.size()
         unbottled_scores = self._unbottle(scores,batch_size)
-        #print(f'logits {torch.exp(unbottled_scores[0,:,:])}')    
         pred_class = unbottled_scores[0,:,:].max(1)[1]
-        #print(f'target shape = {target.shape}, unbottled_scores shape = {unbottled_scores.shape}, ground truth class = {gt_class}, pred class ={pred_class}')
         n_correct_class = pred_class.eq(gt_class).sum().item()
-        #print(f'got {n_correct_class}/{batch_size} correct')
         
         loss = self.criterion(scores, gtruth)
+        print("loss: ",loss.shape)
         if self.lambda_coverage != 0.0:
             coverage_loss = self._compute_coverage_loss(
                 std_attn=std_attn, coverage_attn=coverage_attn)

@@ -18,7 +18,7 @@ class CNNDecoder(DecoderBase):
     Consists of residual convolutional layers, with ConvMultiStepAttention.
     """
 
-    def __init__(self, num_layers, hidden_size, cnn_kernel_width, dropout, embeddings):
+    def __init__(self, num_layers, hidden_size, cnn_kernel_width,dropout, embeddings,dilation_factor=1):
         
         super(CNNDecoder, self).__init__()
 
@@ -31,7 +31,7 @@ class CNNDecoder(DecoderBase):
         input_size = self.embeddings.embedding_size
         self.linear = nn.Linear(input_size, hidden_size)
         self.conv_layers = nn.ModuleList(
-            [GatedConv(hidden_size, cnn_kernel_width, dropout, True)
+            [GatedConv(hidden_size, cnn_kernel_width, dropout, True,dilation=dilation_factor**i)
              for i in range(num_layers)]
         )
         self.attn_layers = nn.ModuleList(
@@ -66,12 +66,12 @@ class CNNDecoder(DecoderBase):
         tgt_emb = emb.transpose(0, 1).contiguous()
         
         # The output of CNNEncoder.
-        src_memory_bank_t = memory_bank.transpose(0, 1).contiguous()
-        #src_memory_bank_t = memory_bank.permute(1,2,0).contiguous()
+        #src_memory_bank_t = memory_bank.transpose(0, 1).contiguous()
+        src_memory_bank_t = memory_bank.permute(1,2,0).contiguous()
         
         # The combination of output of CNNEncoder and source embeddings.
-        src_memory_bank_c = self.state["src"].transpose(0, 1).contiguous()
-        #src_memory_bank_c = self.state["src"].permute(1,2,0).contiguous()
+        #src_memory_bank_c = self.state["src"].transpose(0, 1).contiguous()
+        src_memory_bank_c = self.state["src"].permute(1,2,0).contiguous()
 
         emb_reshape = tgt_emb.contiguous().view(
             tgt_emb.size(0) * tgt_emb.size(1), -1)

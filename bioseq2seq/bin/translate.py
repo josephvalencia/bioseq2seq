@@ -91,8 +91,10 @@ def run_helper(rank,model,vocab,args):
                             tgt_reader=tgt_reader, 
                             global_scorer=scorer,
                             gpu=gpu,
-                            beam_size=args.beam_size,
-                            n_best=args.n_best,
+                            #beam_size=args.beam_size,
+                            #n_best=args.n_best,
+                            beam_size=1, 
+                            n_best=1, 
                             max_length=args.max_decode_len)
     
     stride = args.num_gpus if args.num_gpus > 0 else 1

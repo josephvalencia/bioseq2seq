@@ -149,7 +149,7 @@ class CodonTable(object):
 class AttachClassLabel(Transform):
     '''Pre-pend class label based on FASTA sequence '''
     def apply(self, example, is_train=False, stats=None, **kwargs):
-        
+
         curr_tgt = example['tgt'] 
         if curr_tgt[0] == '[NONE]':
             example['tgt'] = ['<NC>']
@@ -170,7 +170,7 @@ class ShuffleCopies(Transform):
     '''Create fully shuffled copies of src'''
     
     def apply(self, example, is_train=False, stats=None, **kwargs):
-        
+
         src = example['src']
         num_copies = 50
         src_shuffled = [] 

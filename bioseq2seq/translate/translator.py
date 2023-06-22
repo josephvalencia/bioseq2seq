@@ -922,7 +922,8 @@ class Translator(Inference):
         # (1) Run the encoder on the src.
         src, enc_states, memory_bank, src_lengths, enc_cache = self._run_encoder(batch)
         self.model.decoder.init_state(src, memory_bank, enc_states)
-
+        print(batch.src[0].squeeze(),src.squeeze())
+        
         gold_score = self._gold_score(
             batch,
             memory_bank,

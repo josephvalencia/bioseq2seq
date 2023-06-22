@@ -181,7 +181,10 @@ def get_fields(
 
     indices = Field(use_vocab=False, dtype=torch.long, sequential=False)
     fields["indices"] = indices
-
+    
+    starts = Field(use_vocab=False, dtype=torch.long, sequential=False)
+    fields["start"] = starts
+    
     if dynamic_dict:
         src_map = Field(
             use_vocab=False, dtype=torch.float,
@@ -223,6 +226,7 @@ class IterOnDevice(object):
                 batch.src = batch.src.to(device)
             batch.tgt = batch.tgt.to(device)
             batch.indices = batch.indices.to(device)
+            batch.start = batch.start.to(device)
             batch.alignment = batch.alignment.to(device) \
                 if hasattr(batch, 'alignment') else None
             batch.src_map = batch.src_map.to(device) \
