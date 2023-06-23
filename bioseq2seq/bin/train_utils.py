@@ -64,7 +64,8 @@ def parse_train_args():
     parser.add_argument("--random_seed",type=int,default = 65,help="Seed")
     parser.add_argument("--encoder_kernel_size",type=int,default = 3,help="Size of CNN encoder kernel")
     parser.add_argument("--encoder_dilation_factor",type=int,default = 1,help="Dilation factor of CNN encoder kernel")
-
+    parser.add_argument("--loss_mode",default="original",help="Method of loss computation. original|pointer|weighted")
+    parser.add_argument("--pos_decay_rate",type=float,default=0.0,help="Exponential decay for loss_mode='weighted") 
     # optional flags
     parser.add_argument("--checkpoint", "--c", help = "Name of .pt model to initialize training")
     parser.add_argument("--finetune",action = "store_true", help = "Reinitialize generator")
@@ -317,18 +318,12 @@ def train_helper(rank,args,seq2seq,tune=False):
                                     world_size=world_size,
                                     starts=starts_file) 
     valid_iter = IterOnDevice(valid_iter,gpu)
-    weights = None
     
-    # maybe apply differential weighting for classification tokens
-    if args.class_weight > 1:
-        tgt_vocab = train_iter.fields['tgt'].vocab.itos
-        weight_fn = lambda x : args.class_weight if x == "<PC>" or x == "<NC>" else 1 
-        weights = [weight_fn(c) for c in tgt_vocab]
-        weights = torch.Tensor(weights).to(device) 
-
     # computes position-wise NLLoss
-    criterion = torch.nn.NLLLoss(weight=weights,ignore_index=1,reduction='sum')
-    #criterion = torch.nn.NLLLoss(weight=weights,ignore_index=1,reduction=None)
+    reduction = 'none' if args.loss_mode == 'weighted' else 'sum'
+    criterion = torch.nn.NLLLoss(ignore_index=1,reduction=reduction)
+    pos_decay_rate = args.pos_decay_rate if args.pos_decay_rate > 0 else None 
+    
     train_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
     val_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
 
@@ -380,7 +375,9 @@ def train_helper(rank,args,seq2seq,tune=False):
                     accum_count=[args.accum_steps],
                     report_manager=report_manager,
                     model_saver=saver,
-                    model_dtype='fp16')
+                    model_dtype='fp16',
+                    loss_mode=args.loss_mode,
+                    pos_decay_rate=pos_decay_rate)
     
     # training loop
     trainer.train(train_iter=train_iter,

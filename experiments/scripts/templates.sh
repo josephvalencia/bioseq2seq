@@ -14,7 +14,7 @@ export train="python bioseq2seq/bin/train_single_model.py \
 --train_tgt data/mammalian_200-1200_train_PROTEIN_balanced.fa \
 --val_src data/mammalian_200-1200_val_RNA_nonredundant_80.fa \
 --val_tgt data/mammalian_200-1200_val_PROTEIN_nonredundant_80.fa 
---num_gpus 0 --save-directory experiments/checkpoints/coding_noncoding/ 
+--num_gpus 1 --save-directory experiments/checkpoints/coding_noncoding/ 
 --accum_steps 8 --max_tokens 9000 --report-every 500 
 --max-epochs 20000 --patience 5 --lr 1.0"
 

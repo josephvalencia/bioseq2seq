@@ -15,7 +15,7 @@ import traceback
 import bioseq2seq.utils
 from bioseq2seq.utils.distributed import all_reduce_and_rescale_tensors,all_gather_list 
 from bioseq2seq.utils.logging import logger, init_logger
-
+import math
 
 def build_trainer(opt, device_id, model, fields, optim, model_saver=None):
     """
@@ -108,11 +108,15 @@ class Trainer(object):
                  n_gpu=1, gpu_rank=1, gpu_verbose_level=0,
                  report_manager=None, with_align=False, model_saver=None,
                  average_decay=0, average_every=1, model_dtype='fp32',
-                 earlystopper=None, dropout=[0.3], dropout_steps=[0]):
+                 earlystopper=None, dropout=[0.3], dropout_steps=[0],
+                 loss_mode='original',
+                 pos_decay_rate=None):
         # Basic attributes.
         self.model = model
         self.train_loss = train_loss
         self.valid_loss = valid_loss
+        self.loss_mode = loss_mode
+        self.pos_decay_rate = pos_decay_rate
         self.optim = optim
         self.trunc_size = trunc_size
         self.shard_size = shard_size
@@ -319,13 +323,16 @@ class Trainer(object):
                                                  with_align=self.with_align)
 
                     # Compute loss.
-                    translate = True
-                    if translate: 
-                        _, batch_stats = self.valid_loss(batch, outputs, attns)
-                    else:
-                        _, batch_stats = self.simple_loss_compute(self.train_loss,
+                    if self.loss_mode == 'weighted': # site-specific weighting, cannot shard
+                        _, batch_stats = self.weighted_loss_compute(self.valid_loss,
                             outputs,
                             batch)
+                    elif self.loss_mode == 'pointer': # start codon labeling, cannot shard
+                        _, batch_stats = self.pointer_loss_compute(self.valid_loss,
+                            outputs,
+                            batch)
+                    else: # the original 
+                        _, batch_stats = self.valid_loss(batch, outputs, attns)
 
                 # Update statistics.
                 stats.update(batch_stats)
@@ -339,17 +346,80 @@ class Trainer(object):
 
         return stats
 
-    def simple_loss_compute(self, loss_compute, outputs, batch):
+    def _bottle(self, _v):
+        return _v.view(-1, _v.size(2))
+
+    def _unbottle(self, _v, batch_size):
+        return _v.view(-1, batch_size, _v.size(1))
+   
+    def truncated_exponential_pmf(self,loss,mask,lambd):
+
+        N,batch_size = loss.size()
+        counts = mask.sum(dim=0)
+        indices = torch.arange(N,device=loss.device)
+        indices = indices.unsqueeze(1).expand(-1,batch_size)
+        factor = (1-math.exp(-lambd))/(1-torch.exp(-lambd*counts)) 
+        pmf = factor*torch.exp(-lambd*indices)
+        return pmf*mask
+
+    def weighted_loss_compute(self,loss_compute,outputs,batch):
+
+        # F-prop through generator
+        bottled_output = self._bottle(outputs)
+        scores = loss_compute.generator(bottled_output)
+        # calc loss
+        target = batch.tgt[1:,:,:]
+        gtruth = target.view(-1)
+        loss = loss_compute.criterion(scores, gtruth)
+        # apply weights 
+        reshaped = loss.reshape(target.shape[0],batch.batch_size)
+        nonzero = (reshaped != 0.0).long() 
+        
+        if self.pos_decay_rate is not None:
+            exp_pmf = self.truncated_exponential_pmf(reshaped,nonzero,self.pos_decay_rate)
+            weighted_loss = reshaped*exp_pmf 
+            loss = weighted_loss.sum()
+        else:
+            # uniform over nonzero_positions 
+            counts = nonzero.sum(dim=0)
+            loss = torch.sum(reshaped*nonzero,dim=0) / counts
+        
+        # calculate stats
+        pred = scores.max(1)[1]
+        non_padding = gtruth.ne(loss_compute.padding_idx)
+        num_correct = pred.eq(gtruth).masked_select(non_padding).sum().item()
+        num_non_padding = non_padding.sum().item()
+        #isolate PC/NC label for F1 calculation
+        gt_class = target[0,:]
+        pad_tgt_size, batch_size, _ = batch.tgt.size()
+        unbottled_scores = self._unbottle(scores,batch_size)
+        pred_class = unbottled_scores[0,:,:].max(1)[1]
+        num_correct_class = pred_class.eq(gt_class).sum().item()
+        #print(f'accuracy = {num_correct}/{num_non_padding} = {num_correct/num_non_padding:.3f}') 
+        #print(f'class_accuracy = {num_correct_class}/{batch.batch_size} = {num_correct_class/batch.batch_size:.3f}') 
+        batch_stats = bioseq2seq.utils.Statistics(loss.sum().item(),
+                                                    n_correct=num_correct,
+                                                    n_words=num_non_padding, 
+                                                    n_batches=batch.batch_size,
+                                                    n_correct_class=num_correct_class)
+        return loss.sum(),batch_stats
+
+    def pointer_loss_compute(self, loss_compute, outputs, batch):
         # cannot shard with pointer objective
         pointer_attn = loss_compute.generator(outputs)
         pred = pointer_attn.argmax(dim=0)
+        
+        print(f'pred={pred}, pointer_attn={pointer_attn.shape}, tgt={batch.start.shape}')
         loss = loss_compute.criterion(pointer_attn.transpose(0,1),batch.start)
         num_correct = pred.eq(batch.start).sum().item()
+        num_correct_class = pred.ne(pointer_attn.shape[0]-1).sum().item()
+        print(f'accuracy = {num_correct}/{batch.batch_size} = {num_correct/batch.batch_size:.3f}') 
+        print(f'class_accuracy = {num_correct_class}/{batch.batch_size} = {num_correct_class/batch.batch_size:.3f}') 
         batch_stats = bioseq2seq.utils.Statistics(loss.sum().item(),
                                                     n_correct=num_correct,
                                                     n_words=batch.batch_size, 
                                                     n_batches=batch.batch_size,
-                                                    n_correct_class=num_correct)
+                                                    n_correct_class=num_correct_class)
         return loss,batch_stats
     
     def _gradient_accumulation(self, true_batches, normalization, total_stats,
@@ -389,8 +459,15 @@ class Trainer(object):
                         with_align=self.with_align)
                     bptt = True
                     # 3. Compute loss.
-                    translate = True 
-                    if translate: 
+                    if self.loss_mode == 'weighted': # site-specific weighting, cannot shard
+                        loss, batch_stats = self.weighted_loss_compute(self.train_loss,
+                            outputs,
+                            batch)
+                    elif self.loss_mode == 'pointer': # start codon labeling, cannot shard
+                        loss, batch_stats = self.pointer_loss_compute(self.train_loss,
+                            outputs,
+                            batch)
+                    else: # the original 
                         loss, batch_stats = self.train_loss(
                             batch,
                             outputs,
@@ -399,10 +476,6 @@ class Trainer(object):
                             shard_size=self.shard_size,
                             trunc_start=j,
                             trunc_size=trunc_size)
-                    else:
-                        loss, batch_stats = self.simple_loss_compute(self.train_loss,
-                            outputs,
-                            batch)
                 try:
                     if loss is not None:
                         self.optim.backward(loss)

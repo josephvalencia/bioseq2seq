@@ -246,7 +246,6 @@ def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_d
                                     d_model = model_dim,
                                     embeddings = nucleotide_embeddings)
 
-    '''
     decoder_stack = TransformerDecoder(num_layers = n_dec,
                                        d_model = model_dim,
                                        heads = heads,
@@ -262,10 +261,11 @@ def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_d
                                        alignment_heads = None,
                                        alignment_layer = None)
     generator = Generator(model_dim,n_output_classes)
-    ''' 
-    
+   
+    '''
     decoder_stack = PadDecoder()
     generator = PointerGenerator(model_dim)
+    ''' 
     model = NMTModel(encoder_stack,decoder_stack)
     model.generator = generator
 

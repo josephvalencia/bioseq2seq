@@ -198,7 +198,7 @@ class CommonLossCompute(LossComputeBase):
 
     def _compute_loss(self, batch, output, target, std_attn=None,
                       coverage_attn=None, align_head=None, ref_align=None):
-
+    
         bottled_output = self._bottle(output)
 
         scores = self.generator(bottled_output)
@@ -208,11 +208,12 @@ class CommonLossCompute(LossComputeBase):
         gt_class = target[0,:]
         pad_tgt_size, batch_size, _ = batch.tgt.size()
         unbottled_scores = self._unbottle(scores,batch_size)
+        #print(f'output={output.shape}, bottled_output={bottled_output.shape}, scores={scores.shape}, gtruth={gtruth.shape}, unbottled_scores={unbottled_scores.shape}') 
         pred_class = unbottled_scores[0,:,:].max(1)[1]
         n_correct_class = pred_class.eq(gt_class).sum().item()
         
         loss = self.criterion(scores, gtruth)
-        print("loss: ",loss.shape)
+
         if self.lambda_coverage != 0.0:
             coverage_loss = self._compute_coverage_loss(
                 std_attn=std_attn, coverage_attn=coverage_attn)
