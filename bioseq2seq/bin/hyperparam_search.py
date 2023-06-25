@@ -99,7 +99,7 @@ if __name__ == "__main__":
     name = f"new_BOHB_search_{cmd_args.mode}_{cmd_args.model_type}"
     train_wrapper = tune.with_parameters(train_protein_coding_potential,cmd_args=cmd_args)
     
-    wandb_callback = WandbLoggerCallback(project=f"ORF-{cmd_args.mode}-{cmd_args.model_type} Hyperparam Search",\
+    wandb_callback = WandbLoggerCallback(project=f"{cmd_args.mode}-{cmd_args.model_type} Hyperparam Search",\
                     api_key=os.environ["WANDB_KEY"],log_config=False)
     
     total_time_allowed = 7*24*60*60 # 7 days in seconds 

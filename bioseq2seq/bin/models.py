@@ -314,7 +314,7 @@ def restore_seq2seq_model(checkpoint,machine,opts):
                                 encoder_dilation_factor=opts.encoder_dilation_factor,
                                 decoder_dilation_factor=opts.decoder_dilation_factor)
     elif opts.model_type == 'CNN-Transformer':
-        model = make_cnn_seq2seq(n_input_classes,
+        model = make_cnn_transformer_seq2seq(n_input_classes,
                                 n_output_classes,
                                 n_enc=opts.n_enc_layers,
                                 n_dec=opts.n_dec_layers,
