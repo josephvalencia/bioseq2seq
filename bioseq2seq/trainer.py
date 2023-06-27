@@ -406,15 +406,19 @@ class Trainer(object):
 
     def pointer_loss_compute(self, loss_compute, outputs, batch):
         # cannot shard with pointer objective
+        
+
+        src, src_lengths = batch.src
         pointer_attn = loss_compute.generator(outputs)
         pred = pointer_attn.argmax(dim=0)
-        
-        print(f'pred={pred}, pointer_attn={pointer_attn.shape}, tgt={batch.start.shape}')
         loss = loss_compute.criterion(pointer_attn.transpose(0,1),batch.start)
         num_correct = pred.eq(batch.start).sum().item()
-        num_correct_class = pred.ne(pointer_attn.shape[0]-1).sum().item()
-        print(f'accuracy = {num_correct}/{batch.batch_size} = {num_correct/batch.batch_size:.3f}') 
-        print(f'class_accuracy = {num_correct_class}/{batch.batch_size} = {num_correct_class/batch.batch_size:.3f}') 
+       	last_idx = src_lengths - 1
+        true_class = batch.start != last_idx
+        pred_class = pred != last_idx
+        num_correct_class = pred_class.eq(true_class).sum().item()
+        #print(f'accuracy = {num_correct}/{batch.batch_size} = {num_correct/batch.batch_size:.3f}') 
+        #print(f'class_accuracy = {num_correct_class}/{batch.batch_size} = {num_correct_class/batch.batch_size:.3f}') 
         batch_stats = bioseq2seq.utils.Statistics(loss.sum().item(),
                                                     n_correct=num_correct,
                                                     n_words=batch.batch_size, 
