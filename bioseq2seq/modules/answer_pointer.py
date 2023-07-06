@@ -29,5 +29,6 @@ class PadDecoder(DecoderBase):
         ''' memory_bank : (seq_len, batch_size, hidden_size)'''
         # pad with zeros for out of range
         L,B,H = memory_bank.size()
-        padded_embeddings = torch.cat([memory_bank,memory_bank.new_zeros(1,B,H)],dim=0)
-        return padded_embeddings,None
+        #padded_embeddings = torch.cat([memory_bank,memory_bank.new_zeros(1,B,H)],dim=0)
+        #return padded_embeddings,None
+        return memory_bank, None
