@@ -319,7 +319,7 @@ def restore_seq2seq_model(checkpoint,machine,opts):
                                 n_enc=opts.n_enc_layers,
                                 n_dec=opts.n_dec_layers,
                                 model_dim=opts.model_dim,
-                                encoder_kernel_size=ops.encoder_kernel_size,
+                                encoder_kernel_size=opts.encoder_kernel_size,
                                 encoder_dilation_factor=opts.encoder_dilation_factor,
                                 max_rel_pos=opts.max_rel_pos)
 

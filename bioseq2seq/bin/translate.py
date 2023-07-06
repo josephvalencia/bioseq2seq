@@ -33,6 +33,7 @@ def parse_args():
     parser.add_argument("--mode",default="bioseq2seq",help="Inference mode. One of bioseq2seq|EDC")
     parser.add_argument("--rank",type=int,help="Rank of process",default=0)
     parser.add_argument("--num_gpus",type=int,help="Number of available GPU machines",default=0)
+    parser.add_argument("--model_type","--m", default = "LFNet", help = "Model architecture type.|Transformer|CNN|GFNet|")
 
     # translate optional args
     parser.add_argument("--beam_size","--b",type=int, default=1, help ="Beam size for decoding")
@@ -91,10 +92,8 @@ def run_helper(rank,model,vocab,args):
                             tgt_reader=tgt_reader, 
                             global_scorer=scorer,
                             gpu=gpu,
-                            #beam_size=args.beam_size,
-                            #n_best=args.n_best,
-                            beam_size=1, 
-                            n_best=1, 
+                            beam_size=args.beam_size,
+                            n_best=args.n_best,
                             max_length=args.max_decode_len)
     
     stride = args.num_gpus if args.num_gpus > 0 else 1

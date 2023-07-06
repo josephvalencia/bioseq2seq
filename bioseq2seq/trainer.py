@@ -353,7 +353,7 @@ class Trainer(object):
         return _v.view(-1, batch_size, _v.size(1))
    
     def truncated_exponential_pmf(self,loss,mask,lambd):
-
+        '''f(x) = (1-exp(-lambd))(exp(-lambd*x))/(1-exp(-lambd*N))'''
         N,batch_size = loss.size()
         counts = mask.sum(dim=0)
         indices = torch.arange(N,device=loss.device)
@@ -390,10 +390,11 @@ class Trainer(object):
         num_correct = pred.eq(gtruth).masked_select(non_padding).sum().item()
         num_non_padding = non_padding.sum().item()
         #isolate PC/NC label for F1 calculation
-        gt_class = target[0,:]
+        gt_class = target[0,:].squeeze()
         pad_tgt_size, batch_size, _ = batch.tgt.size()
         unbottled_scores = self._unbottle(scores,batch_size)
         pred_class = unbottled_scores[0,:,:].max(1)[1]
+        print(pred_class.shape,gt_class.shape) 
         num_correct_class = pred_class.eq(gt_class).sum().item()
         #print(f'accuracy = {num_correct}/{num_non_padding} = {num_correct/num_non_padding:.3f}') 
         #print(f'class_accuracy = {num_correct_class}/{batch.batch_size} = {num_correct_class/batch.batch_size:.3f}') 

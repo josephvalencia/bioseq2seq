@@ -39,7 +39,7 @@ def parse_train_args():
     parser.add_argument("--val_tgt",help = "FASTA file of validation set protein or class labels")
     parser.add_argument("--save-directory","--s", default = "checkpoints/", help = "Name of directory for saving model checkpoints")
     parser.add_argument("--name", default = "model", help = "Name of saved model")
-    parser.add_argument("--model_type","--m", default = "GFNet", help = "Model architecture type.|Transformer|CNN|GFNet|")
+    parser.add_argument("--model_type","--m", default = "LFNet", help = "Model architecture type.|Transformer|CNN|GFNet|")
     parser.add_argument("--learning-rate","--lr", type = float, default = 1.0,help = "Optimizer learning rate")
     parser.add_argument("--lr_warmup_steps", type = int, default = 4000,help = "Warmup steps for Noam learning rate schedule")
     parser.add_argument("--max-epochs","--e", type = int, default = 100000,help = "Maximum number of training epochs" )

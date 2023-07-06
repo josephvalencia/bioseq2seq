@@ -529,9 +529,12 @@ if __name__ == "__main__":
     bio_models = args.all_BIO_replicates
     EDC_models = args.all_EDC_replicates
     EDC_eq_models = args.all_EDC_small_replicates
+    cnn_models = args.all_CNN_replicates
+    weighted_models = args.all_weighted_replicates
 
     parent = 'experiments/output'
-    all_models = get_model_names(bio_models)+get_model_names(EDC_models) +get_model_names(EDC_eq_models)
+    all_models = get_model_names(cnn_models)+get_model_names(weighted_models) 
+    #all_models = get_model_names(bio_models)+get_model_names(EDC_models) +get_model_names(EDC_eq_models)
     all_results = []
     binned_results = []
     for f in all_models:

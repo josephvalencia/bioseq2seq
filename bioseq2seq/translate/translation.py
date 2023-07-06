@@ -85,10 +85,8 @@ class TranslationBuilder(object):
         # Sorting
         inds, perm = torch.sort(batch.indices)
 
-        mod_freq = translation_batch["enc_cache"]["mod_freq"].index_select(0,perm)
-        #mod_space = translation_batch["enc_cache"]["mod_space"].index_select(0,perm)
-
-
+        cache = translation_batch["enc_cache"]
+        mod_freq = cache["mod_freq"].index_select(0,perm) if cache is not None else None 
         
         if self._has_text_src:
             src = batch.src[0][:, :, 0].index_select(1, perm)
@@ -118,11 +116,12 @@ class TranslationBuilder(object):
                     src[:, b] if src is not None else None,
                     src_vocab, src_raw,
                     tgt[1:, b] if tgt is not None else None, None)
-
+            
+            frequency_content = mod_freq[b,:,:,:] if mod_freq is not None else None
             translation = Translation(inds[b],
                 src[:, b] if src is not None else None,
                 src_raw, pred_sents, attn[b], pred_score[b],
-                gold_sent, gold_score[b], align[b],mod_freq[b,:,:,:])
+                gold_sent, gold_score[b], align[b],frequency_content)
             translations.append(translation)
 
         return translations
