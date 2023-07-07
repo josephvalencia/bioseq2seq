@@ -5,6 +5,9 @@
 *.preds
 *.png
 *.ig
+*.err
+*.out
+*.slurm
 *.EG
 *.deeplift
 *.inputXgradient

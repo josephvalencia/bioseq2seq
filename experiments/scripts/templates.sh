@@ -1,4 +1,4 @@
-export CHKPT_DIR="experiments/checkpoints"
+export CHKPT_DIR="experiments/checkpoints/coding_noncoding"
 export OUT_DIR="experiments/output"
 export test_rna="data/mammalian_200-1200_test_RNA_nonredundant_80.fa"
 export test_prot="data/mammalian_200-1200_test_PROTEIN_nonredundant_80.fa"
@@ -14,7 +14,7 @@ export train="python bioseq2seq/bin/train_single_model.py \
 --train_tgt data/mammalian_200-1200_train_PROTEIN_balanced.fa \
 --val_src data/mammalian_200-1200_val_RNA_nonredundant_80.fa \
 --val_tgt data/mammalian_200-1200_val_PROTEIN_nonredundant_80.fa 
---num_gpus 1 --save-directory experiments/checkpoints/coding_noncoding/ 
+--num_gpus 0 --save-directory experiments/checkpoints/coding_noncoding/ 
 --accum_steps 8 --max_tokens 9000 --report-every 500 
 --max-epochs 20000 --patience 5 --lr 1.0"
 
@@ -24,9 +24,10 @@ export TRAIN_BIO_CNN="$train --mode bioseq2seq \
 --encoder_kernel_size 6 --encoder_dilation_factor 2 --lr_warmup_steps 2000"
 
 export TRAIN_CDS="$train --mode bioseq2seq \
---n_enc_layers 8 --n_dec_layers 2 \
---model_dim 64 --dropout 0.1 --model_type LFNet \
---window_size 350 --lambd_L1 0.024 --lr_warmup_steps 2000"
+--n_enc_layers 12 --n_dec_layers 2 \
+--model_dim 64 --dropout 0.2 --model_type LFNet \
+--window_size 250 --lambd_L1 0.004 --lr_warmup_steps 2000
+--loss_mode pointer"
 
 export TRAIN_BIO="$train --mode bioseq2seq \
 --n_enc_layers 12 --n_dec_layers 2 \

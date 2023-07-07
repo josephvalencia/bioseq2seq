@@ -26,7 +26,8 @@ from bioseq2seq.utils.loss import NMTLossCompute
 
 #from bioseq2seq.bin.batcher import dataset_from_df, iterator_from_dataset, partition
 from bioseq2seq.bin.data_utils import iterator_from_fasta, build_standard_vocab, IterOnDevice, test_effective_batch_size
-from bioseq2seq.bin.models import make_cnn_seq2seq,make_cnn_transformer_seq2seq, make_transformer_seq2seq, make_hybrid_seq2seq, Generator,make_lfnet_cnn_seq2seq
+from bioseq2seq.bin.models import make_cnn_seq2seq,make_cnn_transformer_seq2seq, make_transformer_seq2seq 
+from bioseq2seq.bin.models import make_hybrid_seq2seq, Generator,make_lfnet_cnn_seq2seq,attach_pointer_output
 
 def parse_train_args():
     """Parse required and optional command-line arguments.""" 
@@ -154,6 +155,9 @@ def restore_model_from_args(args,vocab):
    else:
         raise Exception('model_type must be one of Transformer, CNN, or GFNet')
     '''
+    if args.loss_mode == 'pointer':
+        attach_pointer_output(model,args.model_dim)
+
     model.load_state_dict(checkpoint['model'],strict = False)
     model.generator.load_state_dict(checkpoint['generator'])
     
@@ -212,6 +216,8 @@ def build_model_from_args(args,vocab=None):
                                         window_size=args.window_size,
                                         lambd_L1=args.lambd_L1,
                                         dropout=args.dropout)
+    if args.loss_mode == 'pointer':
+        attach_pointer_output(seq2seq,args.model_dim)
 
     return seq2seq
 

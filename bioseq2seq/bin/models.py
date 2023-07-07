@@ -262,10 +262,6 @@ def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_d
                                        alignment_layer = None)
     generator = Generator(model_dim,n_output_classes)
    
-    '''
-    decoder_stack = PadDecoder()
-    generator = PointerGenerator(model_dim)
-    ''' 
     model = NMTModel(encoder_stack,decoder_stack)
     model.generator = generator
 
@@ -275,6 +271,13 @@ def make_hybrid_seq2seq(n_input_classes,n_output_classes,n_enc=4,n_dec=4,model_d
 
     return model
 
+def attach_pointer_output(model,model_dim):
+    decoder_stack = PadDecoder()
+    generator = PointerGenerator(model_dim)
+    print(f'Replacing {model.decoder} with pointer output') 
+    model.decoder = decoder_stack
+    model.generator = generator
+    	
 def restore_seq2seq_model(checkpoint,machine,opts):
     ''' Restore a seq2seq model from .pt
     Args:
@@ -345,7 +348,9 @@ def restore_seq2seq_model(checkpoint,machine,opts):
                                         window_size=opts.window_size,
                                         lambd_L1=opts.lambd_L1,
                                         dropout=opts.dropout)
-
+    if opts.loss_mode == 'pointer':
+        attach_pointer_output(model,opts.model_dim)
+ 
     model.load_state_dict(checkpoint['model'],strict = False)
     model.generator.load_state_dict(checkpoint['generator'])
     return model
