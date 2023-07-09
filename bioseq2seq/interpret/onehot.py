@@ -159,7 +159,7 @@ class OneHotMDIG(OneHotGradientAttribution):
             # score true
             tgt_prefix = batch.tgt[:target_pos,:,:] 
             class_token = batch.tgt[target_pos,0,0].item() if self.class_token == 'GT' else self.class_token
-            onehot_src = self.onehot_embed_layer(src) 
+            onehot_src = self.onehot_embed_layer(src)
             true_logit, true_probs = self.predict_logits(onehot_src,src_lens,
                                                     self.decoder_input(batch_size,tgt_prefix),
                                                     batch_size,class_token,ratio=True)
@@ -181,7 +181,6 @@ class OneHotMDIG(OneHotGradientAttribution):
                 scores = []
                 all_probs = []
                 grid = torch.linspace(0,1,n_samples,device=onehot_src.device) 
-
                 for n in range(0,n_samples,minibatch_size):
                     alpha = grid[n:n+minibatch_size].reshape(minibatch_size,1,1,1) 
                     interpolated_src = baseline + alpha*direction 

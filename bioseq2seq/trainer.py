@@ -109,13 +109,18 @@ class Trainer(object):
                  report_manager=None, with_align=False, model_saver=None,
                  average_decay=0, average_every=1, model_dtype='fp32',
                  earlystopper=None, dropout=[0.3], dropout_steps=[0],
-                 loss_mode='original',
+                 mode='bioseq2seq',
                  pos_decay_rate=None):
         # Basic attributes.
         self.model = model
         self.train_loss = train_loss
         self.valid_loss = valid_loss
-        self.loss_mode = loss_mode
+        if mode == 'start':
+            self.loss_mode = 'pointer'
+        elif mode == 'bioseq2seq' and pos_decay_rate is not None:
+            self.loss_mode = 'weighted'
+        else:
+            self.loss_mode = 'original'
         self.pos_decay_rate = pos_decay_rate
         self.optim = optim
         self.trunc_size = trunc_size
@@ -394,7 +399,6 @@ class Trainer(object):
         pad_tgt_size, batch_size, _ = batch.tgt.size()
         unbottled_scores = self._unbottle(scores,batch_size)
         pred_class = unbottled_scores[0,:,:].max(1)[1]
-        print(pred_class.shape,gt_class.shape) 
         num_correct_class = pred_class.eq(gt_class).sum().item()
         #print(f'accuracy = {num_correct}/{num_non_padding} = {num_correct/num_non_padding:.3f}') 
         #print(f'class_accuracy = {num_correct_class}/{batch.batch_size} = {num_correct_class/batch.batch_size:.3f}') 

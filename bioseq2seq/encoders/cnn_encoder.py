@@ -26,7 +26,7 @@ class CNNEncoder(EncoderBase):
 
     def forward(self, input, lengths=None, hidden=None,grad_mode=False):
         """See :class:`bioseq2seq.modules.EncoderBase.forward()`"""
-        self._check_args(input, lengths, hidden)
+        #self._check_args(input, lengths, hidden)
 
         # s_len, batch, emb_dim = emb.size()
         emb = self.embeddings(input,grad_mode=grad_mode)

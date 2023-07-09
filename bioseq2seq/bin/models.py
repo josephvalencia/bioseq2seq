@@ -348,7 +348,7 @@ def restore_seq2seq_model(checkpoint,machine,opts):
                                         window_size=opts.window_size,
                                         lambd_L1=opts.lambd_L1,
                                         dropout=opts.dropout)
-    if opts.loss_mode == 'pointer':
+    if opts.mode == 'start':
         attach_pointer_output(model,opts.model_dim)
  
     model.load_state_dict(checkpoint['model'],strict = False)

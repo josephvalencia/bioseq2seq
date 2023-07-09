@@ -151,11 +151,7 @@ def restore_model_from_args(args,vocab):
                                     window_size=args.window_size,
                                     lambd_L1 = args.lambd_L1,
                                     dropout=args.dropout)
-    '''
-   else:
-        raise Exception('model_type must be one of Transformer, CNN, or GFNet')
-    '''
-    if args.loss_mode == 'pointer':
+    if args.mode == 'start':
         attach_pointer_output(model,args.model_dim)
 
     model.load_state_dict(checkpoint['model'],strict = False)
@@ -216,7 +212,7 @@ def build_model_from_args(args,vocab=None):
                                         window_size=args.window_size,
                                         lambd_L1=args.lambd_L1,
                                         dropout=args.dropout)
-    if args.loss_mode == 'pointer':
+    if args.mode == 'start':
         attach_pointer_output(seq2seq,args.model_dim)
 
     return seq2seq
@@ -326,10 +322,9 @@ def train_helper(rank,args,seq2seq,tune=False):
     valid_iter = IterOnDevice(valid_iter,gpu)
     
     # computes position-wise NLLoss
-    reduction = 'none' if args.loss_mode == 'weighted' else 'sum'
-    criterion = torch.nn.NLLLoss(ignore_index=1,reduction=reduction)
     pos_decay_rate = args.pos_decay_rate if args.pos_decay_rate > 0 else None 
-    
+    reduction = 'none' if (args.mode == 'bioseq2seq' and pos_decay_rate is not None) else 'sum'
+    criterion = torch.nn.NLLLoss(ignore_index=1,reduction=reduction)
     train_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
     val_loss_computer = NMTLossCompute(criterion,generator=seq2seq.generator)
 
@@ -382,7 +377,7 @@ def train_helper(rank,args,seq2seq,tune=False):
                     report_manager=report_manager,
                     model_saver=saver,
                     model_dtype='fp16',
-                    loss_mode=args.loss_mode,
+                    mode=args.mode,
                     pos_decay_rate=pos_decay_rate)
     
     # training loop

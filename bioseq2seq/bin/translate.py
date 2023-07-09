@@ -3,6 +3,7 @@ import argparse
 import torch
 import numpy as np
 from math import log, floor
+from argparse import Namespace
 
 from bioseq2seq.inputters import str2reader
 from bioseq2seq.translate import Translator, GNMTGlobalScorer
@@ -34,6 +35,7 @@ def parse_args():
     parser.add_argument("--rank",type=int,help="Rank of process",default=0)
     parser.add_argument("--num_gpus",type=int,help="Number of available GPU machines",default=0)
     parser.add_argument("--model_type","--m", default = "LFNet", help = "Model architecture type.|Transformer|CNN|GFNet|")
+    parser.add_argument("--loss_mode",default="original",help="Method of loss computation. original|pointer|weighted")
 
     # translate optional args
     parser.add_argument("--beam_size","--b",type=int, default=1, help ="Beam size for decoding")
@@ -127,6 +129,14 @@ def translate_from_checkpoint(args):
     device = 'cpu'
     checkpoint = torch.load(args.checkpoint,map_location = device)
     options = checkpoint['opt']
+    
+    # optionally override 
+    opts = vars(options)
+    cmd_args = vars(args)
+    overriden = set(opts).intersection(set(cmd_args))
+    print('overriden args',overriden)
+    opts.update(cmd_args)
+    options = Namespace(**opts)
     vocab = checkpoint['vocab']
     
     logger.info("----------- Saved Parameters for ------------ {}".format("SAVED MODEL"))
