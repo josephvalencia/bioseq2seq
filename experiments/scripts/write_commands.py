@@ -61,6 +61,14 @@ def edc_pred(models,outfile):
             outFile.write(cmd+'\n')
     print(f'wrote {outfile} with {len(models)} commands') 
 
+def start_pred(models,outfile):
+    with open(outfile,'w') as outFile:
+        for i,m in enumerate(models):
+            outname = m.split('.pt')[0].replace('/','')
+            cmd = f'$PRED_TEST_START --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/'
+            outFile.write(cmd+'\n')
+        print(f'wrote {outfile} with {len(models)} commands')
+            
 def attr(models,inf_mode,attr_mode,dataset,outfile,alpha=0.5):
     with open(outfile,'w') as outFile:
         for i,m in enumerate(models): 
@@ -83,7 +91,7 @@ def mdig_val_attr(models,inf_mode,attr_mode,dataset,outfile):
                 outFile.write(cmd+'\n')
     print(f'wrote {outfile} with {len(models)*5} commands')
 
-def build_all_pred_scripts(bio_rep_file,edc_rep_file,edc_small_rep_file):
+def build_all_pred_scripts(bio_rep_file,edc_rep_file,edc_small_rep_file,cnn_rep_file,start_rep_file):
 
     # ingest model replicate .pt files
     with open(bio_rep_file) as inFile: 
@@ -92,12 +100,18 @@ def build_all_pred_scripts(bio_rep_file,edc_rep_file,edc_small_rep_file):
         edc_replicates = [m.strip() for m in inFile.readlines()]
     with open(edc_small_rep_file) as inFile: 
         edc_small_replicates = [m.strip() for m in inFile.readlines()]
+    with open(cnn_rep_file) as inFile:
+        cnn_replicates = [m.strip() for m in inFile.readlines()]
+    with open(start_rep_file) as inFile:
+        start_replicates = [m.strip() for m in inFile.readlines()]
 
     # regular test set predictions
     bio_full_pred(bio_replicates,'pred_bioseq2seq.txt')
     bio_pred(bio_replicates,'pred_class_bioseq2seq.txt')
     edc_pred(edc_replicates,'pred_EDC.txt')
     edc_pred(edc_small_replicates,'pred_EDC_small.txt')
+    start_pred(start_replicates,'pred_start.txt')
+    bio_pred(cnn_replicates,'pred_class_bioseq2seq_CNN.txt')
 
     # test set preds with encoder-decoder attention
     bio_pred_with_attn(bio_replicates,'pred_with_attn_bioseq2seq.txt')
@@ -133,6 +147,12 @@ if __name__ == "__main__":
     parser.add_argument('--bio_rep_file',type=str,required=True)
     parser.add_argument('--edc_rep_file',type=str,required=True)
     parser.add_argument('--edc_small_rep_file',type=str,required=True)
+    parser.add_argument('--cnn_bio_rep_file',type=str,required=True)
+    parser.add_argument('--start_rep_file',type=str,required=True)
     args = parser.parse_args()
     
-    build_all_pred_scripts(args.bio_rep_file,args.edc_rep_file,args.edc_small_rep_file)
+    build_all_pred_scripts(args.bio_rep_file,
+                        args.edc_rep_file,
+                        args.edc_small_rep_file,
+                        args.cnn_bio_rep_file,
+                        args.start_rep_file)

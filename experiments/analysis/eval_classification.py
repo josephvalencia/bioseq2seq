@@ -366,43 +366,36 @@ def evaluate_by_homology(pred_file,ground_truth_df,error_analysis):
     df = df.merge(ground_truth_df,on='ID')
     df['bin'] = df['score'].apply(coarse_bin_fn)
     results = []    
+    
+    def subset_stats(sub_df,bin):
+        preds = sub_df['pred_class'].to_numpy() 
+        gt = sub_df['Type'].to_numpy()
+        tscripts = sub_df['ID'].to_numpy()
+        pos_preds = preds == '<PC>'
+        pos_gt = gt == '<PC>'
+        accuracy = (preds == gt).sum() / len(sub_df)
+        preds = pos_preds.astype(int)
+        gt = pos_gt.astype(int)
+        mcc = matthews_corrcoef(gt,preds)
+        recall = recall_score(gt,preds)
+        precision = precision_score(gt,preds)
+        tn, fp, fn, tp = confusion_matrix(gt, preds).ravel()
+        specificity = safe_divide(tn,tn+fp)
+        f1 = f1_score(gt,preds)
+        name = pred_file.split('.')[0]
+        support = len(sub_df)
+        entry = {'trial' : name,'bin' : bin , 'support' : support, 'accuracy' : accuracy, 'F1' : f1 ,'recall' : recall, 'precision' : precision,'specificity' : specificity, 'MCC' : mcc}
+        return entry
+    
     for bin,sub_df in df.groupby(['bin']): 
-        def subset_stats(sub_df,bin):
-            preds = sub_df['pred_class'].to_numpy() 
-            gt = sub_df['Type'].to_numpy()
-            tscripts = sub_df['ID'].to_numpy()
-            pos_preds = preds == '<PC>'
-            pos_gt = gt == '<PC>'
-            accuracy = (preds == gt).sum() / len(sub_df)
-            preds = pos_preds.astype(int)
-            gt = pos_gt.astype(int)
-            mcc = matthews_corrcoef(gt,preds)
-            recall = recall_score(gt,preds)
-            precision = precision_score(gt,preds)
-            tn, fp, fn, tp = confusion_matrix(gt, preds).ravel()
-            specificity = safe_divide(tn,tn+fp)
-            f1 = f1_score(gt,preds)
-            name = pred_file.split('.')[0]
-            support = len(sub_df)
-            entry = {'trial' : name,'bin' : bin , 'support' : support, 'accuracy' : accuracy, 'F1' : f1 ,'recall' : recall, 'precision' : precision,'specificity' : specificity, 'MCC' : mcc}
-            return entry
         entry = subset_stats(sub_df,bin) 
         results.append(entry)
+    
     lesser = subset_stats(df[df['score'] <= 80],'<=80')
     greater = subset_stats(df[df['score'] > 80],'>80')
     results.append(lesser)
     results.append(greater) 
     results_df = pd.DataFrame(results)
-    '''
-    summary_metric ='MCC' 
-    X = results_df['bin'].to_numpy()
-    Y = results_df[summary_metric].to_numpy() 
-    corr = pearsonr(X,Y) 
-    X2 = sm.add_constant(X)
-    est = sm.OLS(Y, X2)
-    est2 = est.fit()
-    print(est2.summary())
-    '''
     return results_df
 
 def evaluate(pred_file,ground_truth_df,error_analysis):
@@ -533,12 +526,14 @@ if __name__ == "__main__":
     weighted_models = args.all_weighted_replicates
 
     parent = 'experiments/output'
-    all_models = get_model_names(cnn_models)+get_model_names(weighted_models) 
+    #all_models = get_model_names(cnn_models)+get_model_names(weighted_models) 
     #all_models = get_model_names(bio_models)+get_model_names(EDC_models) +get_model_names(EDC_eq_models)
+    all_models = get_model_names(bio_models)
+    
     all_results = []
     binned_results = []
     for f in all_models:
-        fname = join(parent,f,'mammalian_200-1200_test_RNA_nonredundant_80_preds.txt')
+        fname = join(parent,f,'mammalian_200-1200_val_RNA_nonredundant_80_preds.txt')
         if os.path.exists(fname):
             print(f'parsing {fname}')
             results = evaluate(fname,gt_df,error_analysis=False)
