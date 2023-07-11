@@ -513,6 +513,7 @@ class Inference(object):
                 is_pad = torch.eq(src_tokens,1)
                 num_padding_tokens = torch.count_nonzero(is_pad,dim=0)
                 batch_data = self.translate_batch(batch, data.src_vocabs, attn_debug)
+                coding_prob = batch_data["coding_prob"] 
                 translations = xlation_builder.from_batch(batch_data)
                 pbar.update(len(translations))
                 for trans in translations:
@@ -553,8 +554,9 @@ class Inference(object):
                     save_preds = True
 
                     if save_preds:
-                        self.out_file.write("ID: {}\n".format(transcript_name))
-                        #print("ID: {}\n".format(transcript_name))
+                        #self.out_file.write("ID: {}\n".format(transcript_name))
+                        self.out_file.write(f"ID: {transcript_name} coding_prob : {np.exp(coding_prob):.4f}\n")
+                         
                         for pred,score in zip(n_best_preds,n_best_scores):
                             self.out_file.write("PRED: {} SCORE: {}\n".format(pred,torch.exp(score)))
                         self.out_file.write("\n")
@@ -753,7 +755,7 @@ class Inference(object):
         use_src_map,
         decode_strategy,
         enc_cache = None,
-        class_logit=None
+        coding_prob=None
     ):
         results = {
             "predictions": None,
@@ -761,6 +763,7 @@ class Inference(object):
             "attention": None,
             "batch": batch,
             "gold_score": gold_score,
+            "coding_prob" : coding_prob,
         }
         
         results["enc_cache"] = enc_cache 
@@ -947,7 +950,8 @@ class Translator(Inference):
         )
         if fn_map_state is not None:
             self.model.decoder.map_state(fn_map_state)
-
+        
+        coding_prob = None
         # (3) Begin decoding step by step:
         for step in range(decode_strategy.max_length):
             decoder_input = decode_strategy.current_predictions.view(1, -1, 1)
@@ -964,8 +968,8 @@ class Translator(Inference):
             
             pc_token = self._tgt_vocab.stoi['<PC>']
             nc_token = self._tgt_vocab.stoi['<NC>']
-            logit_score =  log_probs[:,pc_token] - log_probs[:,nc_token]
-            #print(f'step {step}, logit_score = {logit_score}')
+            if step == 0: 
+                coding_prob =  log_probs[0,pc_token].item() 
             
             decode_strategy.advance(log_probs, attn)
             any_finished = decode_strategy.is_finished.any()
@@ -1003,7 +1007,8 @@ class Translator(Inference):
             src_vocabs,
             use_src_map,
             decode_strategy,
-            enc_cache
+            enc_cache,
+            coding_prob=coding_prob
         )
 
     def _score_target(
