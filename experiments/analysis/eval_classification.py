@@ -2,7 +2,7 @@
 import os,re
 import numpy as np
 import pandas as pd
-from sklearn.metrics import  f1_score, matthews_corrcoef, recall_score, precision_score, confusion_matrix
+from sklearn.metrics import  f1_score, matthews_corrcoef, recall_score, precision_score, confusion_matrix, accuracy_score
 from scipy.stats import chisquare, ks_2samp, mannwhitneyu,pearsonr
 from os.path import join
 from utils import parse_config,build_output_dir
@@ -12,6 +12,7 @@ from sklearn.linear_model import LinearRegression
 import statsmodels.api as sm
 from scipy import stats
 import matplotlib.pyplot as plt
+import math
 
 def findPositionProbability(position_x, base):
     '''Calculate the Position probablity of a base in codon'''
@@ -189,17 +190,21 @@ def get_all_stops(mRNA):
 def parse_predictions(record):
     
     transcript = record[0].split('ID: ')[1]
+    first_row = re.search('ID: (.*) coding_prob : ([0|1]\.\d*)',record[0])
     pred_match  = re.search('PRED: (<PC>|<NC>)(\S*)?',record[1])
     
-    if pred_match is not None:
+    if pred_match is not None and first_row is not None:
         pred_class = pred_match.group(1)
         pred_peptide = pred_match.group(2)
+        transcript = first_row.group(1)
+        coding_prob = first_row.group(2)
     else:
-        raise ValueError('Bad format')
+        raise ValueError(f'Bad format -> {record}')
 
     entry = {'ID' : transcript,
             'pred_class' : pred_class, 
-            'pred_seq': pred_peptide}
+            'pred_seq': pred_peptide,
+            'coding_prob' : coding_prob}
     return entry
 
 def has_upstream_inframe_stop(start,stop_locs):
@@ -361,7 +366,6 @@ def evaluate_by_homology(pred_file,ground_truth_df,error_analysis):
             storage.append(entry)
     df = pd.DataFrame(storage)
     homology = pd.read_csv("test_maximal_homology.csv")
-    print(homology.describe())
     df = df.merge(homology,on='ID') 
     df = df.merge(ground_truth_df,on='ID')
     df['bin'] = df['score'].apply(coarse_bin_fn)
@@ -382,7 +386,7 @@ def evaluate_by_homology(pred_file,ground_truth_df,error_analysis):
         tn, fp, fn, tp = confusion_matrix(gt, preds).ravel()
         specificity = safe_divide(tn,tn+fp)
         f1 = f1_score(gt,preds)
-        name = pred_file.split('.')[0]
+        name = pred_file.split('.txt')[0]
         support = len(sub_df)
         entry = {'trial' : name,'bin' : bin , 'support' : support, 'accuracy' : accuracy, 'F1' : f1 ,'recall' : recall, 'precision' : precision,'specificity' : specificity, 'MCC' : mcc}
         return entry
@@ -407,14 +411,13 @@ def evaluate(pred_file,ground_truth_df,error_analysis):
             entry = parse_predictions(lines[i:i+6])
             storage.append(entry)
     df = pd.DataFrame(storage)
-
     preds = df['pred_class'].to_numpy() 
     df = df.merge(ground_truth_df,on='ID')
     gt = df['Type'].to_numpy()
     tscripts = df['ID'].to_numpy()
     pos_preds = preds == '<PC>'
     pos_gt = gt == '<PC>'
-
+    
     accuracy = (preds == gt).sum() / len(df)
 
     separator = '_____________________________________________________________________'
@@ -428,6 +431,7 @@ def evaluate(pred_file,ground_truth_df,error_analysis):
     if error_analysis:
         features_by_confusion_matrix(TP,FP,FN,TN,ground_truth_df)
     
+    #accuracy = accuracy_score(gt,preds)
     preds = pos_preds.astype(int)
     gt = pos_gt.astype(int)
     mcc = matthews_corrcoef(gt,preds)
@@ -514,8 +518,8 @@ if __name__ == "__main__":
     all_model_performances = []
 
     test_file = 'data/mammalian_200-1200_test_nonredundant_80.csv'
-    gt_df = build_ground_truth(test_file)
     
+    gt_df = build_ground_truth(test_file)
     args,unknown_args = parse_config()
     output_dir = build_output_dir(args)
     
@@ -526,14 +530,13 @@ if __name__ == "__main__":
     weighted_models = args.all_weighted_replicates
 
     parent = 'experiments/output'
-    #all_models = get_model_names(cnn_models)+get_model_names(weighted_models) 
-    #all_models = get_model_names(bio_models)+get_model_names(EDC_models) +get_model_names(EDC_eq_models)
-    all_models = get_model_names(bio_models)
+    #all_models = get_model_names(cnn_models)+get_model_names(weighted_models)
+    all_models = get_model_names(bio_models)+get_model_names(EDC_models) +get_model_names(EDC_eq_models)
     
     all_results = []
     binned_results = []
     for f in all_models:
-        fname = join(parent,f,'mammalian_200-1200_val_RNA_nonredundant_80_preds.txt')
+        fname = join(parent,f,'mammalian_200-1200_test_RNA_nonredundant_80_preds.txt')
         if os.path.exists(fname):
             print(f'parsing {fname}')
             results = evaluate(fname,gt_df,error_analysis=False)
@@ -547,9 +550,12 @@ if __name__ == "__main__":
             print(f'{fname} does not exist')
 
     binned_results = pd.concat(binned_results)
-    short_string = binned_results['trial'].str.extract('(\w*)_\d_')[0]
+    short_string = binned_results['trial'].str.extract(r'(bioseq2seq_lambd_0\.\d*)|(\w*)_\d_')
+    condition = pd.isnull(short_string[0]).to_numpy()
+    short_string = np.where(condition,short_string[1].to_numpy(),short_string[0].to_numpy()) 
     binned_results['model'] = short_string
-    print(binned_results) 
+    binary = (binned_results['bin'] == '<=80') | (binned_results['bin'] == '>80') 
+    print('binary',binned_results[binary]) 
     binned_results.to_csv('our_models_homology_binning.csv',index=False)
 
     results_df = pd.DataFrame(all_results)
