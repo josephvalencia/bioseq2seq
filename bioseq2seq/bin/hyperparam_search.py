@@ -66,13 +66,9 @@ if __name__ == "__main__":
 
     cmd_args = parse_train_args()
     config = base_config()
-    #model_config = cnn_config() if cmd_args.model_type == "CNN" else mixer_config() 
     model_config = cnn_transformer_config() if cmd_args.model_type == "CNN-Transformer" else mixer_config() 
-    #model_config = lfnet_cnn_config() if cmd_args.model_type == "LFNet-CNN" else mixer_config() 
     config.update(model_config)
-   
-   if cmd_args.loss_mode == 'weighted':
-        config['pos_decay_rate'] = tune.qloguniform(1e-3,1.0,1e-3)
+    config['pos_decay_rate'] = tune.qloguniform(1e-3,1.0,1e-3)
 
     metric = "valid_class_accuracy"
     time_attr = "valid_step"
@@ -100,7 +96,7 @@ if __name__ == "__main__":
     name = f"new_BOHB_search_{cmd_args.mode}_{cmd_args.model_type}"
     train_wrapper = tune.with_parameters(train_protein_coding_potential,cmd_args=cmd_args)
     
-    wandb_callback = WandbLoggerCallback(project=f"{cmd_args.mode}-{cmd_args.model_type} Hyperparam Search",\
+    wandb_callback = WandbLoggerCallback(project=f"full_tune{cmd_args.mode}-{cmd_args.model_type} Hyperparam Search",\
                     api_key=os.environ["WANDB_KEY"],log_config=False)
     
     total_time_allowed = 7*24*60*60 # 7 days in seconds 

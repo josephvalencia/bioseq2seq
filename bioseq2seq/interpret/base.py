@@ -76,8 +76,7 @@ class PredictionWrapper(torch.nn.Module):
                                             memory_bank,
                                             memory_lengths=memory_lengths,
                                             step=step,grad_mode=True)
-
-        if "std" in dec_attn:
+        if dec_attn is not None and "std" in dec_attn:
             attn = dec_attn["std"]
         else:
             attn = None

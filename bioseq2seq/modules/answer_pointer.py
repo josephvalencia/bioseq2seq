@@ -8,8 +8,8 @@ class PointerGenerator(nn.Module):
     def __init__(self,hidden_size):
         super(PointerGenerator,self).__init__()
         self.encoder_proj = nn.Linear(hidden_size,1,bias=False)
-
-    def forward(self,embeds):
+	
+    def forward(self,embeds,softmax=True):
         # dot product between embeds and encoder_proj params 
         similarity = self.encoder_proj(embeds)
         attn = F.log_softmax(similarity,dim=0).squeeze(-1)

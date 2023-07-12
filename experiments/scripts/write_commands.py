@@ -37,6 +37,14 @@ def edc_pred_with_attn(models,outfile):
                 outFile.write(cmd+'\n')
     print(f'wrote {outfile} with {len(models)*16} commands') 
 
+def start_pred(models,outfile):
+    with open(outfile,'w') as outFile:
+        for i,m in enumerate(models): 
+            outname = m.split('.pt')[0].replace('/','')
+            cmd = f'$PRED_TEST_START --checkpoint ${{CHKPT_DIR}}/{m} --output_name ${{OUT_DIR}}/{outname}/'
+            outFile.write(cmd+'\n')
+    print(f'wrote {outfile} with {len(models)} commands') 
+
 def bio_pred(models,outfile):
     with open(outfile,'w') as outFile:
         for i,m in enumerate(models): 
@@ -108,6 +116,7 @@ def build_all_pred_scripts(bio_rep_file,edc_rep_file,edc_small_rep_file,cnn_rep_
     # regular test set predictions
     bio_full_pred(bio_replicates,'pred_bioseq2seq.txt')
     bio_pred(bio_replicates,'pred_class_bioseq2seq.txt')
+    start_pred(start_replicates,'pred_start.txt')
     edc_pred(edc_replicates,'pred_EDC.txt')
     edc_pred(edc_small_replicates,'pred_EDC_small.txt')
     start_pred(start_replicates,'pred_start.txt')

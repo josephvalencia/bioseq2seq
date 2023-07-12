@@ -126,7 +126,7 @@ class InSilicoMutagenesis(Attribution):
             yield None
 
     def safe_predict(self,mutant,src_lens,decoder_input,class_token):
-       
+        ''' recursively halve the batchsize until input does not cause OOM ''' 
         try:
             B = mutant.shape[0]
             with torch.no_grad():
@@ -137,19 +137,17 @@ class InSilicoMutagenesis(Attribution):
         except RuntimeError as e:
             if 'out of memory' in str(e):
                 torch.cuda.empty_cache()
-                print('Recovering from OOM')
+                print(f'Recovering from OOM at batchsize={B}')
                 mutant_chunks = mutant.chunk(2,dim=0)
                 input_chunks = decoder_input[0].chunk(2,dim=0)
                 total_logits = []
                 total_probs = []
                 for mut,item in zip(mutant_chunks,input_chunks): 
                     B = mutant.shape[0]
-                    with torch.no_grad():
-                        logit, probs = self.predict_logits(mut,src_lens,
-                                                            (item,),B,
-                                                            class_token,ratio=True)
-                        total_logits.append(logit)
-                        total_probs.append(probs)
+                    logit, probs = self.safe_predict(mut,src_lens,
+						    (item,),class_token)
+                    total_logits.append(logit)
+                    total_probs.append(probs)
                 return torch.cat(total_logits,dim=1), torch.cat(total_probs,dim=1) 
             else:
                 raise RuntimeError(e)
@@ -179,14 +177,15 @@ class InSilicoMutagenesis(Attribution):
             class_logit, probs = self.predict_logits(src,src_lens,
                                                         self.decoder_input(batch_size,tgt_prefix),
                                                         batch_size,class_token,ratio=True)
-            print(src.shape,class_logit,class_logit.shape)
             ism = []
             storage = []
             fasta_storage = []
             save_fasta = False
-            copies_per_step = 16
+            copies_per_step = self.minibatch_size
             s = time.time()
+            count = 0 
             for variant in self.gen_full_point_mutations(raw_src,src,copies_per_step):
+                count +=1
                 if variant is not None:
                     mutant,info = variant
                     B = mutant.shape[0]
@@ -199,7 +198,6 @@ class InSilicoMutagenesis(Attribution):
                     best_pred = maxes.indices
                     curr = probs[:,:,class_token]
                     #print(f'original = {class_logit}, mutant = {mutant_logit}, diff = {diff}, best  = {curr}, info = {info}')
-                    
                     for j in range(B):
                         entry = {'base' : info[j][1], 'loc' : info[j][0] , 'score' : diff[0][j]}
                         storage.append(entry)
@@ -213,10 +211,8 @@ class InSilicoMutagenesis(Attribution):
                             fasta_storage.append(record)
             e = time.time()
             print(f'{tscript} finished in {e-s} s.')
-            print(f'time elapsed = {e-s}')
             df = pd.DataFrame(storage)
             df = df.pivot(index='loc',columns='base',values='score').fillna(0.0)
-            #print(df)
             all_ism[tscript] = df.to_numpy()
         
         print(f'saving {savefile}')

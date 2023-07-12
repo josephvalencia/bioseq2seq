@@ -41,7 +41,8 @@ def parse_args():
     parser.add_argument("--input",help="File for translation")
     parser.add_argument("--tgt_input",default=None,help="File for translation")
     parser.add_argument("--checkpoint", "--c",help ="ONMT checkpoint (.pt)")
-    parser.add_argument("--inference_mode",default ="combined")
+    #parser.add_argument("--inference_mode",default ="combined")
+    parser.add_argument("--mode",default ="combined")
     parser.add_argument("--attribution_mode",default="ig")
     parser.add_argument("--baseline",default="zero", help="zero|avg|A|C|G|T")
     parser.add_argument("--tgt_class",default="<PC>", help="<PC>|<NC>")
@@ -133,11 +134,11 @@ def run_helper(rank,args,model,vocab,use_splits=False):
         xforms = {'add_synonymous_mutations' : xfm.SynonymousCopies(opts=shuffle_options)}
         add_synonymous_shuffled_to_vocab(args.sample_size,vocab_fields)
     
-    print(f'INFERENCE MODE {args.inference_mode}')
+    print(f'INFERENCE MODE {args.mode}')
     valid_iter = iterator_from_fasta(src=args.input,
                                     tgt=args.tgt_input,
                                     vocab_fields=vocab_fields,
-                                    mode=args.inference_mode,
+                                    mode=args.mode,
                                     is_train=False,
                                     max_tokens=args.max_tokens,
                                     external_transforms=xforms, 
@@ -205,6 +206,13 @@ def run_attribution(args,device):
     checkpoint = torch.load(args.checkpoint,map_location = device)
     options = checkpoint['opt']
     vocab = checkpoint['vocab']
+    # optionally override 
+    opts = vars(options)
+    cmd_args = vars(args)
+    overriden = set(opts).intersection(set(cmd_args))
+    print('overriden args',overriden)
+    opts.update(cmd_args)
+    options = Namespace(**opts)
     model = restore_seq2seq_model(checkpoint,device,options)
 
     if not options is None:
