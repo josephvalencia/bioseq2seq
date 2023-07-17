@@ -98,10 +98,10 @@ def restore_model_from_args(args,vocab):
         restored model'''
     
     checkpoint = torch.load(args.checkpoint,map_location = "cpu")
-
+    print(vocab)
     if vocab is None:
         vocab = checkpoint['vocab']
-    n_input_classes,n_output_classes =  get_input_output_size(checkpoint)
+    n_input_classes,n_output_classes =  get_input_output_size(vocab)
 
     if args.model_type == 'Transformer':
         model = make_transformer_seq2seq(n_input_classes,
@@ -147,7 +147,7 @@ def restore_model_from_args(args,vocab):
                                     model_dim=args.model_dim,
                                     fourier_type=args.model_type,
                                     max_rel_pos=args.max_rel_pos,
-                                    filter_size=args.filter_size,
+                                    dim_filter=args.filter_size,
                                     window_size=args.window_size,
                                     lambd_L1 = args.lambd_L1,
                                     dropout=args.dropout)
@@ -255,7 +255,7 @@ def build_or_restore_model(args):
         else:
             logger.info(f'Resuming {args.model_type} model {args.checkpoint} on dataset {args.train_src} and task {args.mode}')
             # use the saved vocab and generator
-            seq2seq = restore_model_from_args(args)
+            seq2seq = restore_model_from_args(args,vocab=vocab_fields)
     else:
         logger.info(f'Training a new {args.model_type} model on dataset {args.train_src} and task {args.mode}')
         # tokenize and numericalize to obtain vocab 

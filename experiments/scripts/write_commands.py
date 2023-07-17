@@ -99,32 +99,35 @@ def mdig_val_attr(models,inf_mode,attr_mode,dataset,outfile,parent='.'):
                 outFile.write(cmd+'\n')
     print(f'wrote {outfile} with {len(models)*5} commands')
 
-def build_all_pred_scripts(bio_rep_file,edc_rep_file,edc_small_rep_file,cnn_rep_file,start_rep_file,weighted_rep_file,parent):
+def build_all_pred_scripts(bio_file,edc_file,edc_small_file,cnn_file,start_file,weighted_lfnet_file,weighted_cnn_file,parent):
 
-    def load_files(rep_file):
+    def load_files(file):
         # ingest model replicate .pt files
-        with open(rep_file) as inFile: 
+        with open(file) as inFile: 
             replicates = [m.strip() for m in inFile.readlines()]
         return replicates
 
-    bio_replicates = load_files(bio_rep_file)
-    edc_replicates = load_files(edc_rep_file)
-    edc_small_replicates = load_files(edc_small_rep_file)
-    cnn_replicates = load_files(cnn_rep_file)
-    start_replicates = load_files(start_rep_file)
-    weighted_replicates = load_files(weighted_rep_file)
+    bio_replicates = load_files(bio_file)
+    edc_replicates = load_files(edc_file)
+    edc_small_replicates = load_files(edc_small_file)
+    cnn_replicates = load_files(cnn_file)
+    start_replicates = load_files(start_file)
+    weighted_lfnet_replicates = load_files(weighted_lfnet_file)
+    weighted_cnn_replicates = load_files(weighted_cnn_file)
 
     if not os.path.isdir(parent):
         os.mkdir(parent)
 
     # regular test set predictions
     bio_full_pred(bio_replicates,'pred_bioseq2seq.txt',parent=parent)
-    bio_full_pred(cnn_replicates,'pred_class_bioseq2seq_CNN.txt',parent=parent)
-    bio_full_pred(weighted_replicates,'pred_class_bioseq2seq_weighted.txt',parent=parent)
+    bio_full_pred(cnn_replicates,'pred_bioseq2seq_CNN.txt',parent=parent)
+    bio_full_pred(weighted_lfnet_replicates,'pred_bioseq2seq_weighted.txt',parent=parent)
+    bio_full_pred(weighted_lfnet_replicates,'pred_bioseq2seq_weighted_CNN.txt',parent=parent)
     
     bio_pred(bio_replicates,'pred_class_bioseq2seq.txt',parent=parent)
     bio_pred(cnn_replicates,'pred_class_bioseq2seq_CNN.txt',parent=parent)
-    bio_pred(weighted_replicates,'pred_class_bioseq2seq_weighted.txt',parent=parent)
+    bio_pred(weighted_lfnet_replicates,'pred_class_bioseq2seq_weighted.txt',parent=parent)
+    bio_pred(weighted_cnn_replicates,'pred_class_bioseq2seq_weighted_CNN.txt',parent=parent)
     
     edc_pred(edc_replicates,'pred_EDC.txt',parent=parent)
     edc_pred(edc_small_replicates,'pred_EDC_small.txt',parent=parent)
@@ -132,16 +135,16 @@ def build_all_pred_scripts(bio_rep_file,edc_rep_file,edc_small_rep_file,cnn_rep_
 
     # test set preds with encoder-decoder attention
     bio_pred_with_attn(bio_replicates,'pred_with_attn_bioseq2seq.txt',parent=parent)
-    bio_pred_with_attn(weighted_replicates,'pred_with_attn_bioseq2seq_weighted.txt',parent=parent)
+    bio_pred_with_attn(weighted_lfnet_replicates,'pred_with_attn_bioseq2seq_weighted.txt',parent=parent)
     bio_pred_with_attn(cnn_replicates,'pred_with_attn_bioseq2seq_CNN.txt',parent=parent)
     edc_pred_with_attn(edc_replicates,'pred_with_attn_EDC.txt',parent=parent)
 
     # verified validation set attributions
     dataset = 'VAL_VERIFIED'
-    reps = [bio_replicates,weighted_replicates,cnn_replicates,edc_replicates]
+    suffixes = ['bioseq2seq','bioseq2seq_weighted','bioseq2seq_CNN','EDC'] 
+    reps = [bio_replicates,weighted_lfnet_replicates,cnn_replicates,edc_replicates]
     for attr_mode in ['MDIG','IG','grad','ISM']:
-        for replicates,inf_mode in zip(reps, ['BIO','BIO','BIO','EDC']):
-            suffix = 'bioseq2seq' if inf_mode == 'BIO' else inf_mode 
+        for replicates,suffix,inf_mode in zip(reps,suffixes, ['BIO','BIO','BIO','EDC']):
             prefix = 'uniform_ig' if attr_mode == 'IG' else attr_mode.lower()
             filename = f'{prefix}_{dataset.lower()}_{suffix}.txt'
             if attr_mode == 'MDIG':
@@ -158,9 +161,9 @@ def build_all_pred_scripts(bio_rep_file,edc_rep_file,edc_small_rep_file,cnn_rep_
     attr(cnn_replicates,'BIO','grad','TEST_VERIFIED','grad_test_verified_bioseq2seq_cnn.txt',parent=parent)
     attr(cnn_replicates,'BIO','MDIG','TEST_VERIFIED','mdig_test_verified_bioseq2seq_cnn.txt',alpha=0.5,parent=parent)
     
-    attr(weighted_replicates,'BIO','ISM','TEST_VERIFIED','ism_test_verified_bioseq2seq_weighted.txt',parent=parent)
-    attr(weighted_replicates,'BIO','grad','TEST_VERIFIED','grad_test_verified_bioseq2seq_weighted.txt',parent=parent)
-    attr(weighted_replicates,'BIO','MDIG','TEST_VERIFIED','mdig_test_verified_bioseq2seq_weighted.txt',alpha=0.5,parent=parent)
+    attr(weighted_lfnet_replicates,'BIO','ISM','TEST_VERIFIED','ism_test_verified_bioseq2seq_weighted.txt',parent=parent)
+    attr(weighted_lfnet_replicates,'BIO','grad','TEST_VERIFIED','grad_test_verified_bioseq2seq_weighted.txt',parent=parent)
+    attr(weighted_lfnet_replicates,'BIO','MDIG','TEST_VERIFIED','mdig_test_verified_bioseq2seq_weighted.txt',alpha=0.5,parent=parent)
     
     attr(edc_replicates,'EDC','ISM','TEST_VERIFIED','ism_test_verified_EDC.txt',parent=parent) 
     attr(edc_replicates,'EDC','grad','TEST_VERIFIED','grad_test_verified_EDC.txt',parent=parent) 
@@ -168,7 +171,7 @@ def build_all_pred_scripts(bio_rep_file,edc_rep_file,edc_small_rep_file,cnn_rep_
     
     # bioseq2seq attributions only on larger datsets
     attr(bio_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq.txt',alpha=0.5,parent=parent) 
-    attr(weighted_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq_weighted.txt',alpha=0.5,parent=parent) 
+    attr(weighted_lfnet_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq_weighted.txt',alpha=0.5,parent=parent) 
     attr(cnn_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq_cnn.txt',alpha=0.5,parent=parent) 
 
 if __name__ == "__main__":
@@ -179,7 +182,8 @@ if __name__ == "__main__":
     parser.add_argument('--edc_small',type=str,required=True)
     parser.add_argument('--cnn_bio',type=str,required=True)
     parser.add_argument('--start',type=str,required=True)
-    parser.add_argument('--weighted_bio',type=str,required=True)
+    parser.add_argument('--weighted_lfnet',type=str,required=True)
+    parser.add_argument('--weighted_cnn',type=str,required=True)
     parser.add_argument('--out_dir',default='.',type=str,required=False)
     args = parser.parse_args()
     
@@ -188,5 +192,6 @@ if __name__ == "__main__":
                         args.edc_small,
                         args.cnn_bio,
                         args.start,
-                        args.weighted_bio,
+                        args.weighted_lfnet,
+                        args.weighted_cnn, 
                         args.out_dir)

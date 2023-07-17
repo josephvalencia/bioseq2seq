@@ -60,17 +60,17 @@ export PRED_TEST_EDC="python bioseq2seq/bin/translate.py \
 --n_best 4 --max_tokens 1200 --save_EDA" 
 
 export ATTR_VAL_VERIFIED_BIO="python bioseq2seq/interpret/run_attribution.py \
---input $verified_val_rna --tgt_input $verified_val_prot --inference_mode bioseq2seq \
+--input $verified_val_rna --tgt_input $verified_val_prot --mode bioseq2seq \
 --num_gpus 1 --max_tokens 300"
 
 export ATTR_VAL_VERIFIED_EDC="python bioseq2seq/interpret/run_attribution.py \
---input $verified_val_rna --tgt_input $verified_val_prot --inference_mode EDC --num_gpus 1 --max_tokens 300"
+--input $verified_val_rna --tgt_input $verified_val_prot --mode EDC --num_gpus 1 --max_tokens 300"
 
 export ATTR_TEST_VERIFIED_BIO="python bioseq2seq/interpret/run_attribution.py \
---input $verified_test_rna --tgt_input $verified_test_prot --inference_mode bioseq2seq --num_gpus 1 --max_tokens 300"
+--input $verified_test_rna --tgt_input $verified_test_prot --mode bioseq2seq --num_gpus 1 --max_tokens 300"
 
 export ATTR_TEST_VERIFIED_EDC="python bioseq2seq/interpret/run_attribution.py \
---input $verified_test_rna --tgt_input $verified_test_prot --inference_mode EDC --num_gpus 1 --max_tokens 300"
+--input $verified_test_rna --tgt_input $verified_test_prot --mode EDC --num_gpus 1 --max_tokens 300"
 
 export ATTR_TEST_FULL_BIO="python bioseq2seq/interpret/run_attribution.py \
---input $test_rna --tgt_input $test_prot --inference_mode bioseq2seq --num_gpus 1 --max_tokens 300"
+--input $test_rna --tgt_input $test_prot --mode bioseq2seq --num_gpus 1 --max_tokens 300"
