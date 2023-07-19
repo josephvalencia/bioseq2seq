@@ -18,7 +18,6 @@ def calc_correlations(file_a,file_b,model_type,corr_mode,metric):
     if metric == 'grad':
         onehot_file_a = np.load(file_a.replace('grad','onehot')) 
         onehot_file_b = np.load(file_b.replace('grad','onehot')) 
-        metric = 'Taylor' 
      
     file_a = np.load(file_a)
     file_b = np.load(file_b)
@@ -34,10 +33,11 @@ def calc_correlations(file_a,file_b,model_type,corr_mode,metric):
             array_b = taylor_b[:,2:6]
         corr,cos,mae,sign_match_pct = similarity_scores(array_a,array_b,corr_mode) 
         is_coding = lambda x: x.startswith('XM') or x.startswith('NM') 
+        report_metric = metric if metric !=  'grad' else 'Taylor' 
         entry = {'tscript' : tscript , 'is_coding' : is_coding(tscript),
                 corr_mode : corr , 'cosine_sim' : cos,'MAE' : mae, 
                 'sign_match_pct' : sign_match_pct,'Model' : model_type,
-                'Mutation method' : metric}
+                'Mutation method' : report_metric}
         storage.append(entry) 
     
     return storage
@@ -310,11 +310,13 @@ def self_agreement(prefix,models1,models2,corr_mode,output_dir,parent='.'):
 
 def plot_summary_scatter(combined,output_dir):
 
+    print('COMBINED',combined[['Mutation method','Model','pearson_self_median','pearson_ISM_median']])
     sns.set_style(style="ticks",rc={'font.family' : ['Helvetica']})
     plt.figure(figsize=(4.5,3.5))
     g = sns.scatterplot(combined,x ='pearson_self_median',y='pearson_ISM_median',hue='Mutation method',style='Model',s=100)
     #sns.despine()
-    sns.move_legend(g,loc="upper left",bbox_to_anchor=(0.00,1.0),fontsize=8)
+    #sns.move_legend(g,loc="upper left",bbox_to_anchor=(0.00,1.0),fontsize=8)
+    sns.move_legend(g,loc="upper right",bbox_to_anchor=(0.00,1.0),fontsize=8)
     plt.tight_layout() 
     plt.xlabel('Inter-replicate agreement\n(median Pearson r)',multialignment='center')
     plt.ylabel('Intra-replicate agreement with ISM\n(median Pearson r)',multialignment='center')

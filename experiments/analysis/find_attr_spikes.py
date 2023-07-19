@@ -265,7 +265,7 @@ def top_indices(saved_file,df,groups,metrics,mode="attn",head_idx=0,reduction_mo
                     adjusted = adjust_indices_by_region(selected,start,end,region)
                     max_in_window =  np.max(subarray[selected-10:selected+11].tolist())
                     argmax_in_window = np.argmax(subarray[selected-10:selected+11])
-                    result = (tscript,adjusted,max_in_window,argmax_in_window,start,end)
+                    result = (tscript,adjusted,max_in_window,argmax_in_window,start,end,len(seq))
                 # otherwise restricted only by mode
                 else:
                     selected = select_index(subarray,mode=m) 

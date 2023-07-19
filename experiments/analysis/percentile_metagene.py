@@ -212,7 +212,7 @@ def compare_metagenes(output_dir,prefix,a,b,model):
         else:
             nc_sum += corr[0]
             nc_count +=1
-    print(f'PC = {pc_sum/pc_count}, NC = {nc_sum/nc_count}')
+    print(f'avg corr (PC) = {pc_sum/pc_count:.4f}, avg corr (NC) = {nc_sum/nc_count:.4f}')
 
 def compare_all(output_dir,prefix):
 
@@ -239,7 +239,8 @@ def build_all(args):
     best_BIO_grad = load_models(args.best_BIO_DIR,args.all_BIO_replicates,f'{prefix}.grad.npz')
     best_EDC_grad = load_models(args.best_EDC_DIR,args.all_EDC_replicates,f'{prefix}.grad.npz')
     best_BIO_MDIG = load_models(args.best_BIO_DIR,args.all_BIO_replicates,f'{prefix}.MDIG.max_0.50.npz')
-    best_EDC_MDIG = load_models(args.best_EDC_DIR,args.all_EDC_replicates,f'{prefix}.MDIG.max_0.10.npz')
+    #best_EDC_MDIG = load_models(args.best_EDC_DIR,args.all_EDC_replicates,f'{prefix}.MDIG.max_0.10.npz')
+    best_EDC_MDIG = load_models(args.best_EDC_DIR,args.all_EDC_replicates,f'{prefix}.MDIG.max_0.50.npz')
     best_BIO_ISM = load_models(args.best_BIO_DIR,args.all_BIO_replicates,f'{prefix}.ISM.npz')
     best_EDC_ISM = load_models(args.best_EDC_DIR,args.all_EDC_replicates,f'{prefix}.ISM.npz')
     
@@ -251,13 +252,14 @@ def build_all(args):
     attr_filenames = {'bioseq2seq' : best_BIO_ISM,'EDC' : best_EDC_ISM}
     plot_attribution_metagene(test_cds,output_dir,prefix,attr_filenames,'ISM',sharey=False)
     compare_all(output_dir,prefix)
-    
+   
+    ''' 
     # build EDA metagenes
     best_BIO_EDA = build_EDA_file_list(args.best_BIO_EDA,args.best_BIO_DIR)
     best_EDC_EDA = build_EDA_file_list(args.best_EDC_EDA,args.best_EDC_DIR)
     plot_EDA_metagene(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA)
     plot_EDA_metagene(test_cds,output_dir,'best_EDC_test',best_EDC_EDA)
-    
+    ''' 
 if __name__ == "__main__":
     
     args,unknown_args = parse_config()
