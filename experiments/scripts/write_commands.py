@@ -122,7 +122,7 @@ def build_all_pred_scripts(bio_file,edc_file,edc_small_file,cnn_file,start_file,
     bio_full_pred(bio_replicates,'pred_bioseq2seq.txt',parent=parent)
     bio_full_pred(cnn_replicates,'pred_bioseq2seq_CNN.txt',parent=parent)
     bio_full_pred(weighted_lfnet_replicates,'pred_bioseq2seq_weighted.txt',parent=parent)
-    bio_full_pred(weighted_lfnet_replicates,'pred_bioseq2seq_weighted_CNN.txt',parent=parent)
+    bio_full_pred(weighted_cnn_replicates,'pred_bioseq2seq_weighted_CNN.txt',parent=parent)
     
     bio_pred(bio_replicates,'pred_class_bioseq2seq.txt',parent=parent)
     bio_pred(cnn_replicates,'pred_class_bioseq2seq_CNN.txt',parent=parent)
@@ -136,15 +136,16 @@ def build_all_pred_scripts(bio_file,edc_file,edc_small_file,cnn_file,start_file,
     # test set preds with encoder-decoder attention
     bio_pred_with_attn(bio_replicates,'pred_with_attn_bioseq2seq.txt',parent=parent)
     bio_pred_with_attn(weighted_lfnet_replicates,'pred_with_attn_bioseq2seq_weighted.txt',parent=parent)
+    bio_pred_with_attn(weighted_cnn_replicates,'pred_with_attn_bioseq2seq_weighted_CNN.txt',parent=parent)
     bio_pred_with_attn(cnn_replicates,'pred_with_attn_bioseq2seq_CNN.txt',parent=parent)
     edc_pred_with_attn(edc_replicates,'pred_with_attn_EDC.txt',parent=parent)
 
     # verified validation set attributions
     dataset = 'VAL_VERIFIED'
-    suffixes = ['bioseq2seq','bioseq2seq_weighted','bioseq2seq_CNN','EDC'] 
-    reps = [bio_replicates,weighted_lfnet_replicates,cnn_replicates,edc_replicates]
+    suffixes = ['bioseq2seq','bioseq2seq_weighted','bioseq2seq_weighted_CNN','bioseq2seq_CNN','EDC'] 
+    reps = [bio_replicates,weighted_lfnet_replicates,weighted_cnn_replicates,cnn_replicates,edc_replicates]
     for attr_mode in ['MDIG','IG','grad','ISM']:
-        for replicates,suffix,inf_mode in zip(reps,suffixes, ['BIO','BIO','BIO','EDC']):
+        for replicates,suffix,inf_mode in zip(reps,suffixes, ['BIO','BIO','BIO','BIO','EDC']):
             prefix = 'uniform_ig' if attr_mode == 'IG' else attr_mode.lower()
             filename = f'{prefix}_{dataset.lower()}_{suffix}.txt'
             if attr_mode == 'MDIG':
@@ -157,13 +158,17 @@ def build_all_pred_scripts(bio_file,edc_file,edc_small_file,cnn_file,start_file,
     attr(bio_replicates,'BIO','grad','TEST_VERIFIED','grad_test_verified_bioseq2seq.txt',parent=parent)
     attr(bio_replicates,'BIO','MDIG','TEST_VERIFIED','mdig_test_verified_bioseq2seq.txt',alpha=0.5,parent=parent)
     
-    attr(cnn_replicates,'BIO','ISM','TEST_VERIFIED','ism_test_verified_bioseq2seq_cnn.txt',parent=parent)
-    attr(cnn_replicates,'BIO','grad','TEST_VERIFIED','grad_test_verified_bioseq2seq_cnn.txt',parent=parent)
-    attr(cnn_replicates,'BIO','MDIG','TEST_VERIFIED','mdig_test_verified_bioseq2seq_cnn.txt',alpha=0.5,parent=parent)
+    attr(cnn_replicates,'BIO','ISM','TEST_VERIFIED','ism_test_verified_bioseq2seq_CNN.txt',parent=parent)
+    attr(cnn_replicates,'BIO','grad','TEST_VERIFIED','grad_test_verified_bioseq2seq_CNN.txt',parent=parent)
+    attr(cnn_replicates,'BIO','MDIG','TEST_VERIFIED','mdig_test_verified_bioseq2seq_CNN.txt',alpha=0.5,parent=parent)
     
     attr(weighted_lfnet_replicates,'BIO','ISM','TEST_VERIFIED','ism_test_verified_bioseq2seq_weighted.txt',parent=parent)
     attr(weighted_lfnet_replicates,'BIO','grad','TEST_VERIFIED','grad_test_verified_bioseq2seq_weighted.txt',parent=parent)
     attr(weighted_lfnet_replicates,'BIO','MDIG','TEST_VERIFIED','mdig_test_verified_bioseq2seq_weighted.txt',alpha=0.5,parent=parent)
+    
+    attr(weighted_cnn_replicates,'BIO','ISM','TEST_VERIFIED','ism_test_verified_bioseq2seq_weighted_CNN.txt',parent=parent)
+    attr(weighted_cnn_replicates,'BIO','grad','TEST_VERIFIED','grad_test_verified_bioseq2seq_weighted_CNN.txt',parent=parent)
+    attr(weighted_cnn_replicates,'BIO','MDIG','TEST_VERIFIED','mdig_test_verified_bioseq2seq_weighted_CNN.txt',alpha=0.5,parent=parent)
     
     attr(edc_replicates,'EDC','ISM','TEST_VERIFIED','ism_test_verified_EDC.txt',parent=parent) 
     attr(edc_replicates,'EDC','grad','TEST_VERIFIED','grad_test_verified_EDC.txt',parent=parent) 
@@ -172,7 +177,8 @@ def build_all_pred_scripts(bio_file,edc_file,edc_small_file,cnn_file,start_file,
     # bioseq2seq attributions only on larger datsets
     attr(bio_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq.txt',alpha=0.5,parent=parent) 
     attr(weighted_lfnet_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq_weighted.txt',alpha=0.5,parent=parent) 
-    attr(cnn_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq_cnn.txt',alpha=0.5,parent=parent) 
+    attr(weighted_cnn_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq_weighted_CNN.txt',alpha=0.5,parent=parent) 
+    attr(cnn_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq_CNN.txt',alpha=0.5,parent=parent) 
 
 if __name__ == "__main__":
     

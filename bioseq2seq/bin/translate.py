@@ -34,7 +34,6 @@ def parse_args():
     parser.add_argument("--mode",default="bioseq2seq",help="Inference mode. One of bioseq2seq|EDC")
     parser.add_argument("--rank",type=int,help="Rank of process",default=0)
     parser.add_argument("--num_gpus",type=int,help="Number of available GPU machines",default=0)
-    parser.add_argument("--model_type","--m", default = "LFNet", help = "Model architecture type.|Transformer|CNN|GFNet|")
     parser.add_argument("--loss_mode",default="original",help="Method of loss computation. original|pointer|weighted")
 
     # translate optional args
