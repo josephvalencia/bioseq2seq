@@ -39,6 +39,11 @@ export TRAIN_EDC="$train --mode EDC \
 --model_dim 128 --dropout 0.1 --model_type LFNet \
 --window_size 200 --lambd_L1 0.011 --lr_warmup_steps 4000"
 
+export TRAIN_EDC_CNN="$train --mode EDC \
+--n_enc_layers 2 --n_dec_layers 1 \
+--model_dim 128 --dropout 0.2 --model_type CNN-Transformer \
+--encoder_kernel_size 6 --encoder_dilation_factor 2 --lr_warmup_steps 2000"
+
 export TRAIN_EDC_EQ="$train --mode EDC \
 --n_enc_layers 12 --n_dec_layers 2 \
 --model_dim 64 --dropout 0.2 --model_type LFNet \
