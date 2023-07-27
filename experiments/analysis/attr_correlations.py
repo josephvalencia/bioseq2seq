@@ -223,8 +223,14 @@ def ism_agreement(prefix,models1,models2,corr_mode,test_csv,output_dir,parent='.
             storage.extend(results) 
     df = pd.DataFrame(storage)
     print('ISM AGREEMENT') 
-    print(df) 
     averaged = average_per_transcript(df)
+    grouped = averaged.groupby(['Mutation method','Model'])[[corr_mode,'cosine_sim']]
+    print('Method medians') 
+    print(grouped.median())
+    print('Method Q1') 
+    print(grouped.quantile(0.25))
+    print('Method Q3') 
+    print(grouped.quantile(0.75))
     sns.set_style(style="whitegrid",rc={'font.family' : ['Helvetica']})
     # pairwise comparisons all bioseq2seq replicates
     order = ['MDIG-0.10','MDIG-0.25','MDIG-0.50','MDIG-0.75','MDIG-1.00','Taylor','IG']
@@ -351,4 +357,7 @@ if __name__ == "__main__":
     consensus_self_df, unreduced_self_df = self_agreement(prefix,args.all_BIO_replicates,args.all_EDC_replicates,
                                                         'pearson',output_dir,'experiments/output') 
 
+    consensus_ism_df, unreduced_ism_df = ism_agreement(prefix,args.all_BIO_replicates,args.all_EDC_replicates,
+                                                        'pearson',test_file,output_dir,'experiments/output') 
+    grouped_ism = consensus_ism_df.groupby(['Mutation method','Model'])
 

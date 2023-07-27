@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-#export dir="/nfs/stak/users/valejose/hpc-share/bioseq2seq"
+#export dir="/home/bb/valejose/valejose/revisions/bioseq2seq"
+export dir="/nfs/stak/users/valejose/hpc-share/bioseq2seq"
 export scripts="${dir}/experiments/scripts"
 source $scripts/templates.sh
 suffix=${1}
