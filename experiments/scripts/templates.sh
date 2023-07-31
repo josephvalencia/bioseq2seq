@@ -23,11 +23,15 @@ export TRAIN_BIO_CNN="$train --mode bioseq2seq \
 --model_dim 128 --dropout 0.5 --model_type CNN-Transformer \
 --encoder_kernel_size 6 --encoder_dilation_factor 2 --lr_warmup_steps 2000"
 
-export TRAIN_CDS="$train --mode bioseq2seq \
+export TRAIN_CDS="$train --mode start \
 --n_enc_layers 12 --n_dec_layers 2 \
 --model_dim 64 --dropout 0.2 --model_type LFNet \
---window_size 250 --lambd_L1 0.004 --lr_warmup_steps 2000
---loss_mode pointer"
+--window_size 250 --lambd_L1 0.004 --lr_warmup_steps 2000"
+
+export TRAIN_CDS_CNN="$train --mode start \
+--n_enc_layers 8 --n_dec_layers 1 \
+--model_dim 32 --dropout 0.2 --model_type CNN-Transformer \
+--lr_warmup_steps 4000 --encoder_kernel_size 6 --encoder_dilation_factor 2 "
 
 export TRAIN_BIO="$train --mode bioseq2seq \
 --n_enc_layers 12 --n_dec_layers 2 \

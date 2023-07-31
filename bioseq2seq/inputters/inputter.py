@@ -120,7 +120,8 @@ def get_fields(
     with_align=False,
     src_truncate=None,
     tgt_truncate=None,
-    data_task=ModelTask.SEQ2SEQ
+    data_task=ModelTask.SEQ2SEQ,
+    with_start=False
 ):
     """
     Args:
@@ -181,9 +182,10 @@ def get_fields(
 
     indices = Field(use_vocab=False, dtype=torch.long, sequential=False)
     fields["indices"] = indices
-    
-    #starts = Field(use_vocab=False, dtype=torch.long, sequential=False)
-    #fields["start"] = starts
+   
+    if with_start:
+        starts = Field(use_vocab=False, dtype=torch.long, sequential=False)
+        fields["start"] = starts
     
     if dynamic_dict:
         src_map = Field(
@@ -226,7 +228,9 @@ class IterOnDevice(object):
                 batch.src = batch.src.to(device)
             batch.tgt = batch.tgt.to(device)
             batch.indices = batch.indices.to(device)
-            #batch.start = batch.start.to(device)
+            # used for training seq2start/CDS 
+            batch.start = batch.start.to(device) \
+                    if hasattr(batch,'start') else None 
             batch.alignment = batch.alignment.to(device) \
                 if hasattr(batch, 'alignment') else None
             batch.src_map = batch.src_map.to(device) \

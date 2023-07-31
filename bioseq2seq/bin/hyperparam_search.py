@@ -68,7 +68,7 @@ if __name__ == "__main__":
     config = base_config()
     model_config = cnn_transformer_config() if cmd_args.model_type == "CNN-Transformer" else mixer_config() 
     config.update(model_config)
-    config['pos_decay_rate'] = tune.qloguniform(1e-3,1.0,1e-3)
+    #config['pos_decay_rate'] = tune.qloguniform(1e-3,1.0,1e-3)
 
     metric = "valid_class_accuracy"
     time_attr = "valid_step"

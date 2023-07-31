@@ -65,7 +65,6 @@ def parse_train_args():
     parser.add_argument("--random_seed",type=int,default = 65,help="Seed")
     parser.add_argument("--encoder_kernel_size",type=int,default = 3,help="Size of CNN encoder kernel")
     parser.add_argument("--encoder_dilation_factor",type=int,default = 1,help="Dilation factor of CNN encoder kernel")
-    parser.add_argument("--loss_mode",default="original",help="Method of loss computation. original|pointer|weighted")
     parser.add_argument("--pos_decay_rate",type=float,default=0.0,help="Exponential decay for loss_mode='weighted") 
     # optional flags
     parser.add_argument("--checkpoint", "--c", help = "Name of .pt model to initialize training")

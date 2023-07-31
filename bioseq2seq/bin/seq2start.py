@@ -34,7 +34,6 @@ def parse_args():
     parser.add_argument("--address",default =  "127.0.0.1",help = "IP address for master process in distributed training")
     parser.add_argument("--port",default = "6000",help = "Port for master process in distributed training")
     parser.add_argument("--num_gpus",type=int,help="Number of available GPU machines",default=0)
-    parser.add_argument("--model_type","--m", default = "LFNet", help = "Model architecture type.|Transformer|CNN|GFNet|")
     parser.add_argument("--loss_mode",default="original",help="Method of loss computation. original|pointer|weighted")
 
     # translate optional args

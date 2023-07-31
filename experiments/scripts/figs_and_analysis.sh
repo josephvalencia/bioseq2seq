@@ -2,9 +2,8 @@
 export dir="experiments/analysis/"
 
 # Table 1 (Classification) 
-python $dir/evaluate.py --config $CONFIG
-python $dir/eval_tools.py experiments/competitor_results
-#python $dir/eval_tools_homology.py experiments/competitor_results
+python $dir/eval_classification.py --config $CONFIG
+python $dir/eval_tools_homology.py experiments/competitor_results
 
 # Table 2 (Micropeptides)
 python $dir/eval_lncPEP_translation.py --config $CONFIG align > lncPEP_needle_cmds.txt
