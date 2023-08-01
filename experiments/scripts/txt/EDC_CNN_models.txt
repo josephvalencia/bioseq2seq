@@ -1,4 +1,4 @@
-EDC_CNN_1_Jul24_09-47-12/_step_17500.pt
-EDC_CNN_2_Jul24_09-47-12/_step_9000.pt
-EDC_CNN_3_Jul24_09-47-12/_step_9000.pt
-EDC_CNN_4_Jul24_09-47-12/_step_12500.pt
+EDC_CNN_1_Jul29_13-20-29/_step_5500.pt          
+EDC_CNN_2_Jul29_13-20-29/_step_5500.pt          
+EDC_CNN_3_Jul29_13-20-29/_step_6000.pt          
+EDC_CNN_4_Jul29_13-20-29/_step_5500.pt          

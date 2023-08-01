@@ -6,12 +6,10 @@ from utils import parse_config,setup_fonts
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-def parse_blast(blast_file):
+def needle_commands_from_blast(blast_file,test_name,train_name,parent):
     
-    test_fasta = fasta.FastaFile.read('data/mammalian_200-1200_test_RNA_nonredundant_80.fa')
-    #test_fasta = fasta.FastaFile.read('data/mammalian_200-1200_test_RNA.fa')
-    #train_fasta = fasta.FastaFile.read('data/mammalian_200-1200_train_RNA_balanced.fa')
-    train_fasta = fasta.FastaFile.read('data/mammalian_200-1200_val_RNA_nonredundant_80.fa')
+    test_fasta = fasta.FastaFile.read(test_name)
+    train_fasta = fasta.FastaFile.read(train_name)
 
     colnames = ['query', 'subject', '% identity', 'alignment length', 'mismatches', 'gap opens', \
                 'q. start', 'q. end', 's. start', 's. end', 'evalue', 'bit score']
@@ -19,12 +17,13 @@ def parse_blast(blast_file):
     df = pd.read_csv(blast_file, sep='\t', header=None,names=colnames)
     grouped = df.groupby(['query'])
     total = []
-    parent = 'matches_val_needle/'
+    
     for query, group_df in grouped:
         inner = group_df.groupby(['subject'])[['query','subject','evalue']].min()
         inner = inner.sort_values(['evalue'], ascending=True).iloc[0:5]['subject'].tolist()
-        query_name = f'{parent}{query}.fa'
-        subj_name = f'{parent}{query}_hits.fa'
+        print(inner) 
+        query_name = f'{parent}/{query}.fa'
+        subj_name = f'{parent}/{query}_hits.fa'
         subject_file = fasta.FastaFile()
         query_file = fasta.FastaFile() 
         for subject in inner:
@@ -32,7 +31,7 @@ def parse_blast(blast_file):
         query_file[query] = test_fasta[query]
         subject_file.write(subj_name)
         query_file.write(query_name)
-        cmd_format = f"needle -asequence {query_name} -bsequence {subj_name} -outfile {parent}{query}.needle -gapopen 10 -gapextend 0.5 -brief"
+        cmd_format = f"needle -asequence {query_name} -bsequence {subj_name} -outfile {parent}/{query}.needle -gapopen 10 -gapextend 0.5 -brief"
         print(cmd_format) 
 
 def parse_needle_results(tscript,save_dir):
@@ -44,6 +43,7 @@ def parse_needle_results(tscript,save_dir):
         identity_pattern = "# Identity:(\s*)(\d*)\/(\d*) \((.*)%\)\n"
         name_pattern = "# 2: (.*)\n"
         id_matches = re.findall(identity_pattern,data)
+
         name_matches = re.findall(name_pattern,data)
         scores = [(y,int(x[-2]),float(x[-1])) for x,y in zip(id_matches,name_matches)]
         sep = "_____________________________________________________________" 
@@ -53,18 +53,17 @@ def parse_needle_results(tscript,save_dir):
     else:
         return (None,None,0.0)
 
-def parse_all_needle():
-    test_fasta = fasta.FastaFile.read('data/mammalian_200-1200_test_RNA_nonredundant_80.fa')
-    #test_fasta = fasta.FastaFile.read('data/mammalian_200-1200_test_RNA.fa')
+def parse_all_needle(test_name):
+    test_fasta = fasta.FastaFile.read(test_name)
     
     results = [] 
     for tscript in test_fasta.keys():
         coding = tscript.startswith('XM') or tscript.startswith('NM')
-        test_score = parse_needle_results(tscript,'matches_needle')
-        val_score = parse_needle_results(tscript,'matches_val_needle') 
+        train_score = parse_needle_results(tscript,'matches_train_blast')
+        val_score = parse_needle_results(tscript,'matches_val_blast') 
         entry = {'ID':tscript,'coding':coding,
-                 'train_match' : test_score[0],
-                 'train_score':test_score[-1],
+                 'train_match' : train_score[0],
+                 'train_score':train_score[-1],
                  'val_match' : val_score[0],
                  'val_score':val_score[-1]}
         results.append(entry)
@@ -89,16 +88,35 @@ def parse_all_needle():
     plt.savefig('full_needle_align_results.png')
     #plt.savefig('reduced_needle_align_results.png')
 
+def run_blast(train_fasta,test_fasta,val_fasta):
+    
+    cmd1=f'makeblastdb -in {train_fasta} -dbtype nucl -out train_balanced_db'
+    cmd2=f'makeblastdb -in {val_fasta} -dbtype nucl -out val_db'
+    cmd3=f'blastn -query {test_fasta} -db train_balanced_db -out train_matches.blast -outfmt 6'
+    cmd4=f'blastn -query {test_fasta} -db val_db -out val_matches.blast -outfmt 6'
+    os.system(cmd1) 
+    os.system(cmd2) 
+    os.system(cmd3) 
+    os.system(cmd4) 
+
+def run_and_parse_blast(train_fasta,test_fasta,val_fasta):
+
+    run_blast(train_fasta,test_fasta,val_fasta)
+    
+    if not os.path.isdir('matches_train_blast'):
+        os.mkdir('matches_train_blast')
+    needle_commands_from_blast('train_matches.blast',test_fasta,train_fasta,'matches_train_blast')
+    
+    if not os.path.isdir('matches_val_blast'):
+        os.mkdir('matches_val_blast')
+    needle_commands_from_blast('val_matches.blast',test_fasta,val_fasta,'matches_val_blast')
+
 if __name__ == "__main__":
 
-    #args,unknown_args = parse_config()
-    #setup_fonts() 
-
     if sys.argv[1] == 'blast': 
-        parse_blast(sys.argv[2])
+        run_and_parse_blast(*sys.argv[2:])
     elif sys.argv[1] == 'needle':
-        parse_all_needle()
+        parse_all_needle(sys.argv[2])
     else:
         raise ValueError("mode must be \'blast\' or \'needle\'")
-
 

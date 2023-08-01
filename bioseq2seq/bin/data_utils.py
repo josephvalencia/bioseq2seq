@@ -27,7 +27,7 @@ def std_vocab():
                                 'S': 7, 'T': 6, 'U': 5, 'V': 4, 'W': 3, 'X': 2, 'Y': 1})
     return counters
 
-def build_standard_vocab(src_vocab_path=None,tgt_vocab_path=None):
+def build_standard_vocab(src_vocab_path=None,tgt_vocab_path=None,with_start=False):
     
     if src_vocab_path is not None and tgt_vocab_path is not None:
         # load vocabularies
@@ -39,7 +39,7 @@ def build_standard_vocab(src_vocab_path=None,tgt_vocab_path=None):
    
    # initialize fields
     src_nfeats, tgt_nfeats = 0, 0 # do not support word features for now
-    fields = get_fields('text', src_nfeats, tgt_nfeats)
+    fields = get_fields('text', src_nfeats, tgt_nfeats,with_start=with_start)
 
     # build fields vocab
     share_vocab = False
