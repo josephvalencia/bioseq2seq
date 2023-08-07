@@ -295,8 +295,8 @@ def train_helper(rank,args,seq2seq,tune=False):
    
     gpu = rank if args.num_gpus > 0 else -1
     world_size = args.num_gpus if args.num_gpus > 0 else 1
-    #starts_file = args.train_src.replace("RNA_balanced.fa","balanced_starts.txt")
-    starts_file = args.train_src.replace("RNA_no_lncPEP.fa","no_lncPEP_starts.txt")
+    starts_file = args.train_src.replace("RNA_balanced.fa","balanced_starts.txt")
+    #starts_file = args.train_src.replace("RNA_no_lncPEP.fa","no_lncPEP_starts.txt")
     
     print('STARTS',starts_file)
     train_iter = iterator_from_fasta(src=args.train_src,
@@ -309,8 +309,8 @@ def train_helper(rank,args,seq2seq,tune=False):
                                     world_size=world_size,
                                     starts=starts_file) 
     train_iter = IterOnDevice(train_iter,gpu)
-    #starts_file = args.val_src.replace("RNA_nonredundant_80.fa","nonredundant_80_starts.txt")
-    starts_file = args.val_src.replace("RNA_no_lncPEP.fa","no_lncPEP_starts.txt")
+    starts_file = args.val_src.replace("RNA_nonredundant_80.fa","nonredundant_80_starts.txt")
+    #starts_file = args.val_src.replace("RNA_no_lncPEP.fa","no_lncPEP_starts.txt")
     print('STARTS',starts_file)
     valid_iter = iterator_from_fasta(src=args.val_src,
                                     tgt=args.val_tgt,

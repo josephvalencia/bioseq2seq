@@ -16,7 +16,6 @@ def base_config():
     
     config = {"model_dim": tune.choice([32,64,128]),
         "n_enc_layers": tune.choice([1,2,4,8,12,16]),
-        "n_dec_layers": tune.choice([1,2,4,8,12,16]),
         "dropout" : tune.quniform(0.1,0.5,0.1),
         "lr_warmup_steps" : tune.quniform(2000,10000,2000)}
     return config
@@ -68,8 +67,10 @@ if __name__ == "__main__":
     config = base_config()
     model_config = cnn_transformer_config() if cmd_args.model_type == "CNN-Transformer" else mixer_config() 
     config.update(model_config)
-    #config['pos_decay_rate'] = tune.qloguniform(1e-3,1.0,1e-3)
-
+    
+    if cmd_args.mode != 'start':
+        config["n_dec_layers"] = tune.choice([1,2,4,8,12,16])
+    
     metric = "valid_class_accuracy"
     time_attr = "valid_step"
     

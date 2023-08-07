@@ -9,20 +9,20 @@ export verified_test_prot="data/verified_test_PROTEIN.fa"
 export verified_val_rna="data/verified_val_RNA.fa"
 export verified_val_prot="data/verified_val_PROTEIN.fa"
 
-#export train="python bioseq2seq/bin/train_single_model.py \
-#--train_src data/mammalian_200-1200_train_RNA_balanced.fa \
-#--train_tgt data/mammalian_200-1200_train_PROTEIN_balanced.fa \
-#--val_src data/mammalian_200-1200_val_RNA_nonredundant_80.fa \
-#--val_tgt data/mammalian_200-1200_val_PROTEIN_nonredundant_80.fa 
-#--num_gpus 1 --save-directory experiments/checkpoints/coding_noncoding/ 
-#--accum_steps 8 --max_tokens 9000 --report-every 500 
-#--max-epochs 20000 --patience 5 --lr 1.0"
-
 export train="python bioseq2seq/bin/train_single_model.py \
+--train_src data/mammalian_200-1200_train_RNA_balanced.fa \
+--train_tgt data/mammalian_200-1200_train_PROTEIN_balanced.fa \
+--val_src data/mammalian_200-1200_val_RNA_nonredundant_80.fa \
+--val_tgt data/mammalian_200-1200_val_PROTEIN_nonredundant_80.fa 
+--num_gpus 1 --save-directory experiments/checkpoints/coding_noncoding/ 
+--accum_steps 8 --max_tokens 9000 --report-every 500 
+--max-epochs 20000 --patience 5 --lr 1.0"
+
+export train_alt="python bioseq2seq/bin/train_single_model.py \
 --train_src data/mammalian_200-1200_train_RNA_no_lncPEP.fa \
 --train_tgt data/mammalian_200-1200_train_PROTEIN_no_lncPEP.fa \
 --val_src data/mammalian_200-1200_val_nonredundant_80_RNA_no_lncPEP.fa \
---val_tgt data/mammalian_200-1200_val_PROTEIN_nonredundant_80.fa 
+--val_tgt data/mammalian_200-1200_val_nonredundant_80_PROTEIN_no_lncPEP.fa 
 --num_gpus 1 --save-directory experiments/checkpoints/coding_noncoding/ 
 --accum_steps 8 --max_tokens 9000 --report-every 500 
 --max-epochs 20000 --patience 5 --lr 1.0"
@@ -33,14 +33,12 @@ export TRAIN_BIO_CNN="$train --mode bioseq2seq \
 --encoder_kernel_size 6 --encoder_dilation_factor 2 --lr_warmup_steps 2000"
 
 export TRAIN_CDS="$train --mode start \
---n_enc_layers 12 --n_dec_layers 2 \
---model_dim 64 --dropout 0.2 --model_type LFNet \
---window_size 250 --lambd_L1 0.004 --lr_warmup_steps 2000"
+--n_enc_layers 16 --model_dim 64 --dropout 0.1 --model_type LFNet \
+--window_size 200 --lambd_L1 0.001 --lr_warmup_steps 4000"
 
 export TRAIN_CDS_CNN="$train --mode start \
---n_enc_layers 8 --n_dec_layers 1 \
---model_dim 32 --dropout 0.2 --model_type CNN-Transformer \
---lr_warmup_steps 4000 --encoder_kernel_size 6 --encoder_dilation_factor 2 "
+--n_enc_layers 12 --model_dim 64 --dropout 0.2 --model_type CNN-Transformer \
+--lr_warmup_steps 4000 --encoder_kernel_size 3 --encoder_dilation_factor 2 "
 
 export TRAIN_BIO="$train --mode bioseq2seq \
 --n_enc_layers 12 --n_dec_layers 2 \
