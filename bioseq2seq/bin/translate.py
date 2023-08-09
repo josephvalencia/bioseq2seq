@@ -72,7 +72,12 @@ def run_helper(rank,model,vocab,args):
         os.mkdir(args.output_name)
     
     input_filename = os.path.split(args.input)[-1].replace('.fasta','').replace('.fa','')
-    outfile = open(f'{args.output_name}/{input_filename}_preds.txt','w')
+    if args.max_decode_len > 1:
+        input_filename+='_full_preds.txt'
+    else:
+        input_filename+='_preds.txt'
+
+    outfile = open(f'{args.output_name}/{input_filename}','w')
     attnfile = None
 
     if args.save_EDA:
