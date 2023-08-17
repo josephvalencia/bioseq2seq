@@ -1,4 +1,0 @@
-bioseq2seq_CNN_lambd_0.05_1_Jul13_13-53-23/_step_4500.pt
-bioseq2seq_CNN_lambd_0.05_2_Jul13_13-53-23/_step_6500.pt
-bioseq2seq_CNN_lambd_0.05_3_Jul13_13-53-22/_step_9000.pt
-bioseq2seq_CNN_lambd_0.05_4_Jul13_13-53-23/_step_6000.pt

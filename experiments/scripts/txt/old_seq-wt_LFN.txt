@@ -2,3 +2,4 @@ bioseq2seq_lambd_0.1_1_Jul12_18-02-34/_step_12500.pt
 bioseq2seq_lambd_0.1_2_Jul12_18-02-34/_step_8500.pt
 bioseq2seq_lambd_0.1_3_Jul12_18-02-34/_step_15000.pt
 bioseq2seq_lambd_0.1_4_Jul12_18-02-34/_step_19500.pt
+bioseq2seq_lambd_0.1_5_Aug12_18-42-39/_step_9500.pt

@@ -1,4 +1,0 @@
-$TRAIN_CDS_CNN --name seq2start_CNN_1 --random_seed 339 --rank 0
-$TRAIN_CDS_CNN --name seq2start_CNN_2 --random_seed 275 --rank 1
-$TRAIN_CDS_CNN --name seq2start_CNN_3 --random_seed 198 --rank 2
-$TRAIN_CDS_CNN --name seq2start_CNN_4 --random_seed 523 --rank 3

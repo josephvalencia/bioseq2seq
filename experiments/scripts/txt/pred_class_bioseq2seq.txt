@@ -1,4 +1,0 @@
-$PRED_TEST_BIO_CLASS --checkpoint ${CHKPT_DIR}/bioseq2seq_1_Jun25_07-51-41/_step_8500.pt --output_name ${OUT_DIR}/bioseq2seq_1_Jun25_07-51-41_step_8500/
-$PRED_TEST_BIO_CLASS --checkpoint ${CHKPT_DIR}/bioseq2seq_2_Jun25_07-51-41/_step_10000.pt --output_name ${OUT_DIR}/bioseq2seq_2_Jun25_07-51-41_step_10000/
-$PRED_TEST_BIO_CLASS --checkpoint ${CHKPT_DIR}/bioseq2seq_3_Jun25_07-51-41/_step_17000.pt --output_name ${OUT_DIR}/bioseq2seq_3_Jun25_07-51-41_step_17000/
-$PRED_TEST_BIO_CLASS --checkpoint ${CHKPT_DIR}/bioseq2seq_4_Jun25_07-51-41/_step_10500.pt --output_name ${OUT_DIR}/bioseq2seq_4_Jun25_07-51-41_step_10500/

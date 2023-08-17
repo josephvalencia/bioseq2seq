@@ -1,4 +1,0 @@
-$PRED_TEST_EDC --checkpoint ${CHKPT_DIR}/EDC_eq_1_Jun29_13-20-08/_step_1500.pt --output_name ${OUT_DIR}/EDC_eq_1_Jun29_13-20-08_step_1500/ 
-$PRED_TEST_EDC --checkpoint ${CHKPT_DIR}/EDC_eq_2_Jun29_13-20-08/_step_500.pt --output_name ${OUT_DIR}/EDC_eq_2_Jun29_13-20-08_step_500/ 
-$PRED_TEST_EDC --checkpoint ${CHKPT_DIR}/EDC_eq_3_Jun29_13-20-08/_step_1000.pt --output_name ${OUT_DIR}/EDC_eq_3_Jun29_13-20-08_step_1000/ 
-$PRED_TEST_EDC --checkpoint ${CHKPT_DIR}/EDC_eq_4_Jun29_13-20-08/_step_1500.pt --output_name ${OUT_DIR}/EDC_eq_4_Jun29_13-20-08_step_1500/ 

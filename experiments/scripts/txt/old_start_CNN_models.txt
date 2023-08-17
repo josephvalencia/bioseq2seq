@@ -1,0 +1,4 @@
+seq2start_CNN_1_Jul30_12-45-45/_step_14000.pt           
+seq2start_CNN_2_Jul30_12-45-45/_step_5500.pt            
+seq2start_CNN_3_Jul30_12-45-45/_step_14000.pt           
+seq2start_CNN_4_Jul30_12-45-45/_step_8000.pt            

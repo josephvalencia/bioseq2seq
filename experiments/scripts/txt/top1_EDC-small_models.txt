@@ -1,4 +1,0 @@
-EDC_eq_1_Jun29_13-20-08/_step_1500.pt
-EDC_eq_2_Jun29_13-20-08/_step_500.pt
-EDC_eq_3_Jun29_13-20-08/_step_1000.pt
-EDC_eq_4_Jun29_13-20-08/_step_1500.pt

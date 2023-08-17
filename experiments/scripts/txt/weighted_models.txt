@@ -1,4 +1,0 @@
-bioseq2seq_lambd_0.01_Jun23_07-01-34/_step_6000.pt
-bioseq2seq_lambd_0.05_Jun23_07-01-34/_step_11500.pt
-bioseq2seq_lambd_0.1_Jun23_07-01-34/_step_19000.pt
-bioseq2seq_lambd_0.5_Jun23_07-01-34/_step_4000.pt
