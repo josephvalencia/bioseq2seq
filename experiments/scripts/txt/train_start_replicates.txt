@@ -1,0 +1,4 @@
+$TRAIN_CDS --name CDS_1 --random_seed 888 --rank 0
+$TRAIN_CDS --name CDS_2 --random_seed 219 --rank 1
+$TRAIN_CDS --name CDS_3 --random_seed 356 --rank 2
+$TRAIN_CDS --name CDS_4 --random_seed 199 --rank 3

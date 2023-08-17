@@ -1,0 +1,4 @@
+$TRAIN_EDC_CNN --name EDC_CNN_1 --random_seed 821 --rank 0
+$TRAIN_EDC_CNN --name EDC_CNN_2 --random_seed 113 --rank 1
+$TRAIN_EDC_CNN --name EDC_CNN_3 --random_seed 637 --rank 2
+$TRAIN_EDC_CNN --name EDC_CNN_4 --random_seed 477 --rank 3

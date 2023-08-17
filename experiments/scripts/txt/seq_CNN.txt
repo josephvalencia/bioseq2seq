@@ -1,0 +1,5 @@
+bioseq2seq_CNN_1_Jul02_19-50-23/_step_8500.pt
+bioseq2seq_CNN_2_Jul02_19-50-23/_step_4500.pt
+bioseq2seq_CNN_3_Jul02_19-50-23/_step_11000.pt
+bioseq2seq_CNN_4_Jul02_19-50-23/_step_4500.pt
+bioseq2seq_CNN_5_Aug12_22-37-08/_step_8500.pt

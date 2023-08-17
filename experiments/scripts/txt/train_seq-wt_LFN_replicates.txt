@@ -1,0 +1,4 @@
+$TRAIN_BIO --name bioseq2seq_lambd_0.1_1 --random_seed 913 --rank 0 --pos_decay_rate 0.1 --loss_mode weighted
+$TRAIN_BIO --name bioseq2seq_lambd_0.1_2 --random_seed 258 --rank 1 --pos_decay_rate 0.1 --loss_mode weighted
+$TRAIN_BIO --name bioseq2seq_lambd_0.1_3 --random_seed 407 --rank 2 --pos_decay_rate 0.1 --loss_mode weighted
+$TRAIN_BIO --name bioseq2seq_lambd_0.1_4 --random_seed 150 --rank 3 --pos_decay_rate 0.1 --loss_mode weighted

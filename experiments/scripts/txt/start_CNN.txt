@@ -1,0 +1,5 @@
+seq2start_CNN_1_Aug06_18-00-35/_step_10500.pt                          
+seq2start_CNN_2_Aug06_18-00-35/_step_9000.pt                           
+seq2start_CNN_3_Aug06_18-00-35/_step_9000.pt                           
+seq2start_CNN_4_Aug06_18-00-35/_step_9000.pt
+seq2start_CNN_5_Aug12_22-37-08/_step_14000.pt

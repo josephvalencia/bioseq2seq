@@ -1,0 +1,4 @@
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_1 --random_seed 859 --rank 0
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_2 --random_seed 922 --rank 1
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_3 --random_seed 400 --rank 2
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_4 --random_seed 933 --rank 3

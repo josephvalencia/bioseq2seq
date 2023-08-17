@@ -1,0 +1,4 @@
+$TRAIN_BIO --name bioseq2seq_5 --random_seed 493 --rank 0
+$TRAIN_CDS --name CDS_5 --random_seed 928 --rank 1
+$TRAIN_EDC --name EDC_5 --random_seed 607 --rank 2
+$TRAIN_BIO --name bioseq2seq_lambd_0.1_5 --random_seed 384 --rank 3 --pos_decay_rate 0.1
