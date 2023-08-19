@@ -79,6 +79,7 @@ def ism_mdig_codon_corr(ism,mdig):
             transform=g.transAxes)
     sns.despine()
     plt.tight_layout()
+    print('ism_mdig_codon_correlation.svg') 
     plt.savefig('ism_mdig_codon_correlation.svg')
     plt.close()
 

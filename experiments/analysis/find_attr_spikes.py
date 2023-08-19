@@ -214,7 +214,7 @@ def mask_locations(array,seq,region):
     #print(f'masked = {nonzero}/{mask.size} = {nonzero/mask.size:.3f}')
     return mask
 
-def top_indices(saved_file,df,groups,metrics,mode="attn",head_idx=0,reduction_mode='PC',region="full",apply_mask=False):
+def top_indices(saved_file,df,groups,metrics,mode="attn",head_idx=0,reduction_mode='PC',region="full",apply_mask=False,exclude=False):
     
     negative_storage = []
     positive_storage = []
@@ -224,7 +224,16 @@ def top_indices(saved_file,df,groups,metrics,mode="attn",head_idx=0,reduction_mo
     if mode == 'grad':
         onehot_file = np.load(saved_file.replace('grad','onehot')) 
 
+    if exclude:
+        homology = pd.read_csv("test_maximal_homology.csv")
+        reduced = homology['score'] <=80
+        homology = homology.loc[reduced]
+        allowed = set()
+        allowed.update(homology['ID'].tolist())
+    
     for tscript,array in tqdm(loaded.items()):
+        if exclude and tscript not in allowed:
+            continue
         
         if mode == 'attn':
             array = array[head_idx,:]
@@ -277,7 +286,7 @@ def top_indices(saved_file,df,groups,metrics,mode="attn",head_idx=0,reduction_mo
             # None type means length minimums were not passed so skip
             if result is not None:
                 dataset.append(result) 
-    
+    print(len(positive_storage),len(negative_storage))
     return positive_storage, negative_storage
 
 def indices_to_substrings(index_list,motif_fasta,df,region):
@@ -320,7 +329,7 @@ def run_attributions(saved_file,df,parent_dir,groups,metrics,mode="attn",layer_i
     positive_motifs_file = prefix+"positive_motifs.fa"
     negative_motifs_file = prefix +"negative_motifs.fa"
     hist_file = prefix+"pos_hist.svg"
-    positive_indices, negative_indices = top_indices(saved_file,df,groups,metrics,mode=mode,head_idx=head_idx,reduction_mode=reduction,region=region,apply_mask=mask)
+    positive_indices, negative_indices = top_indices(saved_file,df,groups,metrics,mode=mode,head_idx=head_idx,reduction_mode=reduction,region=region,apply_mask=mask,exclude=True)
     indices_to_substrings(positive_indices,positive_motifs_file,df,region)
     indices_to_substrings(negative_indices,negative_motifs_file,df,region)
     cmd = 'streme -p {}positive_motifs.fa -n {}negative_motifs.fa -oc {}streme_out -rna -minw 3 -maxw 9 -pvt 1e-2 -patience 3' 

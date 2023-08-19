@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from scipy import signal
 from utils import parse_config,build_EDA_file_list,load_CDS,ScalarFormatterClass,setup_fonts
 
-def summarize_head(cds_storage,saved_file,grad=False,align_on="start",coding=True):
+def summarize_head(cds_storage,saved_file,grad=False,align_on="start",coding=True,exclude=False):
 
     samples = []
     sample_ids = []
@@ -15,8 +15,17 @@ def summarize_head(cds_storage,saved_file,grad=False,align_on="start",coding=Tru
 
     saved = np.load(saved_file)
     
+    if exclude:
+        homology = pd.read_csv("test_maximal_homology.csv")
+        reduced = homology['score'] <=80
+        homology = homology.loc[reduced]
+        allowed = set()
+        allowed.update(homology['ID'].tolist())
+    
     for tscript, attr in saved.items():
         is_pc = lambda x : x.startswith('NM_') or x.startswith('XM_')
+        if exclude and tscript not in allowed:
+            continue
         #attr = attr.T
         if grad:
             attr = attr.reshape(1,-1)
@@ -63,7 +72,7 @@ def summarize_head(cds_storage,saved_file,grad=False,align_on="start",coding=Tru
     consensus = np.nanmean(samples,axis=2)
     return consensus.transpose(0,1),domain.ravel()
 
-def build_consensus_EDA(cds_storage,output_dir,prefix,attribution_dict,coding=True):
+def build_consensus_EDA(cds_storage,output_dir,prefix,attribution_dict,coding=True,exclude=False):
 
     file_list =  attribution_dict['path_list']
     model = attribution_dict['model']
@@ -73,7 +82,7 @@ def build_consensus_EDA(cds_storage,output_dir,prefix,attribution_dict,coding=Tr
     consensus = []
     for l in range(n_layers):
         layer = file_list[l] 
-        summary,domain  = summarize_head(cds_storage,layer,align_on="start",coding=coding) 
+        summary,domain  = summarize_head(cds_storage,layer,align_on="start",coding=coding,exclude=exclude) 
         consensus.append(summary.reshape(1,summary.shape[0],summary.shape[1]))
          
     consensus = np.concatenate(consensus,axis=0)
@@ -100,61 +109,7 @@ def build_consensus_multi_IG(cds_storage,output_dir,prefix,grad_file,coding=True
     compute_heatmap = True 
     labels = [str(x) for x in range(8)]
     run_consensus_pipeline(consensus,domain,output_dir,labels,name,model,attr_type=attr_type,heatmap=compute_heatmap)
-'''
 
-def plot_line_unrolled(domain,consensus,output_dir,name,model,attr_type,plot_type='line',plt_std_error=False,labels=None):
-   
-    palette = sns.color_palette()
-    n_layers,n_heads,n_positions = consensus.shape
-    if attr_type == 'EDA':
-        fig,axes = plt.subplots(2,4,figsize=(8,2.5))
-        for layer in range(n_layers): 
-            for i,ax in enumerate(axes.flat): 
-                if i == 0:
-                    label = layer if i % 8 == 0 else None
-                    color = layer % len(palette)
-                    plt.plot(domain,consensus[layer,i,:],label=label,linewidth=1)
-                else:
-                    ax.plot(total_pc[i,:],linewidth=1,color='tab:red')
-                    ax.plot(total_nc[i,:],linewidth=1,color='tab:blue')
-
-                ax.axvline(x=0, color='gray', linestyle=':')     
-                ax.set_xticks([])
-                ax.set_xticklabels([])
-                ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
-                ax.set_xlabel(f'head {i}')
-                if i % 4 == 0:
-                    ax.set_ylabel(f'{attr_type} consensus')
-                plt.figlegend(loc='center')
-    else: 
-        plt.figure(figsize=(6,2))
-        plt.plot(total_pc.ravel(),linewidth=1,label='mRNA',color='tab:red')
-        plt.plot(total_nc.ravel(),linewidth=1,label='lncRNA',color='tab:blue')
-        plt.axvline(0,color='gray', linestyle=':')     
-        plt.xticks([],[])
-    
-    if attr_type == 'EDA':
-        for layer in range(n_layers):
-
-            for i in range(n_heads): 
-                label = layer if i % 8 == 0 else None
-                color = layer % len(palette)
-                plt.plot(domain,consensus[layer,i,:],color=palette[color],label=label,alpha=0.8,linewidth=1)
-    else: 
-        for layer in range(n_layers):
-            for i in range(n_heads):
-                plt.plot(domain,consensus[layer,i,:],color=palette[i],label=labels[i],alpha=0.8,linewidth=1)
-    ax = plt.gca()
-    legend_title = f'{model} {attr_type}'
-    plt.legend(title=legend_title)
-    
-    
-    plt_filename = f'{output_dir}/{name}_{attr_type}_{plot_type}plot.svg'
-    print(f'Saving {plt_filename}')
-    plt.savefig(plt_filename)
-    plt.close()
-
-'''
 def plot_line(domain,consensus,output_dir,name,model,attr_type,coding,plot_type='line',plt_std_error=False,labels=None):
    
     fig = plt.figure(figsize=(5.5,2.25))
@@ -265,6 +220,7 @@ def plot_power_spectrum(consensus,output_dir,name,model,attr_type,units='freq',l
                 label = l if i % 8 == 0 else None
                 color = l % len(palette)
                 #if (l == 0 and i == 6) or (l == 1 and i == 4): 
+                #if (l == 0 and i == 0): #or (l == 1 and i == 4): 
                 #ax1.plot(freq,ps[l,i,:],label=f'{l}-{i}',alpha=0.6)
                 ax1.plot(freq,ps[l,i,:],color=palette[color],label=f'{l}-{i}',alpha=0.6)
     else:
@@ -308,7 +264,7 @@ def build_all(args):
     test_cds = load_CDS(test_file)
     val_cds = load_CDS(val_file)
     df_test = pd.read_csv(test_file,sep='\t')
-    
+  
     # load attribution files from config
     best_BIO_EDA = build_EDA_file_list(args.best_BIO_EDA,args.best_BIO_DIR)
     best_EDC_EDA = build_EDA_file_list(args.best_EDC_EDA,args.best_EDC_DIR)
@@ -322,10 +278,10 @@ def build_all(args):
         os.mkdir(output_dir)
    
     # build EDA consensus, both coding and noncoding
-    build_consensus_EDA(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,coding=True)
-    build_consensus_EDA(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,coding=False)
-    build_consensus_EDA(test_cds,output_dir,'best_EDC_test',best_EDC_EDA,coding=True)
-    build_consensus_EDA(test_cds,output_dir,'best_EDC_test',best_EDC_EDA,coding=False)
+    build_consensus_EDA(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,coding=True,exclude=True)
+    build_consensus_EDA(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,coding=False,exclude=True)
+    build_consensus_EDA(test_cds,output_dir,'best_EDC_test',best_EDC_EDA,coding=True,exclude=True)
+    build_consensus_EDA(test_cds,output_dir,'best_EDC_test',best_EDC_EDA,coding=False,exclude=True)
 
 if __name__ == "__main__":
     

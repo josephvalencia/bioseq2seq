@@ -2,7 +2,7 @@
 import os,re
 import numpy as np
 import pandas as pd
-from sklearn.metrics import  f1_score, matthews_corrcoef, recall_score, precision_score, confusion_matrix, accuracy_score
+from sklearn.metrics import  f1_score, matthews_corrcoef, recall_score, precision_score, confusion_matrix, accuracy_score, roc_auc_score,average_precision_score
 from scipy.stats import chisquare, ks_2samp, mannwhitneyu,pearsonr
 from os.path import join
 from utils import parse_config,build_output_dir
@@ -191,15 +191,16 @@ def parse_predictions(record):
     
     transcript = record[0].split('ID: ')[1]
     first_row = re.search('ID: (.*) coding_prob : ([0|1]\.\d*)',record[0])
+    #pred_match  = re.search('PRED: (<PC>|<NC>|[A-Z])(\S*)?',record[1])
     pred_match  = re.search('PRED: (<PC>|<NC>)(\S*)?',record[1])
     
     if pred_match is not None and first_row is not None:
         pred_class = pred_match.group(1)
         pred_peptide = pred_match.group(2)
         transcript = first_row.group(1)
-        coding_prob = first_row.group(2)
+        coding_prob = float(first_row.group(2))
     else:
-        raise ValueError(f'Bad format -> {record}')
+        raise ValueError(f'Bad format -> {record} {pred_match} {first_row}')
 
     entry = {'ID' : transcript,
             'pred_class' : pred_class, 
@@ -356,23 +357,24 @@ def coarse_bin_fn(score):
     elif score > 80 and score <= 100:
         return '(80-100)'
 
-def evaluate_by_homology(pred_file,ground_truth_df,error_analysis):
+def evaluate_by_homology(pred_file,ground_truth_df,error_analysis,as_csv):
 
-    storage = []
-    with open(pred_file,"r") as inFile:
-        lines = inFile.read().split("\n")
-        for i in range(0,len(lines)-6,6):
-            entry = parse_predictions(lines[i:i+6])
-            storage.append(entry)
-    df = pd.DataFrame(storage)
+    df = load_dataframe(pred_file,as_csv) 
     homology = pd.read_csv("test_maximal_homology.csv")
     df = df.merge(homology,on='ID') 
     df = df.merge(ground_truth_df,on='ID')
+    if 'pred_class' not in df.columns and 'start' in df.columns:
+        is_last = df['start'] == (df['RNA_len'] -1)
+        df['pred_class'] = ['<NC>' if x  else '<PC>' for x in is_last]
+        df = df[~df['CDS'].str.startswith('<0')] # a few examples are <PC> but with missing start codon annotation, omit 
+
+        #df['pred_class'] = ['<PC>' if x > 0.5 else '<NC>' for x in df['coding_prob']]
     df['bin'] = df['score'].apply(coarse_bin_fn)
     results = []    
     
     def subset_stats(sub_df,bin):
-        preds = sub_df['pred_class'].to_numpy() 
+        preds = sub_df['pred_class'].to_numpy()
+        probs = sub_df['coding_prob'].to_numpy()
         gt = sub_df['Type'].to_numpy()
         tscripts = sub_df['ID'].to_numpy()
         pos_preds = preds == '<PC>'
@@ -383,12 +385,16 @@ def evaluate_by_homology(pred_file,ground_truth_df,error_analysis):
         mcc = matthews_corrcoef(gt,preds)
         recall = recall_score(gt,preds)
         precision = precision_score(gt,preds)
+        auroc = roc_auc_score(gt,probs)
+        auprc = average_precision_score(gt,probs)
         tn, fp, fn, tp = confusion_matrix(gt, preds).ravel()
         specificity = safe_divide(tn,tn+fp)
         f1 = f1_score(gt,preds)
         name = pred_file.split('.txt')[0]
         support = len(sub_df)
-        entry = {'trial' : name,'bin' : bin , 'support' : support, 'accuracy' : accuracy, 'F1' : f1 ,'recall' : recall, 'precision' : precision,'specificity' : specificity, 'MCC' : mcc}
+        entry = {'trial' : name,'bin' : bin , 'support' : support, 'accuracy' : accuracy, 'F1' : f1 ,\
+                'recall' : recall, 'precision' : precision,'specificity' : specificity, 'MCC' : mcc, \
+                 'AUPRC' : auprc, 'AUROC' : auroc }
         return entry
     
     for bin,sub_df in df.groupby(['bin']): 
@@ -402,17 +408,34 @@ def evaluate_by_homology(pred_file,ground_truth_df,error_analysis):
     results_df = pd.DataFrame(results)
     return results_df
 
-def evaluate(pred_file,ground_truth_df,error_analysis):
+def load_dataframe(pred_file,as_csv):
+    
+    if as_csv:
+        df =  pd.read_csv(pred_file,sep='\t')
+        df = df.rename(columns={'tscript' : 'ID'}) 
+        return df
+    else: 
+        storage = [] 
+        with open(pred_file,"r") as inFile:
+            lines = inFile.read().split("\n")
+            for i in range(0,len(lines)-6,6):
+                entry = parse_predictions(lines[i:i+6])
+                storage.append(entry)
+        df = pd.DataFrame(storage)
+        return df 
 
-    storage = []
-    with open(pred_file,"r") as inFile:
-        lines = inFile.read().split("\n")
-        for i in range(0,len(lines)-6,6):
-            entry = parse_predictions(lines[i:i+6])
-            storage.append(entry)
-    df = pd.DataFrame(storage)
-    preds = df['pred_class'].to_numpy() 
+def evaluate(pred_file,ground_truth_df,error_analysis,as_csv):
+
+    df = load_dataframe(pred_file,as_csv) 
     df = df.merge(ground_truth_df,on='ID')
+    if 'pred_class' not in df.columns and 'start' in df.columns:
+        is_last = df['start'] == (df['RNA_len'] -1)
+        #df['pred_class'] = ['<PC>' if x > 0.5 else '<NC>' for x in df['coding_prob']]
+        df['pred_class'] = ['<NC>' if x  else '<PC>' for x in is_last] 
+        df = df[~df['CDS'].str.startswith('<0')] # a few examples are <PC> but with missing start codon annotation, omit 
+
+    probs = df['coding_prob'].to_numpy() 
+    preds = df['pred_class'].to_numpy() 
     gt = df['Type'].to_numpy()
     tscripts = df['ID'].to_numpy()
     pos_preds = preds == '<PC>'
@@ -437,11 +460,13 @@ def evaluate(pred_file,ground_truth_df,error_analysis):
     mcc = matthews_corrcoef(gt,preds)
     recall = recall_score(gt,preds)
     precision = precision_score(gt,preds)
+    auroc = roc_auc_score(gt,probs)
+    auprc = average_precision_score(gt,probs)
     tn, fp, fn, tp = confusion_matrix(gt, preds).ravel()
     specificity = safe_divide(tn,tn+fp)
     f1 = f1_score(gt,preds)
     name = pred_file.split('.')[0]
-    return {'trial' : name , 'accuracy' : accuracy, 'F1' : f1 ,'recall' : recall, 'precision' : precision,'specificity' : specificity, 'MCC' : mcc}
+    return {'trial' : name , 'accuracy' : accuracy, 'F1' : f1 ,'recall' : recall, 'precision' : precision,'specificity' : specificity, 'MCC' : mcc, 'AUPRC' : auprc, 'AUROC' : auroc }
 
 def safe_divide(num,denom):
 
@@ -501,6 +526,29 @@ def get_model_names(filename):
         model_list += [x.rstrip().replace('/','').replace('.pt','') for x in inFile.readlines()]
     return model_list
 
+def rename(name):
+
+    if name == 'CDS':
+        return 'start (LFN)'
+    elif name == 'EDC':
+        return 'class (LFN)'
+    elif name == 'EDC_CNN':
+        return 'class (CNN)'
+    elif name == 'bioseq2seq':
+        return 'seq (LFN)'
+    elif name == 'bioseq2seq_CNN':
+        return 'seq (CNN)'
+    elif name == 'bioseq2seq_CNN_lambd_0.05':
+        return 'seq-wt (CNN)'
+    elif name == 'bioseq2seq_lambd_0.1':
+        return 'seq-wt (LFN)'
+    elif name == 'seq2start_CNN':
+        return 'start (CNN)' 
+    elif name == 'rnasamba':
+        return 'RNAsamba'
+    else:
+        return name
+
 def latex_table(results_df):
     
     by_type_mean = results_df.groupby(results_df['trial'].str.extract('(\w*)_\d_')[0]).mean()
@@ -511,6 +559,19 @@ def latex_table(results_df):
     col_format = 'c'*len(for_latex.columns)
     table = for_latex.style.to_latex(column_format=f'|{col_format}|',hrules=True)
     print(table)
+
+def model_boxplot(df):
+   
+    medians = df.groupby('model').median().reset_index()
+    index_sort = medians.sort_values(by='F1')['model'].tolist()
+    plt.figure(figsize=(6,3))
+    sns.swarmplot(data=df,y='model',x='F1',hue='model',palette='Set2',order=index_sort,size=6,linewidth=0,legend=False)
+    ax = sns.boxplot(data=df,y='model',x='F1',color='white',order=index_sort,width=0.5,fliersize=0) 
+    plt.setp(ax.artists, edgecolor = 'k', facecolor='w')
+    plt.setp(ax.lines, color='k')
+    plt.tight_layout()
+    plt.savefig('model_architecture_F1_boxplot.svg')
+    plt.close()
 
 
 if __name__ == "__main__":
@@ -525,13 +586,18 @@ if __name__ == "__main__":
     
     bio_models = args.all_BIO_replicates
     EDC_models = args.all_EDC_replicates
+    cnn_EDC_models = args.all_EDC_CNN_replicates
     EDC_eq_models = args.all_EDC_small_replicates
     cnn_models = args.all_CNN_replicates
-    weighted_models = args.all_weighted_replicates
+    lfnet_weighted_models = args.all_LFNet_weighted_replicates
+    cnn_weighted_models = args.all_CNN_weighted_replicates
+    start_models = args.all_start_replicates
+    start_cnn_models = args.all_start_CNN_replicates
 
     parent = 'experiments/output'
-    #all_models = get_model_names(cnn_models)+get_model_names(weighted_models)
-    all_models = get_model_names(bio_models)+get_model_names(EDC_models) +get_model_names(EDC_eq_models)
+    all_models = get_model_names(bio_models)+get_model_names(EDC_models) #+get_model_names(EDC_eq_models)
+    all_models += get_model_names(start_models)+get_model_names(cnn_models)+get_model_names(lfnet_weighted_models)
+    all_models += get_model_names(cnn_EDC_models)+get_model_names(cnn_weighted_models)+get_model_names(start_cnn_models)
     
     all_results = []
     binned_results = []
@@ -539,27 +605,28 @@ if __name__ == "__main__":
         fname = join(parent,f,'mammalian_200-1200_test_RNA_nonredundant_80_preds.txt')
         if os.path.exists(fname):
             print(f'parsing {fname}')
-            results = evaluate(fname,gt_df,error_analysis=False)
-            results_by_bin = evaluate_by_homology(fname,gt_df,error_analysis=False)
-            model = 'EDC' if results['trial'].startswith('EDC') else 'bioseq2seq'
-            model = 'EDC-small' if results['trial'].startswith('EDC_small') else model
-            results['model'] = model
-            all_results.append(results)
+            is_start = 'CDS' in fname or 'start' in fname 
+            #results = evaluate(fname,gt_df,error_analysis=False,as_csv=is_start)
+            results_by_bin = evaluate_by_homology(fname,gt_df,error_analysis=False,as_csv=is_start)
+            #model = 'EDC' if results['trial'].startswith('EDC') else 'bioseq2seq'
+            #model = 'EDC-small' if results['trial'].startswith('EDC_small') else model
+            #results['model'] = rename(model)
+            #all_results.append(results)
             binned_results.append(results_by_bin)
         else:
             print(f'{fname} does not exist')
 
     binned_results = pd.concat(binned_results)
-    short_string = binned_results['trial'].str.extract(r'(bioseq2seq_lambd_0\.\d*)|(\w*)_\d_')
-    condition = pd.isnull(short_string[0]).to_numpy()
-    short_string = np.where(condition,short_string[1].to_numpy(),short_string[0].to_numpy()) 
-    binned_results['model'] = short_string
-    binary = (binned_results['bin'] == '<=80') | (binned_results['bin'] == '>80') 
-    print('binary',binned_results[binary]) 
+    short_string = binned_results['trial'].str.extract(r'([^\/]*)_(\d)_')
+    binned_results['model'] = short_string[0].apply(rename)
+    binned_results['rep'] = short_string[1]
+    lesser = binned_results[binned_results['bin'] == '<=80'] 
+    
+    model_boxplot(lesser) 
     binned_results.to_csv('our_models_homology_binning.csv',index=False)
 
+    '''
     results_df = pd.DataFrame(all_results)
     results_df.to_csv('classification_performance.csv',sep='\t')
     print(latex_table(results_df))
-
-    
+    '''

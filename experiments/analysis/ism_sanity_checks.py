@@ -37,7 +37,7 @@ def run_checks_ISM(args,prefix,output_dir):
     is_nonsense = (~df['is_stop_original']) & (df['is_stop_mutated'])
     early_nonsense = df[(is_nonsense) & (df['loc'] < 150)]
     g = sns.violinplot(data=early_nonsense,x='delta',y='dummy',ax=ax2,hue='model',cut=0,hue_order=order,width=0.9,linewidth=1)
-    g.legend_.remove()
+    #g.legend_.remove()
     ax2.set_yticks([]) 
     ax2.set_ylabel('') 
     ax2.set_xlabel(r'Nonsense mutations first 50 codons $\Delta$S')
@@ -47,8 +47,14 @@ def run_checks_ISM(args,prefix,output_dir):
     plt.close()
     print(f'saved {output_dir}/mutations_ism_sanity.svg')
 
-def run_checks_shuffled(args,prefix,output_dir):
+def run_checks_shuffled(args,prefix,output_dir,exclude=False):
 
+    if exclude:
+        homology = pd.read_csv("test_maximal_homology.csv")
+        reduced = homology['score'] <=80
+        homology = homology.loc[reduced]
+        allowed = set()
+        allowed.update(homology['ID'].tolist())
     storage = []
     for parent,model in zip([args.best_BIO_DIR,args.best_EDC_DIR],['bioseq2seq','EDC']):
         wildtype = np.load(f"{parent}/{prefix}.{args.reference_class}.{args.position}.logit.npz")
@@ -60,6 +66,8 @@ def run_checks_shuffled(args,prefix,output_dir):
         
         is_coding = lambda x : x.startswith('XM') or x.startswith('NM') 
         for tscript,logit in wildtype.items():
+            if exclude and tscript not in allowed:
+                continue
             if is_coding(tscript):
                 shuffle_ks = [2,1,2,1,3]
                 names = ['5\' ' +r'UTR nt shuffled $\Delta$S',
@@ -91,7 +99,7 @@ def run_checks_shuffled(args,prefix,output_dir):
     fig,axs = plt.subplots(3,1,figsize=(3.75,3),sharex=True) 
     for ax, (label,group) in zip(axs.flat,df.groupby('label')):
         g = sns.violinplot(data=group,x='delta',y='k',ax=ax,hue='model',cut=0,hue_order=order,linewidth=1)
-        g.legend_.remove()
+        #g.legend_.remove()
         if len(pd.unique(group['k'])) <= 1: 
             ax.set_yticks([]) 
             ax.set_ylabel('') 
@@ -114,4 +122,4 @@ if __name__ == "__main__":
 
     prefix = "verified_test_RNA" 
     run_checks_ISM(args,prefix,output_dir)
-    run_checks_shuffled(args,prefix,output_dir)
+    run_checks_shuffled(args,prefix,output_dir,exclude=True)

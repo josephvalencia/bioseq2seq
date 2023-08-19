@@ -10,7 +10,7 @@ from itertools import combinations
 from os.path import  exists
 from utils import parse_config, setup_fonts, build_output_dir
 
-def calc_correlations(file_a,file_b,model_type,corr_mode,metric):
+def calc_correlations(file_a,file_b,model_type,corr_mode,metric,exclude=False):
 
     storage = []
     onhot_file_a = None 
@@ -19,10 +19,20 @@ def calc_correlations(file_a,file_b,model_type,corr_mode,metric):
         onehot_file_a = np.load(file_a.replace('grad','onehot')) 
         onehot_file_b = np.load(file_b.replace('grad','onehot')) 
      
+    if exclude:
+        homology = pd.read_csv("test_maximal_homology.csv")
+        reduced = homology['score'] <=80
+        homology = homology.loc[reduced]
+        allowed = set()
+        allowed.update(homology['ID'].tolist())
+        
+        
     file_a = np.load(file_a)
     file_b = np.load(file_b)
     count = 0 
     for tscript,array_a in file_a.items():
+        if exclude and tscript not in allowed:
+            continue
         array_b = file_b[tscript] 
         if metric == 'grad':
             onehot_a = onehot_file_a[tscript]
@@ -73,11 +83,11 @@ def similarity_scores(a,b,corr_mode):
     
     return corr[0], median_cos_sim, mae, sign_match_pct
 
-def plot_metrics(df,savefile,corr_mode,height,xlabel=None,y='Mutation method',order=None,show_legend=False):
+def plot_metrics(df,savefile,corr_mode,height,xlabel=None,y='Mutation method',order=None,hue_order=None,show_legend=False):
    
 
     f,(ax1,ax2) = plt.subplots(1,2,figsize=(6.5,height)) 
-    g = sns.violinplot(data=df,y=y,x=corr_mode,hue='Model',ax=ax1,cut=0,order=order,hue_order=['bioseq2seq','EDC'])
+    g = sns.violinplot(data=df,y=y,x=corr_mode,hue='Model',ax=ax1,cut=0,order=order)
     if show_legend: 
         sns.move_legend(g,loc="upper right",bbox_to_anchor=(0.0,1.0),ncol=1)
     else:
@@ -104,7 +114,7 @@ def plot_metrics(df,savefile,corr_mode,height,xlabel=None,y='Mutation method',or
     else: 
         if xlabel is not None:
             ax1.set_xlabel(xlabel+'\n'+'(Pearson r)',multialignment='center')
-    g = sns.violinplot(data=df,y=y,x='cosine_sim',hue='Model',ax=ax2,cut=0,split=False,order=order,hue_order=['bioseq2seq','EDC'])
+    g = sns.violinplot(data=df,y=y,x='cosine_sim',hue='Model',ax=ax2,cut=0,split=False,order=order)
     sns.despine() 
     g.legend_.remove()
     closest_min = df['cosine_sim'].min()-0.1 
@@ -122,12 +132,23 @@ def plot_metrics(df,savefile,corr_mode,height,xlabel=None,y='Mutation method',or
     plt.savefig(savefile)
     plt.close() 
 
-def calculate_metrics(ism_file,metric_file_dict,onehot_file,test_cds,model_type,replicate,corr_mode,mrna_zoom=False):
+def calculate_metrics(ism_file,metric_file_dict,onehot_file,test_cds,model_type,replicate,corr_mode,mrna_zoom=False,exclude=False):
 
     storage = []
     is_coding = lambda x: x.startswith('XM') or x.startswith('NM') 
+  
+    if exclude:
+        homology = pd.read_csv("test_maximal_homology.csv")
+        reduced = homology['score'] <=80
+        homology = homology.loc[reduced]
+        allowed = set()
+        allowed.update(homology['ID'].tolist())
     
     for tscript,ism in ism_file.items():
+        
+        if exclude and tscript not in allowed:
+            continue
+        
         cds_loc = [int(x) for x in test_cds[tscript].split(':')] 
         s,e = tuple(cds_loc) 
         
@@ -193,18 +214,16 @@ def load_all_replicates(models):
             model_list.append(model_dir)
     return model_list
 
-def ism_agreement(prefix,models1,models2,corr_mode,test_csv,output_dir,parent='.',):
+def ism_agreement(prefix,models_dict,corr_mode,test_csv,output_dir,parent='.',exclude=False):
     ''' compare [MDIG,IG,Taylor] with ISM for a given model replicate '''
     
     sns.set_style(style="whitegrid",rc={'font.family' : ['Helvetica']})
     test_cds = load_CDS(test_csv)
     storage = [] 
     
-    model_list1 = load_all_replicates(models1)
-    model_list2 = load_all_replicates(models2)
-    
     mdig_alphas = [0.10,0.25,0.50,0.75,1.00] 
-    for model_type, model_list in zip(['bioseq2seq','EDC'],[model_list1,model_list2]): 
+    for model_type, models in models_dict.items(): 
+        model_list = load_all_replicates(models) 
         for m in model_list:
             ism_file = np.load(f'{parent}/{m}/{prefix}.ISM.npz') 
             onehot_file = np.load(f'{parent}/{m}/{prefix}.onehot.npz') 
@@ -219,18 +238,17 @@ def ism_agreement(prefix,models1,models2,corr_mode,test_csv,output_dir,parent='.
                                     f'{parent}/{m}/{prefix}.IG.npz') 
             results = calculate_metrics(ism_file,metric_file_dict,
                                         onehot_file,test_cds,model_type,
-                                        m,corr_mode,mrna_zoom=False) 
+                                        m,corr_mode,mrna_zoom=False,exclude=exclude) 
             storage.extend(results) 
     df = pd.DataFrame(storage)
     print('ISM AGREEMENT') 
     averaged = average_per_transcript(df)
+    tscripts = pd.unique(averaged['tscript']).tolist() 
+    coding = sum([1 for x in tscripts if x.startswith('NM')])
+    print(f'# coding = {coding}/{len(tscripts)}={coding/len(tscripts)}')
     grouped = averaged.groupby(['Mutation method','Model'])[[corr_mode,'cosine_sim']]
     print('Method medians') 
     print(grouped.median())
-    print('Method Q1') 
-    print(grouped.quantile(0.25))
-    print('Method Q3') 
-    print(grouped.quantile(0.75))
     sns.set_style(style="whitegrid",rc={'font.family' : ['Helvetica']})
     # pairwise comparisons all bioseq2seq replicates
     order = ['MDIG-0.10','MDIG-0.25','MDIG-0.50','MDIG-0.75','MDIG-1.00','Taylor','IG']
@@ -259,41 +277,34 @@ def closest_examples(averaged_ism):
             examples.append(tscript)
     print(examples)
 
-def self_agreement(prefix,models1,models2,corr_mode,output_dir,parent='.'):
+def self_agreement(prefix,models_dict,corr_mode,output_dir,parent='.',exclude=False):
   
     ''' compare [MDIG,ISM,grad] across model replicates'''
      
     storage = [] 
-    model_list1 = load_all_replicates(models1)
-    model_list2 = load_all_replicates(models2)
-    group1_combs = list(combinations(model_list1,2))
-    group2_combs = list(combinations(model_list2,2))
-    
+
     # pairwise comparisons all bioseq2seq replicates
     all_metrics = ['MDIG.max_0.10','MDIG.max_0.25','MDIG.max_0.50','MDIG.max_0.75','MDIG.max_1.00','ISM','grad','IG']
-    for metric in all_metrics:
-        for a,b in group1_combs:
-            data_a = f'{parent}/{a}/{prefix}.{metric}.npz' 
-            data_b = f'{parent}/{b}/{prefix}.{metric}.npz' 
-            if exists(data_a) and exists(data_b):
-                print(f'comparing {metric} in {a} and {b}') 
-                results = calc_correlations(data_a,data_b,'bioseq2seq',corr_mode,metric.replace('.max_','-')) 
-                storage.extend(results)
-
-    for metric in all_metrics:
-        # pairwise comparisons all EDC replicates
-        for a,b in group2_combs:
-            data_a = f'{parent}/{a}/{prefix}.{metric}.npz' 
-            data_b = f'{parent}/{b}/{prefix}.{metric}.npz' 
-            if exists(data_a) and exists(data_b): 
-                print(f'comparing {metric} in {a} and {b}') 
-                results = calc_correlations(data_a,data_b,'EDC',corr_mode,metric.replace('.max_','-')) 
-                storage.extend(results)
+    for model_type, models in models_dict.items():
+        model_list = load_all_replicates(models)
+        combs = list(combinations(model_list,2))
+        for metric in all_metrics:
+            for a,b in combs:
+                data_a = f'{parent}/{a}/{prefix}.{metric}.npz' 
+                data_b = f'{parent}/{b}/{prefix}.{metric}.npz' 
+                if exists(data_a) and exists(data_b):
+                    print(f'comparing {metric} in {a} and {b}') 
+                    results = calc_correlations(data_a,data_b,model_type,corr_mode,metric.replace('.max_','-'),exclude=exclude) 
+                    storage.extend(results)
 
     df = pd.DataFrame(storage)
     print('SELF AGREEMENT')
-    averaged = average_per_transcript(df,by_coding=True) 
-    print(averaged) 
+    averaged = average_per_transcript(df) 
+    averaged = average_per_transcript(df)
+    tscripts = pd.unique(averaged['tscript']).tolist() 
+    coding = sum([1 for x in tscripts if x.startswith('NM')])
+    print(f'# coding = {coding}/{len(tscripts)}={coding/len(tscripts)}')
+
     averaged_remainder = averaged[averaged['Mutation method'] != 'ISM'] 
     averaged_ism = averaged[averaged['Mutation method'] == 'ISM'] 
   
@@ -306,23 +317,20 @@ def self_agreement(prefix,models1,models2,corr_mode,output_dir,parent='.'):
     grouped = averaged_ism.groupby('Model')[[corr_mode,'cosine_sim']]
     print('ISM medians') 
     print(grouped.median())
-    print('ISM Q1') 
-    print(grouped.quantile(0.25))
-    print('ISM Q3') 
-    print(grouped.quantile(0.75))
     plot_metrics(averaged_ism,f'{output_dir}/{prefix}_ISM_only_self_agreement.svg',corr_mode,height=1.5,xlabel=f'ISM inter-replicate agreement',order=None,show_legend=True) 
     plot_metrics(averaged_remainder,f'{output_dir}/{prefix}_self_agreement.svg',corr_mode,height=4.5,xlabel=xlabel,order=order)
     return averaged, df 
 
 def plot_summary_scatter(combined,output_dir):
 
-    print('COMBINED',combined[['Mutation method','Model','pearson_self_median','pearson_ISM_median']])
     sns.set_style(style="ticks",rc={'font.family' : ['Helvetica']})
     plt.figure(figsize=(4.5,3.5))
     g = sns.scatterplot(combined,x ='pearson_self_median',y='pearson_ISM_median',hue='Mutation method',style='Model',s=100)
+    g.legend_._legend_box.align ="left"
     #sns.despine()
-    #sns.move_legend(g,loc="upper left",bbox_to_anchor=(0.00,1.0),fontsize=8)
-    sns.move_legend(g,loc="upper right",bbox_to_anchor=(0.00,1.0),fontsize=8)
+    sns.move_legend(g,loc="upper left",bbox_to_anchor=(0.00,1.0),fontsize=8)
+    #sns.move_legend(g,loc="upper right",bbox_to_anchor=(1.0,1.0),fontsize=8)
+
     plt.tight_layout() 
     plt.xlabel('Inter-replicate agreement\n(median Pearson r)',multialignment='center')
     plt.ylabel('Intra-replicate agreement with ISM\n(median Pearson r)',multialignment='center')
@@ -335,13 +343,18 @@ if __name__ == "__main__":
     setup_fonts()
 
     output_dir = build_output_dir(args)
-    
     # validation set for tuning
     test_file = os.path.join(args.data_dir,args.val_prefix+'.csv')
     prefix = f'verified_val_RNA.{args.reference_class}.{args.position}'
-    consensus_ism_df, unreduced_ism_df = ism_agreement(prefix,args.all_BIO_replicates,args.all_EDC_replicates,
-                                                        'pearson',test_file,output_dir,'experiments/output') 
-    consensus_self_df, unreduced_self_df = self_agreement(prefix,args.all_BIO_replicates,args.all_EDC_replicates,
+
+    models_dict = {'LF-seq-wt' : args.all_LFNet_weighted_replicates,
+                    'LF-class' : args.all_EDC_replicates,
+                    'CNN-seq' : args.all_CNN_weighted_replicates}
+                    #'CNN-class' : args.all_EDC_CNN_replicates}
+    ''' 
+    consensus_ism_df, unreduced_ism_df = ism_agreement(prefix,models_dict,
+                                                        'pearson',test_file,output_dir,'experiments/output')
+    consensus_self_df, unreduced_self_df = self_agreement(prefix,models_dict,
                                                         'pearson',output_dir,'experiments/output') 
     
     grouped_ism = consensus_ism_df.groupby(['Mutation method','Model'])
@@ -350,14 +363,15 @@ if __name__ == "__main__":
     ism_medians = grouped_ism.median()
     combined = ism_medians.merge(self_medians,how='inner',on=['Mutation method','Model'],suffixes=['_ISM_median','_self_median'])
     plot_summary_scatter(combined.reset_index(),output_dir)
-
+    '''  
+    
     # test set for ISM
     test_file = os.path.join(args.data_dir,args.test_prefix+'.csv')
     prefix = f'verified_test_RNA.{args.reference_class}.{args.position}'
-    consensus_self_df, unreduced_self_df = self_agreement(prefix,args.all_BIO_replicates,args.all_EDC_replicates,
-                                                        'pearson',output_dir,'experiments/output') 
-
-    consensus_ism_df, unreduced_ism_df = ism_agreement(prefix,args.all_BIO_replicates,args.all_EDC_replicates,
-                                                        'pearson',test_file,output_dir,'experiments/output') 
+    consensus_self_df, unreduced_self_df = self_agreement(prefix,models_dict,
+                                                        'pearson',output_dir,'experiments/output',exclude=True) 
+    
+    consensus_ism_df, unreduced_ism_df = ism_agreement(prefix,models_dict,
+                                                        'pearson',test_file,output_dir,'experiments/output',exclude=True) 
     grouped_ism = consensus_ism_df.groupby(['Mutation method','Model'])
 

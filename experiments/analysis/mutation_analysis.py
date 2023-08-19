@@ -30,15 +30,24 @@ def getLongestORF(mRNA):
                     break
     return ORF_start,ORF_end
 
-def mutation_analysis(saved_file,df,metric):
+def mutation_analysis(saved_file,df,metric,exclude=False):
 
     storage = []
     saved = np.load(saved_file)
     onehot_file = None
-    
     if metric == 'grad':
         onehot_file = np.load(saved_file.replace('grad','onehot')) 
+    
+    if exclude:
+        homology = pd.read_csv("test_maximal_homology.csv")
+        reduced = homology['score'] <=80
+        homology = homology.loc[reduced]
+        allowed = set()
+        allowed.update(homology['ID'].tolist())
+    
     for tscript,array in tqdm(saved.items()):
+        if exclude and tscript not in allowed:
+            continue
         seq = df.loc[tscript,'RNA']
         tscript_type = df.loc[tscript,'Type']
         if metric == 'grad':
@@ -79,7 +88,7 @@ def mutation_analysis(saved_file,df,metric):
                             storage.append(entry)
     return storage
 
-def build_or_load_score_change_file(df,ism_file,mut_file,metric='MDIG'):
+def build_or_load_score_change_file(df,ism_file,mut_file,metric='MDIG',exclude=False):
 
     codonMap = {'TTT':'F', 'TTC':'F', 'TTA':'L', 'TTG':'L', 'TCT':'S', 
                 'TCC':'S', 'TCA':'S', 'TCG':'S', 'TAT':'Y', 'TAC':'Y', 
@@ -97,7 +106,7 @@ def build_or_load_score_change_file(df,ism_file,mut_file,metric='MDIG'):
    
     if not os.path.exists(mut_file):
         print(f'building {mut_file}')
-        storage = mutation_analysis(ism_file,df,metric)
+        storage = mutation_analysis(ism_file,df,metric,exclude=exclude)
         summary = pd.DataFrame(storage)
         summary.to_csv(mut_file)
         print(f'{mut_file} built')
@@ -273,6 +282,8 @@ def mutation_pipeline_from_config():
     prefix = args.test_prefix.replace('test','test_RNA')
     test_file = os.path.join(args.data_dir,args.test_prefix+'.csv')
     df_test = pd.read_csv(test_file,sep='\t').set_index('ID')
+    best_BIO_ISM_verified = os.path.join(args.best_BIO_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.ISM.npz')
+    best_EDC_ISM_verified = os.path.join(args.best_EDC_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.ISM.npz')
     best_BIO_ISM = os.path.join(args.best_BIO_DIR,f'{prefix}.{args.reference_class}.{args.position}.ISM.npz')
     best_BIO_MDIG = os.path.join(args.best_BIO_DIR,f'{prefix}.{args.reference_class}.{args.position}.MDIG.max_0.50.npz')
    
@@ -280,14 +291,20 @@ def mutation_pipeline_from_config():
     mutation_dir  =  f'{output_dir}/mut/'
     if not os.path.isdir(mutation_dir):
         os.mkdir(mutation_dir)
- 
-    # run for both ISM
+
+    # ISM verified on both tasks, needed for sanity checks
+    mut_file = best_BIO_ISM_verified.replace('.npz','_mutation_scores.csv') 
+    mutation_df = build_or_load_score_change_file(df_test,best_BIO_ISM_verified,mut_file,metric='ISM',exclude=True)
+    mut_file = best_EDC_ISM_verified.replace('.npz','_mutation_scores.csv') 
+    mutation_df = build_or_load_score_change_file(df_test,best_EDC_ISM_verified,mut_file,metric='ISM',exclude=True)
+
+    # BIO run for both ISM
     mut_file = best_BIO_ISM.replace('.npz','_mutation_scores.csv')
-    mutation_df = build_or_load_score_change_file(df_test,best_BIO_ISM,mut_file,metric='ISM')
+    mutation_df = build_or_load_score_change_file(df_test,best_BIO_ISM,mut_file,metric='ISM',exclude=True)
     mutation_pipeline(mutation_df,mutation_dir,'ISM')
     # and MDIG 
     mut_file = best_BIO_MDIG.replace('.npz','_mutation_scores.csv')
-    mutation_df = build_or_load_score_change_file(df_test,best_BIO_MDIG,mut_file,metric='MDIG')
+    mutation_df = build_or_load_score_change_file(df_test,best_BIO_MDIG,mut_file,metric='MDIG',exclude=True)
     mutation_pipeline(mutation_df,mutation_dir,'MDIG')
 
 if __name__ == "__main__":

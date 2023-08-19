@@ -11,7 +11,8 @@ from utils import getLongestORF, getFirstORF, parse_config,setup_fonts
 
 def parse_needle_results(entry,save_dir):
 
-    match_tscript = re.search('ID: (.*)',entry[0])
+    #match_tscript = re.search('ID: (.*)',entry[0])
+    match_tscript = re.search('ID: (.*) coding_prob : ([0|1]\.\d*)',entry[0])
     is_noncoding = lambda x : x.startswith('NR') or x.startswith('XR')
 
     if match_tscript and is_noncoding(match_tscript.group(1)):
@@ -31,7 +32,8 @@ def parse_needle_results(entry,save_dir):
 
 def align_peptides(entry,save_dir,test_df):
 
-    match_tscript = re.search('ID: (.*)',entry[0])
+    #match_tscript = re.search('ID: (.*)',entry[0])
+    match_tscript = re.search('ID: (.*) coding_prob : ([0|1]\.\d*)',entry[0])
     is_noncoding = lambda x : x.startswith('NR') or x.startswith('XR')
    
     if match_tscript and is_noncoding(match_tscript.group(1)):

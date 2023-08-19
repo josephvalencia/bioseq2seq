@@ -19,7 +19,7 @@ def update_percentile_scores(running_percentile,scores,n_bins):
 def is_valid(start,end,total,n_bins):
     return start >= n_bins and (end-start) >= n_bins and (total-end) >= n_bins
 
-def metagene(cds_storage,saved_file,n_bins,mode):
+def metagene(cds_storage,saved_file,n_bins,mode,exclude=False):
 
     valid_pc = 0 
     valid_nc = 0 
@@ -34,12 +34,21 @@ def metagene(cds_storage,saved_file,n_bins,mode):
     longest_orf = np.zeros((layer_count,n_bins))
     downstream = np.zeros((layer_count,n_bins)) 
     
+    if exclude:
+        homology = pd.read_csv("test_maximal_homology.csv")
+        reduced = homology['score'] <=80
+        homology = homology.loc[reduced]
+        allowed = set()
+        allowed.update(homology['ID'].tolist())
+    
     onehot = None
     saved = np.load(saved_file)
     if mode == 'Taylor':
         onehot = np.load(saved_file.replace('grad','onehot'))
     for tscript, attr in saved.items():
         is_pc =  tscript.startswith('NM') or tscript.startswith('XM')
+        if exclude and tscript not in allowed:
+            continue
         if mode == 'Taylor':
             attr = attr - onehot[tscript] * attr
             attr = attr[:,2:6]
@@ -74,7 +83,7 @@ def metagene(cds_storage,saved_file,n_bins,mode):
     total_nc = np.concatenate([upstream,longest_orf,downstream],axis=1) / valid_nc
     return total_pc, total_nc
 
-def plot_EDA_metagene(cds_storage,output_dir,prefix,attribution_dict):
+def plot_EDA_metagene(cds_storage,output_dir,prefix,attribution_dict,exclude=False):
 
     file_list =  attribution_dict['path_list']
     model = attribution_dict['model']
@@ -86,11 +95,11 @@ def plot_EDA_metagene(cds_storage,output_dir,prefix,attribution_dict):
     n_bins = 25
     for l in range(n_layers):
         layer = file_list[l] 
-        total_pc,total_nc = metagene(cds_storage,layer,n_bins,mode='EDA') 
+        total_pc,total_nc = metagene(cds_storage,layer,n_bins,mode='EDA',exclude=exclude) 
         name = f'{prefix}_EDA_layer{l}'
         plot_line_EDA(total_pc,total_nc,output_dir,name,n_bins)
 
-def plot_attribution_metagene(cds_storage,output_dir,prefix,attr_filenames,mode,sharey=True):
+def plot_attribution_metagene(cds_storage,output_dir,prefix,attr_filenames,mode,sharey=True,exclude=False):
 
     n_bins = 25
     #fig,axs = plt.subplots(1,len(attr_filenames.keys()),figsize=(6.5,2),sharey=sharey)
@@ -103,7 +112,7 @@ def plot_attribution_metagene(cds_storage,output_dir,prefix,attr_filenames,mode,
         other_replicates = [x.split('/')[-2] for x in other_attr_files]
         
         # start with metagenes for the best replicate
-        total_pc,total_nc = metagene(cds_storage,best_attr_file,n_bins,mode=mode) 
+        total_pc,total_nc = metagene(cds_storage,best_attr_file,n_bins,mode=mode,exclude=exclude) 
         ax.plot(total_pc.ravel(),linewidth=1,label='mRNA',color='tab:red')
         ax.plot(total_nc.ravel(),linewidth=1,label='lncRNA',color='tab:blue')
          
@@ -112,7 +121,7 @@ def plot_attribution_metagene(cds_storage,output_dir,prefix,attr_filenames,mode,
         storage[f'{short_name}_NC'] = total_nc.ravel() 
         # if alternate replicates are provided, plot them
         for fname,short_name in zip(other_attr_files,other_replicates):
-            total_pc,total_nc = metagene(cds_storage,fname,n_bins,mode=mode)
+            total_pc,total_nc = metagene(cds_storage,fname,n_bins,mode=mode,exclude=exclude)
             storage[f'{short_name}_PC'] = total_pc.ravel() 
             storage[f'{short_name}_NC'] = total_nc.ravel() 
             ax.plot(total_pc.ravel(),linewidth=0.5,alpha=0.7,color='tab:red')
@@ -214,9 +223,9 @@ def compare_metagenes(output_dir,prefix,a,b,model):
             nc_count +=1
     print(f'avg corr (PC) = {pc_sum/pc_count:.4f}, avg corr (NC) = {nc_sum/nc_count:.4f}')
 
-def compare_all(output_dir,prefix):
+def compare_all(output_dir,prefix,model_names):
 
-    for model in ['bioseq2seq','EDC']:
+    for model in model_names:
         for a,b in combinations(['Taylor','ISM','MDIG'],2):
             print(f'comparing {a} and {b} in {model}') 
             print('_________________________________')
@@ -239,27 +248,25 @@ def build_all(args):
     best_BIO_grad = load_models(args.best_BIO_DIR,args.all_BIO_replicates,f'{prefix}.grad.npz')
     best_EDC_grad = load_models(args.best_EDC_DIR,args.all_EDC_replicates,f'{prefix}.grad.npz')
     best_BIO_MDIG = load_models(args.best_BIO_DIR,args.all_BIO_replicates,f'{prefix}.MDIG.max_0.50.npz')
-    #best_EDC_MDIG = load_models(args.best_EDC_DIR,args.all_EDC_replicates,f'{prefix}.MDIG.max_0.10.npz')
-    best_EDC_MDIG = load_models(args.best_EDC_DIR,args.all_EDC_replicates,f'{prefix}.MDIG.max_0.50.npz')
+    best_EDC_MDIG = load_models(args.best_EDC_DIR,args.all_EDC_replicates,f'{prefix}.MDIG.max_0.10.npz')
     best_BIO_ISM = load_models(args.best_BIO_DIR,args.all_BIO_replicates,f'{prefix}.ISM.npz')
     best_EDC_ISM = load_models(args.best_EDC_DIR,args.all_EDC_replicates,f'{prefix}.ISM.npz')
     
     # plot metagenes for perturbation-based attributions
     attr_filenames = {'bioseq2seq' : best_BIO_grad,'EDC' : best_EDC_grad}
-    plot_attribution_metagene(test_cds,output_dir,prefix,attr_filenames,'Taylor')
+    plot_attribution_metagene(test_cds,output_dir,prefix,attr_filenames,'Taylor',exclude=True)
     attr_filenames = {'bioseq2seq' : best_BIO_MDIG,'EDC' : best_EDC_MDIG}
-    plot_attribution_metagene(test_cds,output_dir,prefix,attr_filenames,'MDIG',sharey=False)
+    plot_attribution_metagene(test_cds,output_dir,prefix,attr_filenames,'MDIG',sharey=False,exclude=True)
     attr_filenames = {'bioseq2seq' : best_BIO_ISM,'EDC' : best_EDC_ISM}
-    plot_attribution_metagene(test_cds,output_dir,prefix,attr_filenames,'ISM',sharey=False)
-    compare_all(output_dir,prefix)
+    plot_attribution_metagene(test_cds,output_dir,prefix,attr_filenames,'ISM',sharey=False,exclude=True)
+    compare_all(output_dir,prefix,attr_filenames.keys())
    
-    ''' 
     # build EDA metagenes
     best_BIO_EDA = build_EDA_file_list(args.best_BIO_EDA,args.best_BIO_DIR)
     best_EDC_EDA = build_EDA_file_list(args.best_EDC_EDA,args.best_EDC_DIR)
-    plot_EDA_metagene(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA)
-    plot_EDA_metagene(test_cds,output_dir,'best_EDC_test',best_EDC_EDA)
-    ''' 
+    plot_EDA_metagene(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,exclude=True)
+    plot_EDA_metagene(test_cds,output_dir,'best_EDC_test',best_EDC_EDA,exclude=True)
+
 if __name__ == "__main__":
     
     args,unknown_args = parse_config()
