@@ -1,0 +1,26 @@
+[Datasets]
+data_dir : data/
+train_prefix : mammalian_200-1200_train_balanced
+val_prefix : mammalian_200-1200_val_nonredundant_80
+test_prefix : mammalian_200-1200_test_nonredundant_80
+[Best Models]
+best_BIO_DIR : experiments/output/bioseq2seq_lambd_0.1_4_Jul12_18-02-34_step_19500/
+best_EDC_DIR : experiments/output/EDC_1_Jun27_08-35-05_step_6000/
+best_BIO_chkpt : experiments/checkpoints/coding_noncoding/bioseq2seq_lambd_0.1_4_Jul12_18-02-34/_step_19500.pt
+best_EDC_chkpt : experiments/checkpoints/coding_noncoding/EDC_1_Jun27_08-35-05/_step_6000.pt
+all_BIO_replicates : experiments/scripts/txt/seq_LFN.txt
+all_EDC_replicates : experiments/scripts/txt/class_LFN.txt
+all_EDC_small_replicates : experiments/scripts/txt/class_LFN-small.txt
+all_CNN_replicates : experiments/scripts/txt/seq_CNN.txt
+all_EDC_CNN_replicates : experiments/scripts/txt/class_CNN.txt
+all_start_replicates : experiments/scripts/txt/start_LFN.txt
+all_start_CNN_replicates : experiments/scripts/txt/start_CNN.txt
+all_LFNet_weighted_replicates : experiments/scripts/txt/seq-wt_LFN.txt    
+all_CNN_weighted_replicates : experiments/scripts/txt/seq-wt_CNN.txt    
+[Encoder-Decoder Attention]
+best_BIO_EDA : {'model':'bioseq2seq','attr' : 'EDA','n_layers' : 2}
+best_EDC_EDA : {'model':'EDC','attr' : 'EDA','n_layers' : 16}
+[Attributions]
+reference_class : PC
+position : 1
+
