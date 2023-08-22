@@ -169,11 +169,11 @@ def build_all_pred_scripts(bio_file,edc_file,edc_small_file,cnn_file,edc_cnn_fil
     
     attr(weighted_lfnet_replicates,'BIO','ISM','TEST_VERIFIED','ism_test_verified_bioseq2seq_weighted.txt',parent=parent)
     attr(weighted_lfnet_replicates,'BIO','grad','TEST_VERIFIED','grad_test_verified_bioseq2seq_weighted.txt',parent=parent)
-    attr(weighted_lfnet_replicates,'BIO','MDIG','TEST_VERIFIED','mdig_test_verified_bioseq2seq_weighted.txt',alpha=0.5,parent=parent)
+    attr(weighted_lfnet_replicates,'BIO','MDIG','TEST_VERIFIED','mdig_test_verified_bioseq2seq_weighted.txt',alpha=0.25,parent=parent)
     
     attr(weighted_cnn_replicates,'BIO','ISM','TEST_VERIFIED','ism_test_verified_bioseq2seq_weighted_CNN.txt',parent=parent)
     attr(weighted_cnn_replicates,'BIO','grad','TEST_VERIFIED','grad_test_verified_bioseq2seq_weighted_CNN.txt',parent=parent)
-    attr(weighted_cnn_replicates,'BIO','MDIG','TEST_VERIFIED','mdig_test_verified_bioseq2seq_weighted_CNN.txt',alpha=0.5,parent=parent)
+    attr(weighted_cnn_replicates,'BIO','MDIG','TEST_VERIFIED','mdig_test_verified_bioseq2seq_weighted_CNN.txt',alpha=0.10,parent=parent)
     
     attr(edc_replicates,'EDC','ISM','TEST_VERIFIED','ism_test_verified_EDC.txt',parent=parent) 
     attr(edc_replicates,'EDC','grad','TEST_VERIFIED','grad_test_verified_EDC.txt',parent=parent) 
@@ -181,13 +181,18 @@ def build_all_pred_scripts(bio_file,edc_file,edc_small_file,cnn_file,edc_cnn_fil
     
     attr(edc_cnn_replicates,'EDC','ISM','TEST_VERIFIED','ism_test_verified_EDC_CNN.txt',parent=parent) 
     attr(edc_cnn_replicates,'EDC','grad','TEST_VERIFIED','grad_test_verified_EDC_CNN.txt',parent=parent) 
-    attr(edc_cnn_replicates,'EDC','MDIG','TEST_VERIFIED','mdig_test_verified_EDC_CNN.txt',alpha=0.75,parent=parent) 
+    attr(edc_cnn_replicates,'EDC','MDIG','TEST_VERIFIED','mdig_test_verified_EDC_CNN.txt',alpha=0.10,parent=parent) 
     
     # bioseq2seq attributions only on larger datsets
     attr(bio_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq.txt',alpha=0.5,parent=parent) 
     attr(weighted_lfnet_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq_weighted.txt',alpha=0.5,parent=parent) 
     attr(weighted_cnn_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq_weighted_CNN.txt',alpha=0.5,parent=parent) 
     attr(cnn_replicates,'BIO','MDIG','TEST_FULL','mdig_test_full_bioseq2seq_CNN.txt',alpha=0.5,parent=parent) 
+    
+    attr(bio_replicates,'BIO','ISM','TEST_FULL','mdig_test_full_bioseq2seq.txt',alpha=0.5,parent=parent) 
+    attr(weighted_lfnet_replicates,'BIO','ISM','TEST_FULL','mdig_test_full_bioseq2seq_weighted.txt',alpha=0.25,parent=parent) 
+    attr(weighted_cnn_replicates,'BIO','ISM','TEST_FULL','mdig_test_full_bioseq2seq_weighted_CNN.txt',alpha=0.5,parent=parent) 
+    attr(cnn_replicates,'BIO','ISM','TEST_FULL','mdig_test_full_bioseq2seq_CNN.txt',alpha=0.1,parent=parent) 
 
 if __name__ == "__main__":
     
