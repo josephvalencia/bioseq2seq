@@ -120,7 +120,7 @@ def run_helper(rank,args,model,vocab,use_splits=False):
             outputs,enc_attns, attns = model(src, tgt, src_lengths,
 				     with_align=False)
             pointer_attn = model.generator(outputs)
-            probs =  torch.exp(pointer_attn) 
+            probs =  torch.exp(pointer_attn)
             pred = pointer_attn.argmax(dim=0).cpu().tolist()
             pc_prob = probs[:-1,:].sum(dim=0).cpu().tolist()
             index = batch.indices.cpu().numpy()

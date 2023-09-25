@@ -7,6 +7,7 @@ from Bio.SeqRecord import SeqRecord
 def make_record(id,rna):
     return SeqRecord(Seq(rna),id=id,description='')
 
+
 def convert(rna_filename,prot_filename):
     '''Write to csv for compatibility with eval_translation scripts'''
     storage = []

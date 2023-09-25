@@ -114,7 +114,7 @@ def plot_filters(global_filter_list,filename,mode,model):
         cb = plt.colorbar(im,ax=list(axs.flat)) 
 
     label = 'magnitude' if mode == 'abs' else 'phase'
-    cb.ax.set_ylabel(f'{model} filter {label}',fontsize=10)
+    cb.ax.set_ylabel(f'Filter {label}',fontsize=10)
     cb.ax.tick_params(labelsize=8)
     plt.savefig(filename)
     print(f'saved {filename}')
@@ -164,9 +164,9 @@ def real_imag_hist_2D(global_filter_list,filename,mode):
         imag_remainder = np.delete(imag,[three_index-1,three_index,three_index+1],axis=1) 
         flat_imag_remainder = imag_remainder.ravel()
         flat_imag_three = imag_three.ravel()
-        H,xedges,yedges = np.histogram2d(x=flat_real_remainder,y=flat_imag_remainder,bins=100,range=global_range)
+        H,xedges,yedges = np.histogram2d(x=flat_real_remainder,y=flat_imag_remainder,bins=25,range=global_range)
         remainder_storage.append(H)
-        H2,xedges,yedges = np.histogram2d(x=flat_real_three,y=flat_imag_three,bins=100,range=global_range)
+        H2,xedges,yedges = np.histogram2d(x=flat_real_three,y=flat_imag_three,bins=25,range=global_range)
         three_storage.append(H2)
     three_vmin = np.min(three_storage)
     three_vmax = np.max(three_storage)
@@ -254,10 +254,10 @@ if __name__ == "__main__":
     print(f'bioseq2seq filters loaded {abs}')
    
     for mode in ['abs','real','imag','phase']:
-        plot_filters(EDC_filters,f'{output_dir}/LFNet_filters_EDC-large_best_{mode}.svg',mode=mode,model='EDC')
-        plot_filters(BIO_filters,f'{output_dir}/LFNet_filters_bioseq2seq_best_{mode}.svg',mode=mode,model='bioseq2seq')
+        plot_filters(EDC_filters,f'{output_dir}/LFNet_filters_EDC-large_best_{mode}.svg',mode=mode,model='class (LFN)')
+        plot_filters(BIO_filters,f'{output_dir}/LFNet_filters_bioseq2seq_best_{mode}.svg',mode=mode,model='seq-wt (LFN)')
 
     phase_hist(EDC_filters,f'{output_dir}/LFNet_filters_EDC-large_best_phase_hist.svg')
     phase_hist(BIO_filters,f'{output_dir}/LFNet_filters_bioseq2seq_best_phase_hist.svg')
-    real_imag_hist_2D(EDC_filters,f'{output_dir}/LFNet_filters_EDC-large_best_real_imag_hist.svg','EDC')
-    real_imag_hist_2D(BIO_filters,f'{output_dir}/LFNet_filters_bioseq2seq_best_real_imag_hist.svg','bioseq2seq')
+    real_imag_hist_2D(EDC_filters,f'{output_dir}/LFNet_filters_EDC-large_best_real_imag_hist.svg','class (LFN)')
+    real_imag_hist_2D(BIO_filters,f'{output_dir}/LFNet_filters_bioseq2seq_best_real_imag_hist.svg','seq-wt (LFN)')

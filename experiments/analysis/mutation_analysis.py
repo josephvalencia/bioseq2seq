@@ -42,11 +42,11 @@ def mutation_analysis(saved_file,df,metric,exclude=False):
         homology = pd.read_csv("test_maximal_homology.csv")
         reduced = homology['score'] <=80
         homology = homology.loc[reduced]
-        allowed = set()
-        allowed.update(homology['ID'].tolist())
+        allowed_tscripts = set()
+        allowed_tscripts.update(homology['ID'].tolist())
     
     for tscript,array in tqdm(saved.items()):
-        if exclude and tscript not in allowed:
+        if exclude and tscript not in allowed_tscripts:
             continue
         seq = df.loc[tscript,'RNA']
         tscript_type = df.loc[tscript,'Type']
@@ -131,7 +131,6 @@ def plot_mutations_by_aa(aa_original,df,metric,mut_dir):
     missense = df[~is_synonymous & ~is_nonsense]
     nonsense = df[~is_synonymous & is_nonsense]
    
-
     plt.figure(figsize=(3.5,2.25))
     sns.lineplot(data=synonymous,x='percentile',y='delta',hue='mutation',alpha=0.9)
     try: 
@@ -204,7 +203,7 @@ def build_means(df):
     print(counts) 
     fields = [x.split('-') for x in means['substitution'].tolist()]
     means['position'] = [int(x)-1 for x,y in fields]
-    means['base'] = [y for x,y in fields]
+    means['base'] = [y if y !='T' else 'U' for x,y in fields]
     means = means.pivot(index='position',columns='base',values='delta') 
     return means
 
@@ -222,7 +221,7 @@ def codon_positions(synonymous,missense,mut_dir,metric):
     
     print('Non-synonymous counts')
     means_missense = build_means(missense)
-   
+    print(means_synon) 
     # synon
     vmax = max(np.nanmax(np.abs(means_synon.to_numpy())),np.nanmax(np.abs(means_missense.to_numpy()))) 
     g = sns.heatmap(data=means_synon,center=0,vmin=-vmax,vmax=vmax,square=True,cmap='RdBu_r')
@@ -237,7 +236,7 @@ def codon_positions(synonymous,missense,mut_dir,metric):
 
 def mutation_pipeline(summary,mut_dir,metric):
 
-    sns.set_style(style="white",rc={'font.family' : ['Helvetica']})
+    sns.set_style(style="white",rc={'font.family' : ['Arial']})
     
     summary['long_mutation'] = [f'{x}>{y}' for x,y in zip(summary['original'],summary['mutated'])]
     summary['mutation'] = ['>'+y.replace('T','U') for y in summary['mutated']]
@@ -253,7 +252,6 @@ def mutation_pipeline(summary,mut_dir,metric):
     missense = summary[is_missense] 
     missense = missense[missense['delta'] != 0.0]
     codon_positions(synonymous,missense,mut_dir,metric) 
-    
     storage = []
     for aa_original,group in summary.groupby('aa_original'):
         if aa_original != '*': 
@@ -284,8 +282,9 @@ def mutation_pipeline_from_config():
     df_test = pd.read_csv(test_file,sep='\t').set_index('ID')
     best_BIO_ISM_verified = os.path.join(args.best_BIO_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.ISM.npz')
     best_EDC_ISM_verified = os.path.join(args.best_EDC_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.ISM.npz')
+    best_CNN_ISM_verified = os.path.join(args.best_CNN_DIR,f'verified_test_RNA.{args.reference_class}.{args.position}.ISM.npz')
     best_BIO_ISM = os.path.join(args.best_BIO_DIR,f'{prefix}.{args.reference_class}.{args.position}.ISM.npz')
-    best_BIO_MDIG = os.path.join(args.best_BIO_DIR,f'{prefix}.{args.reference_class}.{args.position}.MDIG.max_0.50.npz')
+    best_BIO_MDIG = os.path.join(args.best_BIO_DIR,f'{prefix}.{args.reference_class}.{args.position}.MDIG.max_0.25.npz')
    
     output_dir = build_output_dir(args)
     mutation_dir  =  f'{output_dir}/mut/'
@@ -297,11 +296,14 @@ def mutation_pipeline_from_config():
     mutation_df = build_or_load_score_change_file(df_test,best_BIO_ISM_verified,mut_file,metric='ISM',exclude=True)
     mut_file = best_EDC_ISM_verified.replace('.npz','_mutation_scores.csv') 
     mutation_df = build_or_load_score_change_file(df_test,best_EDC_ISM_verified,mut_file,metric='ISM',exclude=True)
-
+    mut_file = best_CNN_ISM_verified.replace('.npz','_mutation_scores.csv') 
+    mutation_df = build_or_load_score_change_file(df_test,best_CNN_ISM_verified,mut_file,metric='ISM',exclude=True)
+    
     # BIO run for both ISM
     mut_file = best_BIO_ISM.replace('.npz','_mutation_scores.csv')
     mutation_df = build_or_load_score_change_file(df_test,best_BIO_ISM,mut_file,metric='ISM',exclude=True)
     mutation_pipeline(mutation_df,mutation_dir,'ISM')
+    
     # and MDIG 
     mut_file = best_BIO_MDIG.replace('.npz','_mutation_scores.csv')
     mutation_df = build_or_load_score_change_file(df_test,best_BIO_MDIG,mut_file,metric='MDIG',exclude=True)

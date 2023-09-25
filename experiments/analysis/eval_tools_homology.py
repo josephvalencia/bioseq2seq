@@ -3,6 +3,7 @@ from sklearn.metrics import auc, precision_recall_fscore_support,confusion_matri
 import sys
 import seaborn as sns
 import matplotlib.pyplot as plt
+from utils import parse_config,build_output_dir,setup_fonts,palette_by_model 
 
 def coarse_bin_fn(score):
     if score >=0 and score <= 40:
@@ -14,7 +15,7 @@ def coarse_bin_fn(score):
     elif score > 80 and score <= 100:
         return '(80-100)'
 
-def eval_cpc2(results_file,dataset):
+def eval_cpc2(results_file,dataset,gt_df):
     
     col_names = ['ID','transcript_length','peptide_length','Fickett_score','pI','ORF_integrity','coding_probability','label']
     df = pd.read_csv(results_file,sep='\t',names=col_names)
@@ -22,6 +23,7 @@ def eval_cpc2(results_file,dataset):
     homology = pd.read_csv("test_maximal_homology.csv")
     df = df.merge(homology,on='ID') 
     df['bin'] = df['score'].apply(coarse_bin_fn)
+    df = drop_missing_start(df,gt_df)
     results = []
     def true_and_pred(sub_df):
         gt = [1 if x.startswith('XM') or x.startswith('NM') else 0 for x in sub_df['ID'].tolist()]
@@ -40,11 +42,14 @@ def eval_cpc2(results_file,dataset):
 
     return results
 
-def eval_rnasamba(results_file,dataset):
+def eval_rnasamba(results_file,dataset,gt_df):
     results = []
     df = pd.read_csv(results_file,sep='\t')
     homology = pd.read_csv("test_maximal_homology.csv")
-    df = df.merge(homology,left_on='sequence_name',right_on='ID') 
+    df = df.merge(homology,left_on='sequence_name',right_on='ID')
+    
+    df = drop_missing_start(df,gt_df)
+
     df['bin'] = df['score'].apply(coarse_bin_fn)
     def true_and_pred(sub_df):
         gt = [1 if x.startswith('XM') or x.startswith('NM') else 0 for x in sub_df['sequence_name'].tolist()]
@@ -53,16 +58,16 @@ def eval_rnasamba(results_file,dataset):
         return gt,predictions,probs
     for bin,sub_df in df.groupby('bin'):
         gt,predictions,probs = true_and_pred(sub_df) 
-        results.append(calculate_metrics('rnasamba',dataset,gt,predictions,probs,bin))
+        results.append(calculate_metrics('RNAsamba',dataset,gt,predictions,probs,bin))
     lesser = df[df['score'] <= 80]
     gt,predictions,probs = true_and_pred(lesser)
-    results.append(calculate_metrics('rnasamba',dataset,gt,predictions,probs,'<=80'))
+    results.append(calculate_metrics('RNAsamba',dataset,gt,predictions,probs,'<=80'))
     greater = df[df['score'] > 80]
     gt,predictions,probs = true_and_pred(greater)
-    results.append(calculate_metrics('rnasamba',dataset,gt,predictions,probs,'>80'))
+    results.append(calculate_metrics('RNAsamba',dataset,gt,predictions,probs,'>80'))
     return results
 
-def eval_cpat(results_file,no_orfs_file,dataset):
+def eval_cpat(results_file,no_orfs_file,dataset,gt_df):
 
     df = pd.read_csv(results_file,sep='\t')
     df = df[['seq_ID','Coding_prob']]
@@ -74,6 +79,7 @@ def eval_cpat(results_file,no_orfs_file,dataset):
     df = pd.concat([df,no_orf_df])
     df = df.merge(homology,left_on='seq_ID',right_on='ID') 
     df['bin'] = df['score'].apply(coarse_bin_fn)
+    df = drop_missing_start(df,gt_df)
 
     results = []
     # found using two ROC plot
@@ -117,6 +123,14 @@ def calculate_metrics(model,dataset,ground_truth,predictions,probs,bin):
             'AUROC' : auroc, 'AUPRC' : auprc}
     return metrics
 
+def drop_missing_start(df,gt_df):
+    
+    df = df.set_index('ID')
+    # a few examples are <PC> but with missing start codon annotation, omit 
+    df = df.drop(gt_df[gt_df['CDS'].str.startswith('<0')]['ID'])
+    df = df.reset_index() 
+    return df
+
 def safe_divide(num,denom):
 
     if denom > 0:
@@ -124,7 +138,7 @@ def safe_divide(num,denom):
     else:
         return 0.0
 
-def plot_by_homology(df):
+def plot_by_homology(df,output_dir):
 
     #coarse = (df['bin'] == '<=80') | (df['bin'] == '>80')
     coarse = (df['bin'] == '<=80')
@@ -133,14 +147,15 @@ def plot_by_homology(df):
 
     # binary separation at 80% homology
     #coarse_df['model'] = coarse_df['model'].add(coarse_df['bin']).add(' n=(').add(coarse_df['support'].astype(str)).add(')')
-    cols = ['model', 'accuracy','F1','recall','precision','MCC','AUROC','AUPRC']
-    print(coarse_df) 
+    cols = ['model','F1','recall','precision','MCC','AUROC','AUPRC']
+    #cols = ['model', 'F1','recall','precision','MCC','AUPRC']
+    print(coarse_df[['model','support','F1']]) 
     coarse_df = coarse_df[cols]
     by_type_mean = coarse_df.groupby('model').mean()
     by_type_std = coarse_df.groupby('model').std()
     print('Coarse Binning') 
-    for_latex_mean = by_type_mean.applymap(lambda x : 100*x).applymap('{:.1f}'.format)
-    for_latex_std = by_type_std.applymap(lambda x : 100*x).applymap('{:.1f}'.format)
+    for_latex_mean = by_type_mean.applymap('{:.3f}'.format)
+    for_latex_std = by_type_std.applymap('{:.3f}'.format)
     for_latex = for_latex_mean.add(' $\pm$ ').add(for_latex_std).reset_index().set_index('model')
     col_format = 'c'*len(for_latex.columns)
     table = for_latex.style.to_latex(column_format=f'|{col_format}|',hrules=True)
@@ -156,53 +171,53 @@ def plot_by_homology(df):
             return 'EDC (large)'
         else:
             return x
-    bin_df['model'] = bin_df['model'].apply(rename) #[rename(x) for x in bin_df['model'].tolist()]
-    order =['[0-40]', '(40-60]', '(60-80]', '(80-100)']
-    # by homology bins
-    by_type_mean = bin_df.groupby(['model','bin']).mean()
-    by_type_std = bin_df.groupby(['model','bin']).std()
-    sns.set_style('whitegrid') 
-    plt.figure(figsize=(6,3))
-    sns.pointplot(data=bin_df,x='bin',y='F1',hue='model',order=order,errorbar='sd')
-    sns.move_legend(plt.gca(),loc='upper left',bbox_to_anchor=(1,1))
-    plt.xlabel('Max %id with train set')
-    plt.tight_layout()
-    plt.savefig('homology_binning_F1.png')
-    plt.close()
 
-    plt.figure(figsize=(6,3))
-    sns.pointplot(data=bin_df,x='bin',y='MCC',hue='model',order=order,errorbar='sd')
-    sns.move_legend(plt.gca(),loc='upper left',bbox_to_anchor=(1,1))
-    plt.xlabel('Max %id with train set')
-    plt.tight_layout()
-    plt.savefig('homology_binning_MCC.png')
-    plt.close()
+    bin_df['Model'] = bin_df['model'].apply(rename) #[rename(x) for x in bin_df['model'].tolist()]
+    order =['[0-40]', '(40-60]', '(60-80]'] #, '(80-100)']
+    pbm = palette_by_model() 
+    sns.set_style('ticks') 
     
-    plt.figure(figsize=(6,3))
-    sns.pointplot(data=bin_df,x='bin',y='accuracy',hue='model',order=order,errorbar='sd')
-    sns.move_legend(plt.gca(),loc='upper left',bbox_to_anchor=(1,1))
-    plt.xlabel('Max %id with train set')
-    plt.tight_layout()
-    plt.savefig('homology_binning_accuracy.png')
-    plt.close()
+    def plot_metric_homology(metric): 
+        plt.figure(figsize=(6,3))
+        sns.pointplot(data=bin_df,x='bin',y=metric,hue='Model',palette=pbm,order=order,errorbar='sd')
+        sns.move_legend(plt.gca(),loc='upper left',bbox_to_anchor=(1,1))
+        plt.xlabel('Max % id with train set')
+        sns.despine() 
+        plt.tight_layout()
+        plt.savefig(f'{output_dir}/homology_binning_{metric}.svg')
+        plt.close()
+
+    plot_metric_homology('F1')
+    plot_metric_homology('accuracy')
+    plot_metric_homology('MCC')
 
 if __name__ == "__main__":
 
+    args,unknown_args = parse_config()
+    setup_fonts()
     storage = []
-    parent_dir = sys.argv[1]    
+    parent_dir = args.tools_dir 
+    output_dir = build_output_dir(args)
     
+    test_file = 'data/mammalian_200-1200_test_nonredundant_80.csv'
+    gt_df = pd.read_csv(test_file,sep='\t')
+
     for i in range(1,6):
         samba = f'{parent_dir}/rnasamba/test_rnasamba_mammalian_{i}.tsv'
-        storage.extend(eval_rnasamba(samba,i)) 
+        storage.extend(eval_rnasamba(samba,i,gt_df)) 
     
+    #storage.extend(eval_rnasamba('test_partial_length.tsv','partial',gt_df)) 
+    #storage.extend(eval_rnasamba('test_full_length.tsv','full',gt_df))
+    df = pd.DataFrame(storage)
+
     cpc = f'{parent_dir}/CPC2/test_cpc2_mammalian.txt'
-    storage.extend(eval_cpc2(cpc,'mammalian')) 
+    storage.extend(eval_cpc2(cpc,'mammalian',gt_df)) 
     cpat_a = f'{parent_dir}/CPAT/test_cpat_mammalian.ORF_prob.best.tsv'
     cpat_b = f'{parent_dir}/CPAT/test_cpat_mammalian.no_ORF.txt'
-    storage.extend(eval_cpat(cpat_a,cpat_b,'mammalian'))
+    storage.extend(eval_cpat(cpat_a,cpat_b,'mammalian',gt_df))
     df = pd.DataFrame(storage)
     ours = pd.read_csv('our_models_homology_binning.csv')
-    print(ours) 
     df = pd.concat([df,ours])
 
-    plot_by_homology(df)
+    plot_by_homology(df,output_dir)
+

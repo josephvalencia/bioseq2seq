@@ -126,7 +126,7 @@ def parse(filename,testfile,mode='getorf'):
         max_len = noncoding['Peptide length'].max() 
         histname = os.path.join(parent,'micropeptide_hist.svg')
         f, (ax1,ax2) = plt.subplots(1,2,figsize=[7.5,2],gridspec_kw={'width_ratios':[1,2]})
-        sns.set_style(style='white',rc={'font.family' : ['Helvetica']})
+        sns.set_style(style='white',rc={'font.family' : ['Arial']})
         print(f'Saving {histname} calculated from {len(df)} lncRNAs, of which {len(perfect_matches)} = {100 *len(perfect_matches) / len(df):.1f}% had a perfect sORF')
         sns.histplot(data=df,x=id_label,stat='count',bins=np.linspace(0,100,21),ax=ax1,alpha=0.7) 
         ax1.set_xlabel('Best pred. align. w/ ORF translation (% ID)')
@@ -157,7 +157,7 @@ def parse(filename,testfile,mode='getorf'):
         ax2.set_xlabel('ORF length (codons)')
         sns.despine() 
         plt.tight_layout()
-        f.legend(loc="upper right", bbox_to_anchor=(0.95, 1.0),borderpad=0.25,prop={"family":"Helvetica"})
+        f.legend(loc="upper right", bbox_to_anchor=(0.95, 1.0),borderpad=0.25,prop={"family":"Arial"})
         plt.savefig(histname)
         plt.close()
 

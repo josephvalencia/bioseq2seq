@@ -2,10 +2,11 @@
 import os,re
 import numpy as np
 import pandas as pd
-from sklearn.metrics import  f1_score, matthews_corrcoef, recall_score, precision_score, confusion_matrix, accuracy_score, roc_auc_score,average_precision_score
+from sklearn.metrics import f1_score, matthews_corrcoef, precision_recall_curve, roc_curve, recall_score 
+from sklearn.metrics import precision_score, confusion_matrix, accuracy_score, roc_auc_score,average_precision_score
 from scipy.stats import chisquare, ks_2samp, mannwhitneyu,pearsonr
 from os.path import join
-from utils import parse_config,build_output_dir
+from utils import parse_config,build_output_dir,setup_fonts,palette_by_model
 import seaborn as sns
 from sklearn import datasets, linear_model
 from sklearn.linear_model import LinearRegression
@@ -366,9 +367,9 @@ def evaluate_by_homology(pred_file,ground_truth_df,error_analysis,as_csv):
     if 'pred_class' not in df.columns and 'start' in df.columns:
         is_last = df['start'] == (df['RNA_len'] -1)
         df['pred_class'] = ['<NC>' if x  else '<PC>' for x in is_last]
-        df = df[~df['CDS'].str.startswith('<0')] # a few examples are <PC> but with missing start codon annotation, omit 
-
         #df['pred_class'] = ['<PC>' if x > 0.5 else '<NC>' for x in df['coding_prob']]
+    
+    df = df[~df['CDS'].str.startswith('<0')] # a few examples are <PC> but with missing start codon annotation, omit 
     df['bin'] = df['score'].apply(coarse_bin_fn)
     results = []    
     
@@ -387,14 +388,18 @@ def evaluate_by_homology(pred_file,ground_truth_df,error_analysis,as_csv):
         precision = precision_score(gt,preds)
         auroc = roc_auc_score(gt,probs)
         auprc = average_precision_score(gt,probs)
+        prc = precision_recall_curve(gt,probs)
+        roc = roc_curve(gt,probs)
         tn, fp, fn, tp = confusion_matrix(gt, preds).ravel()
         specificity = safe_divide(tn,tn+fp)
         f1 = f1_score(gt,preds)
         name = pred_file.split('.txt')[0]
         support = len(sub_df)
+        if bin == '<=80':
+            print(name,f1)
         entry = {'trial' : name,'bin' : bin , 'support' : support, 'accuracy' : accuracy, 'F1' : f1 ,\
                 'recall' : recall, 'precision' : precision,'specificity' : specificity, 'MCC' : mcc, \
-                 'AUPRC' : auprc, 'AUROC' : auroc }
+                'AUPRC' : auprc, 'AUROC' : auroc , 'PRC' : prc, 'ROC' : roc}
         return entry
     
     for bin,sub_df in df.groupby(['bin']): 
@@ -466,7 +471,8 @@ def evaluate(pred_file,ground_truth_df,error_analysis,as_csv):
     specificity = safe_divide(tn,tn+fp)
     f1 = f1_score(gt,preds)
     name = pred_file.split('.')[0]
-    return {'trial' : name , 'accuracy' : accuracy, 'F1' : f1 ,'recall' : recall, 'precision' : precision,'specificity' : specificity, 'MCC' : mcc, 'AUPRC' : auprc, 'AUROC' : auroc }
+    prc = precision_recall_curve(gt,probs) 
+    return {'trial' : name , 'accuracy' : accuracy, 'F1' : f1 ,'recall' : recall, 'precision' : precision,'specificity' : specificity, 'MCC' : mcc, 'AUPRC' : auprc, 'AUROC' : auroc , 'PRC' : prc}
 
 def safe_divide(num,denom):
 
@@ -560,26 +566,61 @@ def latex_table(results_df):
     table = for_latex.style.to_latex(column_format=f'|{col_format}|',hrules=True)
     print(table)
 
-def model_boxplot(df):
+def model_boxplot(df,output_dir):
    
-    medians = df.groupby('model').median().reset_index()
-    index_sort = medians.sort_values(by='F1')['model'].tolist()
-    plt.figure(figsize=(6,3))
-    sns.swarmplot(data=df,y='model',x='F1',hue='model',palette='Set2',order=index_sort,size=6,linewidth=0,legend=False)
-    ax = sns.boxplot(data=df,y='model',x='F1',color='white',order=index_sort,width=0.5,fliersize=0) 
-    plt.setp(ax.artists, edgecolor = 'k', facecolor='w')
-    plt.setp(ax.lines, color='k')
+    storage = []
+    pbm = palette_by_model()
+    fig,(ax1,ax2) = plt.subplots(1,2,figsize=(7.5,3))
+    for model,sub_df in df.groupby('model'):
+        sub_df = sub_df.sort_values(by='AUPRC')
+        precision,recall,thresholds = sub_df.iloc[0,:]['PRC']
+        ''' 
+        if model.startswith('start'):
+            min_idx = precision.argmin() 
+            print(f'model={model},idx={min_idx}, threshold = {thresholds[min_idx]}, precision={precision.min()},recall={recall[min_idx]}, # thresholds = {len(thresholds)}')
+            print(recall[-1])
+        '''
+        ax1.step(recall,precision,color=pbm[model])
+        sub_df = sub_df.sort_values(by='AUROC')
+        fpr,tpr,thresholds = sub_df.iloc[0,:]['ROC']
+        ax2.step(fpr,tpr,label=model,color=pbm[model]) 
+    sns.despine() 
+    ax2.legend()
+    ax1.set_xlabel('Recall')
+    ax1.set_ylabel('Precision')
+    ax2.set_xlabel('False Positive Rate') 
+    ax2.set_ylabel('True Positive Rate') 
     plt.tight_layout()
-    plt.savefig('model_architecture_F1_boxplot.svg')
+    plt.savefig(f'{output_dir}/recall_precision_curves.svg')
     plt.close()
+    medians = df.groupby('model').median().reset_index()
+   
 
+    def metric_plot(metric,boxplot=False): 
+        index_sort = medians.sort_values(by=metric)['model'].tolist()
+        plt.figure(figsize=(6.5,2.5))
+        g = sns.stripplot(data=df,y='model',x=metric,hue='model',palette=palette_by_model(),order=index_sort,size=6,linewidth=1.5,legend=False)
+        if boxplot: 
+            ax = sns.boxplot(data=df,y='model',x=metric,color='white',order=index_sort,width=0.5,fliersize=0,whis=5) 
+            plt.setp(ax.artists, edgecolor = 'k', facecolor='w')
+            plt.setp(ax.lines, color='k')
+        sns.despine() 
+        plt.ylabel('Model') 
+        plt.tight_layout()
+        plt.savefig(f'{output_dir}/model_architecture_{metric}_boxplot.svg')
+        plt.close()
+
+    metric_plot('F1')
+    metric_plot('MCC')
+    metric_plot('AUPRC')
+    metric_plot('F1')
 
 if __name__ == "__main__":
 
     all_model_performances = []
 
     test_file = 'data/mammalian_200-1200_test_nonredundant_80.csv'
-    
+    setup_fonts() 
     gt_df = build_ground_truth(test_file)
     args,unknown_args = parse_config()
     output_dir = build_output_dir(args)
@@ -603,18 +644,16 @@ if __name__ == "__main__":
     binned_results = []
     for f in all_models:
         fname = join(parent,f,'mammalian_200-1200_test_RNA_nonredundant_80_preds.txt')
+        #fname = join(parent,f,'mammalian_200-1200_test_RNA_nonredundant_80_full_preds.txt')
         if os.path.exists(fname):
-            print(f'parsing {fname}')
+            print(f'parsing {fname}') 
             is_start = 'CDS' in fname or 'start' in fname 
-            #results = evaluate(fname,gt_df,error_analysis=False,as_csv=is_start)
             results_by_bin = evaluate_by_homology(fname,gt_df,error_analysis=False,as_csv=is_start)
-            #model = 'EDC' if results['trial'].startswith('EDC') else 'bioseq2seq'
-            #model = 'EDC-small' if results['trial'].startswith('EDC_small') else model
-            #results['model'] = rename(model)
-            #all_results.append(results)
             binned_results.append(results_by_bin)
+            #results = evaluate(fname,gt_df,error_analysis=False,as_csv=is_start)
+            #all_results.append(results)
         else:
-            print(f'{fname} does not exist')
+            print(f'{fname} does not exist!')
 
     binned_results = pd.concat(binned_results)
     short_string = binned_results['trial'].str.extract(r'([^\/]*)_(\d)_')
@@ -622,11 +661,7 @@ if __name__ == "__main__":
     binned_results['rep'] = short_string[1]
     lesser = binned_results[binned_results['bin'] == '<=80'] 
     
-    model_boxplot(lesser) 
+    model_boxplot(lesser,output_dir)
+    binned_results = binned_results.drop(columns='PRC')
     binned_results.to_csv('our_models_homology_binning.csv',index=False)
 
-    '''
-    results_df = pd.DataFrame(all_results)
-    results_df.to_csv('classification_performance.csv',sep='\t')
-    print(latex_table(results_df))
-    '''

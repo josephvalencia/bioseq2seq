@@ -1,4 +1,4 @@
-export CHKPT_DIR="experiments/checkpoints/coding_noncoding"
+export CHKPT_DIR="experiments/checkpoints/final"
 export OUT_DIR="experiments/output"
 export test_rna="data/mammalian_200-1200_test_RNA_nonredundant_80.fa"
 export test_prot="data/mammalian_200-1200_test_PROTEIN_nonredundant_80.fa"
@@ -9,7 +9,7 @@ export verified_test_prot="data/verified_test_PROTEIN.fa"
 export verified_val_rna="data/verified_val_RNA.fa"
 export verified_val_prot="data/verified_val_PROTEIN.fa"
 
-export train="python bioseq2seq/bin/train_single_model.py \
+export train_alt="python bioseq2seq/bin/train_single_model.py \
 --train_src data/mammalian_200-1200_train_RNA_balanced.fa \
 --train_tgt data/mammalian_200-1200_train_PROTEIN_balanced.fa \
 --val_src data/mammalian_200-1200_val_RNA_nonredundant_80.fa \
@@ -18,7 +18,7 @@ export train="python bioseq2seq/bin/train_single_model.py \
 --accum_steps 8 --max_tokens 9000 --report-every 500 
 --max-epochs 20000 --patience 5 --lr 1.0"
 
-export train_alt="python bioseq2seq/bin/train_single_model.py \
+export train="python bioseq2seq/bin/train_single_model.py \
 --train_src data/mammalian_200-1200_train_RNA_no_lncPEP.fa \
 --train_tgt data/mammalian_200-1200_train_PROTEIN_no_lncPEP.fa \
 --val_src data/mammalian_200-1200_val_nonredundant_80_RNA_no_lncPEP.fa \

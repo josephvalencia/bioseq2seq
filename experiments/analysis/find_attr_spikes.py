@@ -286,7 +286,6 @@ def top_indices(saved_file,df,groups,metrics,mode="attn",head_idx=0,reduction_mo
             # None type means length minimums were not passed so skip
             if result is not None:
                 dataset.append(result) 
-    print(len(positive_storage),len(negative_storage))
     return positive_storage, negative_storage
 
 def indices_to_substrings(index_list,motif_fasta,df,region):
@@ -312,7 +311,7 @@ def indices_to_substrings(index_list,motif_fasta,df,region):
     with open(motif_fasta,'w') as outFile:
         SeqIO.write(sequences, outFile, "fasta")
 
-def run_attributions(saved_file,df,parent_dir,groups,metrics,mode="attn",layer_idx=0,head_idx=0,reduction='PC',region="full",mask=False):
+def run_attributions(saved_file,df,parent_dir,groups,metrics,mode="attn",layer_idx=0,head_idx=0,reduction='PC',region="full",mask=False,exclude=False):
 
     if mode == "attn":
         attr_name = f'EDA_layer{layer_idx}head{head_idx}'
@@ -329,7 +328,7 @@ def run_attributions(saved_file,df,parent_dir,groups,metrics,mode="attn",layer_i
     positive_motifs_file = prefix+"positive_motifs.fa"
     negative_motifs_file = prefix +"negative_motifs.fa"
     hist_file = prefix+"pos_hist.svg"
-    positive_indices, negative_indices = top_indices(saved_file,df,groups,metrics,mode=mode,head_idx=head_idx,reduction_mode=reduction,region=region,apply_mask=mask,exclude=True)
+    positive_indices, negative_indices = top_indices(saved_file,df,groups,metrics,mode=mode,head_idx=head_idx,reduction_mode=reduction,region=region,apply_mask=mask,exclude=exclude)
     indices_to_substrings(positive_indices,positive_motifs_file,df,region)
     indices_to_substrings(negative_indices,negative_motifs_file,df,region)
     cmd = 'streme -p {}positive_motifs.fa -n {}negative_motifs.fa -oc {}streme_out -rna -minw 3 -maxw 9 -pvt 1e-2 -patience 3' 
@@ -341,8 +340,7 @@ def tuple_list_to_df(indices):
     starts = [x[1] for x in indices]
     return pd.DataFrame({'ID' : tscripts, 'start' : starts})
 
-def run(attributions,df,attr_dir,g,m,mode,reduction,region,mask):
-
+def run(attributions,df,attr_dir,g,m,mode,reduction,region,mask,exclude=False): 
     # reduction defines how L x 4 mutations are reduced to L x 1 importances, see reduce_over_mutations()
     # g[0] and g[1] are transcript type for pos and neg sets
     # m[0] and m[1] are method for selecting loci of interest for pos and neg sets
@@ -355,7 +353,7 @@ def run(attributions,df,attr_dir,g,m,mode,reduction,region,mask):
     best_BIO_dir = f'{attr_dir}/best_seq2seq_{region}_{trial_name}'
     if not os.path.isdir(best_BIO_dir):
         os.mkdir(best_BIO_dir)
-    run_attributions(attributions,df,best_BIO_dir,g,m,mode,reduction=reduction,region=region,mask=mask)
+    run_attributions(attributions,df,best_BIO_dir,g,m,mode,reduction=reduction,region=region,mask=mask,exclude=exclude)
 
 def attribution_loci_pipeline(): 
 
@@ -409,7 +407,7 @@ def attribution_loci_pipeline():
             for region in regions:
                 m = same_selection_methods if i>1 else cross_selection_methods
                 if mode == 'ISM-test': 
-                    run(best_BIO_ISM,df_test,attr_dir,g,m,'ISM',reduction=reduction,region=region,mask=mask)
+                    run(best_BIO_ISM,df_test,attr_dir,g,m,'ISM',reduction=reduction,region=region,mask=mask,exclude=True)
                 elif mode == 'MDIG-train': 
                     run(best_BIO_mdig,df_train,attr_dir,g,m,'MDIG',reduction=reduction,region=region,mask=mask)
    
@@ -420,7 +418,7 @@ def attribution_loci_pipeline():
     for g in groups:
         for region in regions:
             if mode == 'ISM-test': 
-                run(best_BIO_ISM,df_test,attr_dir,g,selection_methods,'ISM',reduction=reduction,region=region,mask=mask)
+                run(best_BIO_ISM,df_test,attr_dir,g,selection_methods,'ISM',reduction=reduction,region=region,mask=mask,exclude=True)
             elif mode == 'MDIG-train': 
                 run(best_BIO_mdig,df_train,attr_dir,g,selection_methods,'MDIG',reduction=reduction,region=region,mask=mask)
 

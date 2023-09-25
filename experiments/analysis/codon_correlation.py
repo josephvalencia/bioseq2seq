@@ -30,11 +30,10 @@ def build_codon_table(filename):
             raw_frequencies[result[0]] = result[1]
     return species,raw_frequencies
 
-def tai_codon_corr(df,metric):
+def tai_codon_corr(df,metric,output_dir):
     
     tai_df = pd.read_csv('human_TAI_Tuller.csv')
     tai_dict = {x : y for x,y in zip(tai_df['Codon'],tai_df['Human'])} 
-    
     _,human_usage = build_codon_table('data/codon_usage_tables/homo_sapiens_codon_table.txt')
     tai_deltas = []
     usage_deltas = []
@@ -50,20 +49,23 @@ def tai_codon_corr(df,metric):
     s_deltas = df['Mean']
     pearson = pearsonr(s_deltas,tai_deltas)[0]
     spearman = spearmanr(s_deltas,tai_deltas)[0]
-    g = sns.jointplot(data=df,x='Mean',y='delta_TAI',kind='reg')
+    fig = plt.figure(figsize=(4.5,4.5)) 
+    g = sns.regplot(data=df,x='Mean',y='delta_TAI')
     plt.xlabel(r'$\Delta$S synonymous mutation') 
     plt.ylabel(r'$\Delta$tAI synonymous mutation') 
     full = f'Pearson={pearson:.3f}\nSpearman={spearman:.3f}'
     print(full)
     plt.text(0.05, 0.9,full,
-            transform=g.ax_joint.transAxes)
-    plt.savefig(f'{metric}_delta_tAI_regression.svg')
+            transform=g.transAxes)
+    sns.despine()
+    plt.tight_layout()
+    plt.savefig(f'{output_dir}/{metric}_delta_tAI_regression.svg')
     plt.close()
-    print(f'saved {metric}_delta_tAI_regression.svg')
+    print(f'saved {output_dir}/{metric}_delta_tAI_regression.svg')
 
-def ism_mdig_codon_corr(ism,mdig):
+def ism_mdig_codon_corr(ism,mdig,output_dir):
     
-    plt.figure(figsize=(3,3.5))
+    plt.figure(figsize=(3,2.75))
     total = ism.merge(mdig,on='long_mutation',suffixes=['_ism','_mdig'])
     ism_deltas = total['Mean_ism']
     mdig_deltas = total['Mean_mdig']
@@ -71,16 +73,16 @@ def ism_mdig_codon_corr(ism,mdig):
     spearman = spearmanr(ism_deltas,mdig_deltas)[0]
 
     g = sns.regplot(data=total,x='Mean_mdig',y='Mean_ism')
-    plt.xlabel(r'Mean $\Delta$S-MDIG synonymous mutation',fontsize=8) 
-    plt.ylabel(r'Mean $\Delta$S ISM synonymous mutation',fontsize=8) 
+    plt.xlabel(r'Mean $\Delta$S-MDIG synonymous mutation',fontsize=10) 
+    plt.ylabel(r'Mean $\Delta$S ISM synonymous mutation',fontsize=10) 
     full = f'r={pearson:.3f}\n'+r'$\rho$'+f'={spearman:.3f}'
     print(full) 
     plt.text(0.05, 0.9,full,
             transform=g.transAxes)
     sns.despine()
     plt.tight_layout()
-    print('ism_mdig_codon_correlation.svg') 
-    plt.savefig('ism_mdig_codon_correlation.svg')
+    print(f'{output_dir}/ism_mdig_codon_correlation.svg') 
+    plt.savefig(f'{output_dir}/ism_mdig_codon_correlation.svg')
     plt.close()
 
 if __name__ == "__main__":
@@ -91,5 +93,5 @@ if __name__ == "__main__":
     
     ism = pd.read_csv(f'{output_dir}/mut/ISM_codon_deltas.csv')
     mdig = pd.read_csv(f'{output_dir}/mut/MDIG_codon_deltas.csv')
-    ism_mdig_codon_corr(ism,mdig)
-    tai_codon_corr(ism,'ISM')
+    ism_mdig_codon_corr(ism,mdig,output_dir)
+    tai_codon_corr(ism,'ISM',output_dir)

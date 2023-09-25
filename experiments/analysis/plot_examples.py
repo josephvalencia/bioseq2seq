@@ -20,7 +20,7 @@ def plot(summary_df,signed_df,window,vlim,tallest,ref,window_name,tscript,save_d
                              'wspace' : 0.05,
                              'hspace' :0.0})
     
-    crp_logo = logomaker.Logo(summary_df,shade_below=.5,fade_below=.5,flip_below=True,ax=axs[0][0])
+    crp_logo = logomaker.Logo(summary_df,shade_below=.5,fade_below=.5,flip_below=True,ax=axs[0][0],font_name='Arial Rounded Bold')
     crp_logo.style_spines(visible=False)
   
     target_pos = int(target_pos)
@@ -54,7 +54,8 @@ def plot(summary_df,signed_df,window,vlim,tallest,ref,window_name,tscript,save_d
     g.set_xticks([0,left,left+right]) 
     g.set_xticklabels([f'{-left}','0',f'+{right}'],rotation=0) 
     g.set_xlabel(f'{window_name}={ref}',fontsize=8)
-    axs[1][1].set_title(short_title,fontsize=8,loc='right') 
+    #axs[1][1].set_title(short_title,fontsize=8,loc='right') 
+    axs[1][1].set_title(r'$\Delta$S',fontsize=8,loc='right') 
     plt.subplots_adjust(bottom=0.3) 
     axs[0][1].axis('off')
     
@@ -86,8 +87,8 @@ def plot_examples(save_dir,savefile,onehot_file,test_csv,attr_type,args):
     onehot_seqs = np.load(onehot_file)
    
     # top 5 closest to median reproducibility for each class
-    examples = ['NR_109777.1', 'NR_105045.1', 'NR_135529.1', 'NR_122105.1', 'NR_126388.1', 'NM_001009141.1', 'NM_001257433.1', 'NM_001015628.1', 'NM_001891.3', 'NM_001164444.2']
-    
+    examples = ['NR_146199.1', 'NR_152588.1', 'NR_027773.1', 'NR_109777.1', 'NR_122105.1', 'NM_001352687.1',\
+            'NM_001265728.1', 'NM_001024683.1', 'NM_001206605.1', 'NM_001195475.1']
     for i,(tscript,attr) in enumerate(saved.items()):
         if tscript in examples: 
             cds_loc = [int(x) for x in test_cds[tscript].split(':')] 

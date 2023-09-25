@@ -245,27 +245,30 @@ def build_all(args):
     output_dir = build_output_dir(args) 
     
     prefix = f'verified_test_RNA.{args.reference_class}.{args.position}'
-    best_BIO_grad = load_models(args.best_BIO_DIR,args.all_BIO_replicates,f'{prefix}.grad.npz')
+    best_BIO_grad = load_models(args.best_BIO_DIR,args.all_LFNet_weighted_replicates,f'{prefix}.grad.npz')
     best_EDC_grad = load_models(args.best_EDC_DIR,args.all_EDC_replicates,f'{prefix}.grad.npz')
-    best_BIO_MDIG = load_models(args.best_BIO_DIR,args.all_BIO_replicates,f'{prefix}.MDIG.max_0.50.npz')
+    best_BIO_CNN_grad = load_models(args.best_CNN_DIR,args.all_CNN_weighted_replicates,f'{prefix}.grad.npz')
+    best_BIO_MDIG = load_models(args.best_BIO_DIR,args.all_LFNet_weighted_replicates,f'{prefix}.MDIG.max_0.25.npz')
+    best_BIO_CNN_MDIG = load_models(args.best_CNN_DIR,args.all_CNN_weighted_replicates,f'{prefix}.MDIG.max_0.10.npz')
     best_EDC_MDIG = load_models(args.best_EDC_DIR,args.all_EDC_replicates,f'{prefix}.MDIG.max_0.10.npz')
-    best_BIO_ISM = load_models(args.best_BIO_DIR,args.all_BIO_replicates,f'{prefix}.ISM.npz')
+    best_BIO_ISM = load_models(args.best_BIO_DIR,args.all_LFNet_weighted_replicates,f'{prefix}.ISM.npz')
+    best_BIO_CNN_ISM = load_models(args.best_CNN_DIR,args.all_CNN_weighted_replicates,f'{prefix}.ISM.npz')
     best_EDC_ISM = load_models(args.best_EDC_DIR,args.all_EDC_replicates,f'{prefix}.ISM.npz')
     
     # plot metagenes for perturbation-based attributions
-    attr_filenames = {'bioseq2seq' : best_BIO_grad,'EDC' : best_EDC_grad}
+    attr_filenames = {'seq-wt (LFN)' : best_BIO_grad, 'seq-wt (CNN)' : best_BIO_CNN_grad,'class (LFN)' : best_EDC_grad}
     plot_attribution_metagene(test_cds,output_dir,prefix,attr_filenames,'Taylor',exclude=True)
-    attr_filenames = {'bioseq2seq' : best_BIO_MDIG,'EDC' : best_EDC_MDIG}
+    attr_filenames = {'seq-wt (LFN)' : best_BIO_MDIG, 'seq-wt (CNN)' : best_BIO_CNN_MDIG,'class (LFN)' : best_EDC_MDIG}
     plot_attribution_metagene(test_cds,output_dir,prefix,attr_filenames,'MDIG',sharey=False,exclude=True)
-    attr_filenames = {'bioseq2seq' : best_BIO_ISM,'EDC' : best_EDC_ISM}
-    plot_attribution_metagene(test_cds,output_dir,prefix,attr_filenames,'ISM',sharey=False,exclude=True)
+    attr_filenames = {'seq-wt (LFN)' : best_BIO_ISM,'seq-wt (CNN)' : best_BIO_CNN_ISM,'class (LFN)' : best_EDC_ISM}
+    plot_attribution_metagene(test_cds,output_dir,prefix,attr_filenames,'ISM',sharey=True,exclude=True)
     compare_all(output_dir,prefix,attr_filenames.keys())
    
     # build EDA metagenes
     best_BIO_EDA = build_EDA_file_list(args.best_BIO_EDA,args.best_BIO_DIR)
     best_EDC_EDA = build_EDA_file_list(args.best_EDC_EDA,args.best_EDC_DIR)
-    plot_EDA_metagene(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,exclude=True)
-    plot_EDA_metagene(test_cds,output_dir,'best_EDC_test',best_EDC_EDA,exclude=True)
+    #plot_EDA_metagene(test_cds,output_dir,'best_seq2seq_test',best_BIO_EDA,exclude=True)
+    #plot_EDA_metagene(test_cds,output_dir,'best_EDC_test',best_EDC_EDA,exclude=True)
 
 if __name__ == "__main__":
     

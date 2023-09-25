@@ -1,12 +1,9 @@
 from Bio import SeqIO
 import sys
 
-def split(prefix):
+def split(rna_file,protein_file,prefix):
     
-    rna_file = f'{prefix}_RNA.fa'
-    protein_file = f'{prefix}_PROTEIN.fa'
     is_coding = lambda x: x.startswith('XM') or x.startswith('NM')
-    
     pc_storage = []
     nc_storage = []
     for record in SeqIO.parse(rna_file,'fasta'):
@@ -33,4 +30,4 @@ def split(prefix):
 
 if __name__ == "__main__":
 
-    split(sys.argv[1])
+    split(sys.argv[1],sys.argv[2],sys.argv[3])

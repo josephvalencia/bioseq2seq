@@ -22,7 +22,7 @@ def parse(fname,outname,only_verified=True,n=None):
     if only_verified:
         coding = [x for x in coding if is_verified(x)]
         noncoding = [x for x in noncoding if is_verified(x)]
-  
+    
     n = min(len(coding),len(noncoding)) if n is None else n
     print(f"sampling {n} each of mRNA/lncRNA")
     coding = sample(coding,n)

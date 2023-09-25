@@ -449,6 +449,7 @@ def length_by_region(region,start_ORF,end_ORF,tscript_len):
 def process(storage,args,parent,prefix,mode):
     
     all_df = pd.DataFrame(storage)
+    print(all_df) 
     all_df['E-value'] = [x*len(all_df) for x in all_df['p-value'].tolist()]
     significant = all_df[all_df['E-value'] < 1e-3].copy()
     print('SIGNIFICANT',significant) 
@@ -466,10 +467,11 @@ def process(storage,args,parent,prefix,mode):
     original_motifs = subtract_random_matches(significant,meme_file)
     print('NOVEL ISM DETECTIONS',original_motifs)
     print('CLUSTERS',cluster_df[['motif_id','Cluster']])
-
+   
     df = original_motifs
     df = df.merge(cluster_df,on='motif_id',how='left')
     df = add_positional_info(df) 
+    print(df) 
     for motif_id,PWM,dist,rel_pos_hist,frames,maxes,region in zip(df['motif_id'],df['PWM'],df['dist'],
                                             df['rel_pos_hist'],df['frames'],df['maxes'],df['Region']):
         filename = f'{motifs_dir}/{region}_{motif_id}_logo.svg'
@@ -483,8 +485,8 @@ def process(storage,args,parent,prefix,mode):
 
     short = f'{prefix}_{args.reference_class}_{args.position}_{mode}_PLOTS/'
     items = list(zip(df['motif_id'],df['Region']))
-    
     # add figures and labels
+    print(df) 
     df['Cluster' ] = renumber_clusters(df['Cluster'].tolist())
     df['Consensus'] = [x.split('-')[-1] for x in df['motif_id']]
     df['Logo'] = [f'{short}/{y}_{x}_logo.svg' for x,y in items]
@@ -493,6 +495,7 @@ def process(storage,args,parent,prefix,mode):
     df['Start site in region'] = [f'{short}/{y}_{x}_rel_pos_hist.svg' for x,y in items]
     df['Positive Set'] = [readable_dataset_name(x.split('_')[0]) for x in df['Trial']]
     df['Negative Set'] = [readable_dataset_name(x.split('_')[1]) for x in df['Trial']]
+    print(df) 
     
     meme_file = f'{file_prefix}_significant_ALL_motifs.meme'
     write_to_meme(df,meme_file)

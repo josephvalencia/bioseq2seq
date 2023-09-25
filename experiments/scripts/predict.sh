@@ -1,8 +1,21 @@
-export BIOHOME=/nfs/stak/users/valejose/hpc-share
+#export BIOHOME=/nfs/stak/users/valejose/hpc-share
+export BIOHOME=/home/bb/valejose/valejose/
 export PYTHONPATH=$BIOHOME/bioseq2seq
-export CHKPT_DIR="$BIOHOME/bioseq2seq/experiments/checkpoints/coding_noncoding"
-#source templates.sh
+export CHKPT_DIR="$BIOHOME/bioseq2seq/experiments/checkpoints/final"
+echo $CHKPT_DIR
+source experiments/scripts/templates.sh
+readarray -t models < lncPEP_models.txt
 
-#python $PYTHONPATH/bioseq2seq/bin/translate_new.py --checkpoint ${CHKPT_DIR}/bioseq2seq_4_Jun25_07-51-41/_step_10500.pt --input ${1} --mode bioseq2seq --num_gpus 1 --beam_size 4 --n_best 4 --max_tokens 1200 
-python $PYTHONPATH/bioseq2seq/bin/seq2start.py --checkpoint ${CHKPT_DIR}/CDS_4_Jul03_00-03-24/_step_8500.pt --input ${1} --mode start --num_gpus 0 --max_tokens 1200 
-#python $PYTHONPATH/bioseq2seq/bin/translate_new.py --checkpoint ${CHKPT_DIR}/EDC_1_Jun27_08-35-05/_step_6000.pt --input ${1} --mode bioseq2seq --num_gpus 1 --beam_size 4 --n_best 4 --max_tokens 1200 
+for m in ${models[@]}
+do
+    dir=$(echo "$m" | sed 's/\/_/_/g' | sed 's/.pt//g')
+    if [[ $m =~ ^seq2start*|^CDS* ]];
+    then
+        python $PYTHONPATH/bioseq2seq/bin/seq2start.py --checkpoint ${CHKPT_DIR}/$m --input ${1} --mode start \
+            --output_name ${OUT_DIR}/$dir --num_gpus 1 --max_tokens 1200 
+    else
+        python $PYTHONPATH/bioseq2seq/bin/translate.py --checkpoint ${CHKPT_DIR}/$m --input ${1} --mode bioseq2seq \
+            --output_name ${OUT_DIR}/$dir --num_gpus 1 --beam_size 4 --n_best 4 --max_tokens 1200 --max_decode_len 400 
+    fi
+done
+

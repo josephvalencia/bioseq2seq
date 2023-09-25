@@ -116,7 +116,7 @@ def plot_line(domain,consensus,output_dir,name,model,attr_type,coding,plot_type=
 
     palette = sns.color_palette()
     # hardcoded to see the head that loses periodicity 
-    consensus = consensus[0,6,:].reshape(1,1,-1) 
+    consensus = consensus[0,5,:].reshape(1,1,-1) 
     n_layers,n_heads,n_positions = consensus.shape
     if attr_type == 'EDA':
         for layer in range(n_layers):
@@ -139,7 +139,7 @@ def plot_line(domain,consensus,output_dir,name,model,attr_type,coding,plot_type=
     s = inset_start - domain.min()
     width = inset_stop - inset_start
     inset_range = consensus[:,:,s:s+width]
-    axins = ax.inset_axes([0.4, 0.2, 0.5, 0.5])
+    axins = ax.inset_axes([0.4, 0.5, 0.5, 0.5])
     axins.axhline(y=0, color='gray', linestyle=':')     
     
     if attr_type == 'EDA':
@@ -219,9 +219,6 @@ def plot_power_spectrum(consensus,output_dir,name,model,attr_type,units='freq',l
             for i in range(n_heads):
                 label = l if i % 8 == 0 else None
                 color = l % len(palette)
-                #if (l == 0 and i == 6) or (l == 1 and i == 4): 
-                #if (l == 0 and i == 0): #or (l == 1 and i == 4): 
-                #ax1.plot(freq,ps[l,i,:],label=f'{l}-{i}',alpha=0.6)
                 ax1.plot(freq,ps[l,i,:],color=palette[color],label=f'{l}-{i}',alpha=0.6)
     else:
         for l in range(n_layers):

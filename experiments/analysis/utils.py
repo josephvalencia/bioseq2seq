@@ -17,16 +17,29 @@ class ScalarFormatterClass(ScalarFormatter):
 
 def setup_fonts():
     
-    # manually add Helvetica for CentOS, if it fails just let matplotlib define defaults 
+    # manually add Arial for CentOS, if it fails just let matplotlib define defaults 
     try:
-        font_path = os.path.join(Path.home(),'.fonts','Helvetica.ttc') 
+        font_path = os.path.join(Path.home(),'.fonts','Arial.ttf') 
         font_manager.fontManager.addfont(font_path) 
     except:
-        print('Helvetica.ttc not found')
+        print('Arial.ttf not found')
+    
+    try:
+        font_path = os.path.join(Path.home(),'.fonts','Arial Rounded Bold.ttf') 
+        font_manager.fontManager.addfont(font_path) 
+    except:
+        print('Arial Rounded Bold.ttf not found')
 
-    mpl.rcParams['font.family'] = 'Helvetica'
-    plt.rcParams.update({'font.family':'Helvetica'})
-    sns.set_theme(font='Helvetica',context='paper',style='ticks')
+    mpl.rcParams['font.family'] = 'Arial'
+    plt.rcParams.update({'font.family':'Arial'})
+    sns.set_theme(font='Arial',context='paper',style='ticks')
+
+def palette_by_model():
+
+    palette = sns.color_palette()
+    models=['seq-wt (LFN)','class (LFN)','class (CNN)','seq (LFN)','seq (CNN)','seq-wt (CNN)','start (LFN)','start (CNN)','RNAsamba', 'CPAT', 'CPC2'] 
+    return {m:c for m,c in zip(models,palette+[(0.0,0.0,0.0)])}
+
 
 def parse_config():
 
@@ -38,6 +51,7 @@ def parse_config():
     p.add('--val_prefix',help='validation dataset (.csv)')
     p.add('--train_prefix',help='train dataset (.csv)')
     p.add('--best_BIO_DIR',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
+    p.add('--best_CNN_DIR',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
     p.add('--best_EDC_DIR',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
     p.add('--best_BIO_chkpt',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
     p.add('--best_EDC_chkpt',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
@@ -52,9 +66,33 @@ def parse_config():
     p.add('--all_EDC_small_replicates',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
     p.add('--best_BIO_EDA',help ='best bioseq2seq encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
     p.add('--best_EDC_EDA',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
+    p.add('--tools_dir',help ='best EDC encoder-decoder attention (.enc_dec_attn)',type=yaml.safe_load)
     p.add('--reference_class',help ='class type')
     p.add('--position',help ='class type')
     return p.parse_known_args()
+
+def rename(name):
+
+    if name == 'CDS':
+        return 'start (LFN)'
+    elif name == 'EDC':
+        return 'class (LFN)'
+    elif name == 'EDC_CNN':
+        return 'class (CNN)'
+    elif name == 'bioseq2seq':
+        return 'seq (LFN)'
+    elif name == 'bioseq2seq_CNN':
+        return 'seq (CNN)'
+    elif name == 'bioseq2seq_CNN_lambd_0.05':
+        return 'seq-wt (CNN)'
+    elif name == 'bioseq2seq_lambd_0.1':
+        return 'seq-wt (LFN)'
+    elif name == 'seq2start_CNN':
+        return 'start (CNN)' 
+    elif name == 'rnasamba':
+        return 'RNAsamba'
+    else:
+        return name
 
 def grad_simplex_correction(input_grad):
     # Macdandzic et .al 2022 https://doi.org/10.1101/2022.04.29.490102

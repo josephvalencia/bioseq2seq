@@ -27,12 +27,12 @@ python $dir/percentile_metagene.py --config $CONFIG
 # metric corr with ISM and inter-replicate corrs Fig 4,6, S5
 python $dir/attr_correlations.py --config $CONFIG
 
-# shuffled variants, start and nonsense mutations Fig 4
-python $dir/ism_sanity_checks.py --config $CONFIG
-
 # Fig 5, S4 (ISM synonymous metagenes, ISM example logos, enriched motifs)
 python $dir/mutation_analysis.py --config $CONFIG
 python $dir/plot_examples.py --config $CONFIG 
+
+# shuffled variants, start and nonsense mutations Fig 4
+python $dir/ism_sanity_checks.py --config $CONFIG
 
 # Fig 5,6 motif discovery and analysis
 python $dir/find_attr_spikes.py --config $CONFIG > streme_commands.txt
