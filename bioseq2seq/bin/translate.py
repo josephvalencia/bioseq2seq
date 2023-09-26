@@ -30,7 +30,7 @@ def parse_args():
     parser.add_argument("--input",help="FASTA file for translation")
     parser.add_argument("--output_name","--o", default="translation",help="Name of file for saving predicted translations")
     parser.add_argument("--checkpoint","--c",help="Model checkpoint (.pt)")
-    parser.add_argument("--max_tokens",type=int,default=9000,help="Max number of tokens in prediction batch")
+    parser.add_argument("--max_tokens",type=int,default=1200,help="Max number of tokens in prediction batch")
     parser.add_argument("--mode",default="bioseq2seq",help="Inference mode. One of bioseq2seq|EDC")
     parser.add_argument("--rank",type=int,help="Rank of process",default=0)
     parser.add_argument("--num_gpus",type=int,help="Number of available GPU machines",default=0)

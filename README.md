@@ -29,11 +29,12 @@ We provide pretrained PyTorch weights for our best model `best_bioseq2seq-wt_LFN
 ```
 python bioseq2seq/bin/translate.py --checkpoint best_bioseq2seq-wt_LFN_mammalian_200-1200.pt --input mammalian_200-1200_test_RNA_nonredundant_80.fasta --num_gpus 1 
 ```
-If reliable peptide predictions are desired for mRNAs, use `best_bioseq2seq_CNN_mammalian_200-1200.pt` or `best_bioseq2seq_LFN_mammalian_200-1200.pt`, which were trained on the unweighted bioseq2seq task. The usage of `--max_decode_len` shown below will allow for protein outputs of up to 400 aa. 
+The number after `coding_prob:' is the predicted probability of being protein-coding. The next four lines are the top beam hypotheses in descending order, i.e. the top line is the official prediction, `<PC>` for protein-coding and `<NC>` for long noncoding. The beam scores are not directly interpretable as probabilities.
+
+If reliable peptide predictions are desired for mRNAs, use `best_bioseq2seq_CNN_mammalian_200-1200.pt` or `best_bioseq2seq_LFN_mammalian_200-1200.pt`, which were trained on the unweighted bioseq2seq task. The usage of `--max_decode_len` shown below will allow for protein outputs of up to 400 aa. The output file format will be the same as above, but multiple `<PC>` beams are possible. 
 ```
 python bioseq2seq/bin/translate.py --checkpoint best_bioseq2seq_LFN_mammalian_200-1200.pt --input mammalian_200-1200_test_RNA_nonredundant_80.fasta --mode bioseq2seq --num_gpus 1 --beam_size 4 --n_best 4 --max_tokens 1200 --max_decode_len 400
 ```
-This will produce four prediction hypotheses, ranked in descending order of score.
 
 For further usage options, see
 ```
