@@ -1,3 +1,19 @@
+$TRAIN_EDC_CNN --name EDC_CNN_1 --random_seed 821 --rank 0
+$TRAIN_EDC_CNN --name EDC_CNN_2 --random_seed 113 --rank 1
+$TRAIN_EDC_CNN --name EDC_CNN_3 --random_seed 637 --rank 2
+$TRAIN_EDC_CNN --name EDC_CNN_4 --random_seed 477 --rank 3
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_1 --random_seed 859 --rank 0
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_2 --random_seed 922 --rank 1
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_3 --random_seed 400 --rank 2
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_4 --random_seed 933 --rank 3
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_5 --random_seed 209 --rank 0
+$TRAIN_EDC_CNN --name EDC_CNN_5 --random_seed 511 --rank 1
+$TRAIN_CDS_CNN --name seq2start_CNN_5 --random_seed 764 --rank 2
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_lambd_0.05_5 --random_seed 591  --rank 3 --pos_decay_rate 0.05
+$TRAIN_BIO --name bioseq2seq_5 --random_seed 493 --rank 0
+$TRAIN_CDS --name CDS_5 --random_seed 928 --rank 1
+$TRAIN_EDC --name EDC_5 --random_seed 607 --rank 2
+$TRAIN_BIO --name bioseq2seq_lambd_0.1_5 --random_seed 384 --rank 3 --pos_decay_rate 0.1
 $TRAIN_BIO --name bioseq2seq_1 --random_seed 123 --rank 0
 $TRAIN_BIO --name bioseq2seq_2 --random_seed 908 --rank 1
 $TRAIN_BIO --name bioseq2seq_3 --random_seed 512 --rank 2
@@ -10,3 +26,19 @@ $TRAIN_EDC_EQ --rank 0 --name EDC_eq_1 --random_seed 771
 $TRAIN_EDC_EQ --rank 1 --name EDC_eq_2 --random_seed 303
 $TRAIN_EDC_EQ --rank 2 --name EDC_eq_3 --random_seed 165
 $TRAIN_EDC_EQ --rank 3 --name EDC_eq_4 --random_seed 555
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_lambd_0.05_1 --random_seed 111 --rank 0 --pos_decay_rate 0.05 --loss_mode weighted
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_lambd_0.05_2 --random_seed 222 --rank 1 --pos_decay_rate 0.05 --loss_mode weighted
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_lambd_0.05_3 --random_seed 333 --rank 2 --pos_decay_rate 0.05 --loss_mode weighted
+$TRAIN_BIO_CNN --name bioseq2seq_CNN_lambd_0.05_4 --random_seed 444 --rank 3 --pos_decay_rate 0.05 --loss_mode weighted
+$TRAIN_BIO --name bioseq2seq_lambd_0.1_1 --random_seed 913 --rank 0 --pos_decay_rate 0.1 --loss_mode weighted
+$TRAIN_BIO --name bioseq2seq_lambd_0.1_2 --random_seed 258 --rank 1 --pos_decay_rate 0.1 --loss_mode weighted
+$TRAIN_BIO --name bioseq2seq_lambd_0.1_3 --random_seed 407 --rank 2 --pos_decay_rate 0.1 --loss_mode weighted
+$TRAIN_BIO --name bioseq2seq_lambd_0.1_4 --random_seed 150 --rank 3 --pos_decay_rate 0.1 --loss_mode weighted
+$TRAIN_CDS_CNN --name seq2start_CNN_1 --random_seed 339 --rank 0
+$TRAIN_CDS_CNN --name seq2start_CNN_2 --random_seed 275 --rank 1
+$TRAIN_CDS_CNN --name seq2start_CNN_3 --random_seed 198 --rank 2
+$TRAIN_CDS_CNN --name seq2start_CNN_4 --random_seed 523 --rank 3
+$TRAIN_CDS --name CDS_1 --random_seed 888 --rank 0
+$TRAIN_CDS --name CDS_2 --random_seed 219 --rank 1
+$TRAIN_CDS --name CDS_3 --random_seed 356 --rank 2
+$TRAIN_CDS --name CDS_4 --random_seed 199 --rank 3

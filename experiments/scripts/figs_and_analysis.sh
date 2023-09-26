@@ -39,7 +39,7 @@ python $dir/find_attr_spikes.py --config $CONFIG > streme_commands.txt
 python $dir/find_attr_spikes.py --config $CONFIG --mask >> streme_commands.txt
 python $dir/find_attr_spikes.py --config $CONFIG --mdig >> streme_commands.txt
 python $dir/find_attr_spikes.py --config $CONFIG --mask --mdig >> streme_commands.txt
-SGE_Array -c streme_commands.txt 
+bash -c streme_commands.txt 
 python $dir/parse_streme.py --config $CONFIG
 python $dir/parse_streme.py --config $CONFIG --mask
 python $dir/parse_streme.py --config $CONFIG --mdig

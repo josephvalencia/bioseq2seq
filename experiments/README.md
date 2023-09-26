@@ -12,13 +12,18 @@ mv xaeqg/osfstorage/data data
 mkdir experiments/checkpoints
 mv xaeqg/osfstorage/checkpoints experiments/checkpoints
 ```
+
+Use the provided checkpoint files to automatically generate prediction and attribution scripts for all checkpoints. This will create a directory `txt/' full of commands.
+```
+export $dir="experiments/scripts/txt"
+python experiments/scripts/write_commands.py --bio $dir/seq_LFN.txt --edc $dir/class_LFN.txt --edc_small $dir/class_LFN-small.txt --cnn_bio $dir/seq_CNN.txt --cnn_edc $dir/class_CNN.txt --start $dir/start_LFN.txt --cnn_start $dir/start_CNN.txt --weighted_lfnet $dir/seq-wt_LFN.txt --weighted_cnn $dir/seq-wt_CNN.txt --out_dir txt
+```
+
 Then source [experiments/scripts/templates.sh](scripts/templates.sh) to set up necessary commands. 
 The driver script [experiments/scripts/run.sh](scripts/run.sh) uses [GNU Parallel](https://www.gnu.org/software/parallel/) to execute multiple (4) independent GPU processes in parallel based on plaintext command files. Change `-j <n>` if you have a different number of GPU devices. Then obtain all predictions and attributions on various datasets. 
-
 ```
-export $dir="experiments/scripts"
-source $dir/templates.sh
-bash $dir/pred_and_attribute.sh
+source experiments/scripts/templates.sh
+bash experiments/scripts/run.sh txt/
 ```
 Install [CPAT](https://cpat.readthedocs.io/en/latest/#installation), [CPC2](http://cpc2.gao-lab.org/download.php), and [RNAsamba](https://apcamargo.github.io/RNAsamba/installation/) then train/evaluate on our data splits.
 ```
@@ -27,10 +32,10 @@ bash $dir/run_tools.sh
 ```
 Produce all figure panels using Matplotlib/Seaborn. A `.yaml` configuration file controls the pipeline. Additional dependencies are the [EMBOSS](https://emboss.sourceforge.net/download/) package and [MEME](https://meme-suite.org/meme/doc/download.html) suite.
 ```
-export CONFIG="example_config.yaml"
-bash $dir/figs_and_analysis.sh
+export CONFIG="new_config.yaml"
+bash experiments/scripts/figs_and_analysis.sh
 ```
-Most plots will save in `.svg` format to `example_config_results/` but some will save under `experiments/output/`, with file names logged to the terminal.
+Most plots will save in `.svg` format to `new_config_results/` but some will save under `experiments/output/`, with file names logged to the terminal.
 
 ## Tuning and training new models from scratch
 ### Data preprocessing
@@ -47,7 +52,7 @@ export dir='experiments/scripts'
 bash $dir/tune_all.sh
 ```
 ### Model training 
-Then, train multiple replicates (4) from best best bioseq2seq and EDC hyperparams, as well as EDC equivalent.
+Then, train multiple replicates (5) from best best bioseq2seq and EDC hyperparams, as well as EDC equivalent.
 
 ```
 source $dir/templates.sh

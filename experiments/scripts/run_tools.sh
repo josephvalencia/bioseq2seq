@@ -7,7 +7,7 @@ nc_train_set="data/mammalian_200-1200_train_NC_RNA.fa"
 # re-train rnasamba on our data and test
 for i in 1 2 3 4 5
 do
-rnasamba train -s 3 -e 25 -v 3 rnasamba_${i}.hdf5 $pc_train_set $nc_train_set
+ rnasamba train -s 5 -e 80 -v 3 rnasamba_${i}.hdf5 $pc_train_set $nc_train_set
 rnasamba classify test_rnasamba_mammalian_${i}.tsv $test_set rnasamba_${i}.hdf5
 done
 

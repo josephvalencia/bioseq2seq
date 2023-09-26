@@ -1,5 +1,3 @@
-#export BIOHOME=/nfs/stak/users/valejose/hpc-share
-export BIOHOME=/home/bb/valejose/valejose/
 export PYTHONPATH=$BIOHOME/bioseq2seq
 export CHKPT_DIR="$BIOHOME/bioseq2seq/experiments/checkpoints/final/"
 wildtype="verified_test_RNA"
