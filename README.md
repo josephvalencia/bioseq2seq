@@ -13,7 +13,7 @@ Install `bioseq2seq` from source:
 git clone https://github.com/josephvalencia/bioseq2seq.git
 cd bioseq2seq
 ```
-This codebase requires Python 3.8 or higher. To set up and activate virtual environment
+This codebase requires Python 3.10. To set up and activate virtual environment
 ```
 python3 -m venv venv
 source venv/bin/activate
