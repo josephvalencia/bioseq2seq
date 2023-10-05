@@ -153,11 +153,12 @@ def plot_mutations_by_aa(aa_original,df,metric,mut_dir):
     plt.close()
     
     # position-independent average of all mutations
-    synonymous = synonymous[synonymous['loc'] < 150]
+    #synonymous = synonymous[synonymous['loc'] < 150] 
     mean_by_long_mut = synonymous.groupby('long_mutation')['delta'].mean().reset_index()
     count_by_long_mut = synonymous.groupby('long_mutation')['delta'].count().reset_index()
     long_means = mean_by_long_mut.merge(count_by_long_mut,on='long_mutation',suffixes=('_mean','_count'))
     long_means = long_means.rename(columns={'delta_mean' : 'Mean', 'delta_count' : 'Count'})
+    print(long_means)
     return long_means
 
 def calculate_fractions(location_list,cds_length_list,n_bins=25):

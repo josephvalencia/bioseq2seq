@@ -121,13 +121,19 @@ def run_helper(rank,args,model,vocab,use_splits=False):
 				     with_align=False)
             pointer_attn = model.generator(outputs)
             probs =  torch.exp(pointer_attn)
+            indices = torch.arange(probs.shape[0]).repeat(probs.shape[1],1)
+            indices = indices.to(src_lengths.device).T
+            pc_mask = indices < (src_lengths - 1)
+            pc_mask = pc_mask.long()
             pred = pointer_attn.argmax(dim=0).cpu().tolist()
-            pc_prob = probs[:-1,:].sum(dim=0).cpu().tolist()
+            
+            #pc_prob = probs[:-1,:].sum(dim=0).cpu().tolist()
+            pc_prob = (probs * pc_mask).sum(dim=0).cpu().tolist() 
             index = batch.indices.cpu().numpy()
             names = tscripts[index]
             for j in range(batch.batch_size):
                 #outfile.write(f'{names[j]}, P(PC) = {pc_prob[j]:.4f}, start={pred[j]}\n')
-                print(f'{names[j]}, P(PC) = {pc_prob[j]:.4f}, start={pred[j]}')
+                #print(f'{names[j]}, P(PC) = {pc_prob[j]:.4f}, start={pred[j]}')
                 entry = {'tscript' : names[j], 'coding_prob' : f'{pc_prob[j]:.4f}', 'start' : pred[j]}
                 storage.append(entry)
     

@@ -555,7 +555,8 @@ class Inference(object):
 
                     if save_preds:
                         #self.out_file.write("ID: {}\n".format(transcript_name))
-                        self.out_file.write(f"ID: {transcript_name} coding_prob : {np.exp(coding_prob):.4f}\n")
+                        self.out_file.write(f"ID: {transcript_name} coding_prob : {np.exp(trans.prob):.4f}\n")
+                        #print(f"ID: {transcript_name} coding_prob : {np.exp(trans.prob):.4f}\n")
                          
                         for pred,score in zip(n_best_preds,n_best_scores):
                             self.out_file.write("PRED: {} SCORE: {}\n".format(pred,torch.exp(score)))
@@ -968,10 +969,14 @@ class Translator(Inference):
             
             pc_token = self._tgt_vocab.stoi['<PC>']
             nc_token = self._tgt_vocab.stoi['<NC>']
-            if step == 0: 
-                coding_prob =  log_probs[0,pc_token].item() 
             
             decode_strategy.advance(log_probs, attn)
+            
+            if step == 0: 
+                total = torch.arange(0,log_probs.shape[0],parallel_paths)
+                cp =  log_probs[total,pc_token]
+                #coding_prob =  log_probs[0,pc_token].item() 
+                coding_prob = cp.cpu().tolist()    
             any_finished = decode_strategy.is_finished.any()
             if any_finished:
                 decode_strategy.update_finished()

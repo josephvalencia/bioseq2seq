@@ -70,10 +70,11 @@ class TranslationBuilder(object):
                len(translation_batch["predictions"]))
         batch_size = batch.batch_size
 
-        preds, pred_score, attn, align, gold_score, indices = list(zip(
+        preds, pred_score, attn, prob, align, gold_score, indices = list(zip(
             *sorted(zip(translation_batch["predictions"],
                         translation_batch["scores"],
                         translation_batch["attention"],
+                        translation_batch["coding_prob"],
                         translation_batch["alignment"],
                         translation_batch["gold_score"],
                         batch.indices.data),
@@ -121,7 +122,7 @@ class TranslationBuilder(object):
             translation = Translation(inds[b],
                 src[:, b] if src is not None else None,
                 src_raw, pred_sents, attn[b], pred_score[b],
-                gold_sent, gold_score[b], align[b],frequency_content)
+                gold_sent, gold_score[b], align[b],frequency_content,prob[b])
             translations.append(translation)
 
         return translations
@@ -144,10 +145,10 @@ class Translation(object):
     """
 
     __slots__ = ["index","src", "src_raw", "pred_sents", "attns", "pred_scores",
-                 "gold_sent", "gold_score", "word_aligns" ,"freq_content"]
+                 "gold_sent", "gold_score", "word_aligns" ,"freq_content","prob"]
 
     def __init__(self,index, src, src_raw, pred_sents,
-                 attn, pred_scores, tgt_sent, gold_score, word_aligns, freq_content):
+                 attn, pred_scores, tgt_sent, gold_score, word_aligns, freq_content,prob):
         
         self.index = index
         self.src = src
@@ -159,6 +160,7 @@ class Translation(object):
         self.gold_score = gold_score
         self.word_aligns = word_aligns
         self.freq_content = freq_content
+        self.prob = prob
 
     def log(self, sent_number):
         """
