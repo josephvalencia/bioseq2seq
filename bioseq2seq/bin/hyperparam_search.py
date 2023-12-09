@@ -111,6 +111,7 @@ if __name__ == "__main__":
                         config=config,
                         scheduler=bohb_hyperband,
                         search_alg=bohb_search,
+                        local_dir='./ray_results',
                         num_samples=n_samples,
                         time_budget_s=total_time_allowed,
                         resources_per_trial={'gpu': 1, 'cpu' : 4},
